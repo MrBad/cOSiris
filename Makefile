@@ -27,34 +27,34 @@ libc.a: lib/Makefile
 startup.o: startup.asm
 	$(ASM) $(ASMFLAGS) startup.asm
 
-kernel.o:
+kernel.o: kernel.c kernel.h
 	$(CC) $(CFLAGS) -o kernel.o kernel.c
 
-console.o:
+console.o: console.c console.h
 	$(CC) $(CFLAGS) -o console.o console.c
 
-multiboot.o:
+multiboot.o: multiboot.c multiboot.h
 	$(CC) $(CFLAGS) -o multiboot.o multiboot.c
 
-gdt.o:
+gdt.o: gdt.c gdt.h
 	$(CC) $(CFLAGS) -o gdt.o gdt.c
 
-idt.o:
+idt.o: idt.c idt.h
 	$(CC) $(CFLAGS) -o idt.o idt.c
 
-isr.o:
+isr.o: isr.c isr.h
 	$(CC) $(CFLAGS) -o isr.o isr.c
 
-irq.o:
+irq.o: irq.c irq.h
 	$(CC) $(CFLAGS) -o irq.o irq.c
 
-x86.o:
+x86.o: x86.c x86.h
 	$(CC) $(CFLAGS) -o x86.o x86.c
 
-timer.o:
+timer.o: timer.c timer.h
 	$(CC) $(CFLAGS) -o timer.o timer.c
 
-mem.o:
+mem.o: mem.c mem.h
 	$(CC) $(CFLAGS) -o mem.o mem.c
 
 
