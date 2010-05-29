@@ -1,0 +1,41 @@
+Inspired by linux-0.01, osd, ics-os, geekos, osdev site.
+
+
+- compile - make
+- run - make run 	- require bochs 
+					- for debian type # apt-get install bochs bochs-term bochsbios
+
+- make a floppy image - make fd
+						will create fd.img, to write it - dd if=fd.img of=/dev/fd0
+## bochs mmap
+size = 0x14, base_addr = 0x00, length = 0x09fc00, type = 0x1		   654336 - free
+size = 0x14, base_addr = 0x09fc00, length = 0x0400, type = 0x2		     1024 - EBDA?		                                                                                                _
+size = 0x14, base_addr = 0x0e8000, length = 0x018000, type = 0x2	    98304 - BIOS
+size = 0x14, base_addr = 0x0100000, length = 0x06f0000, type = 0x1	7,274,496 - free
+size = 0x14, base_addr = 0x07f0000, length = 0x010000, type = 0x3	   65,536 - ?
+size = 0x14, base_addr = 0x0fffc0000, length = 0x040000, type =0x2	  262,144 - BIOS?
+
+
+## my old duron 800 mmap
+0x00		0x09fc00	0x1
+0x09fc00	0x400		0x2
+0x0f0000	0x010000	0x2
+0x0100000	0x0eef000	0x1
+0x0eff0000	0x08000		0x3
+0x0eff8000	0x08000		0x4
+0x0ffc0000	0x040000	0x2
+
+
+## my old P1/90Mhz mmap
+flags - 07E7
+0x00		0x09fc00	0x1
+0x010000000	0x01700000	0x1
+0c0fffc0000	0x040000	0x2
+
+
+
+## my old 486sx/33Mhz
+flags - 0x3A7
+low 639Kb high 7168Kb
+
+# !!! No memory map structure !!!
