@@ -1,0 +1,132 @@
+#include <stdarg.h>
+#include <string.h>
+
+// flags for vsprintf //
+#define LEFT		1	// left justify
+#define PLUS		2	// show sign + or -
+#define SPACE		4	// space if positive
+#define SPECIAL		8	// 0x
+#define ZEROPAD		16	// pad with 0
+
+
+#define is_digit(c)	((c) >= '0' && (c) <= '9')
+
+int vsprintf(char *str, const char *format, va_list args) {
+	unsigned int flags = 0;
+	int field_width = -1;
+	int precision = -1;
+	int qualifier = -1;
+	int i;
+	char *s, *p;
+	s = str;
+	int len;
+	
+	for(;*format!=0;) {
+		if(*format != '%') {
+			*str++ = *format++;
+		} else {
+			rep:
+			*format++;
+			switch(*format) {
+				case '-': flags |= LEFT; goto rep; break;
+				case '+': flags |= PLUS; goto rep; break;
+				case ' ': flags |= SPACE; goto rep; break;
+				case '#': flags |= SPECIAL; goto rep; break;
+				case '0': flags |= ZEROPAD; goto rep; break;
+			}
+			
+			// get field width //
+			if(is_digit(*format)) {
+				field_width=0;
+				while(is_digit(*format)) {
+					field_width = field_width*10 + (*format++ - '0');
+				}
+			} else if(*format == '*') {
+				// is next argument //
+				field_width = va_arg(args, int);
+				if(field_width < 0) {
+					field_width = -field_width;
+					flags |= LEFT;
+				}
+			}
+			
+			// get precision //
+			if(*format == '.') {
+				*format++;
+				if(is_digit(*format)) {
+					while(is_digit(*format)) {
+						precision = precision*10 + (*format++ - '0');
+					}
+				} else {
+					// is next argument //
+					precision = va_arg(args, int);
+					if(precision < 0) {
+						precision = 0;
+					}
+				}
+			}
+			
+			// get conversion qualifier //
+			if(*format == 'h' || *format == 'l' || *format=='L') {
+				qualifier = *format;
+				*format++;
+			}
+			
+			switch(*format++) {
+				case 'c':
+					if((flags && LEFT) == 0) {
+						while(--field_width > 0) {
+							*str++ = ' ';
+						}
+					}
+					*str++ = (unsigned char) va_arg(args, int);
+					while(--field_width > 0) {
+						*str++ = ' ';
+					}
+					break;
+					
+				case 's':
+					p = va_arg(args, char *);
+					len = strlen(p);
+//					if(precision < 0) {
+//						precision = len;
+//					} else if(precision > len) {
+//						len = precision;
+//					}
+					
+					if((flags && LEFT) == 0) {
+						while(len < field_width--) {
+							*str++ = ' ';
+						}
+					}
+					for(i=0; i < len; i++) {
+						*str++ = *p++;
+					}
+//					while(len > field_width--) {
+//						*str++ = ' ';
+//					}
+					break;
+					
+				case 'o':
+					break;
+				case 'p':
+					break;
+				case 'x':
+					break;
+				case 'X':
+					break;
+				case 'd':
+					break;
+				case 'i':
+					break;
+				case 'u':
+					break;
+				case 'n':
+					break;
+				default:
+					break;
+			}
+		}
+	}
+	return(str - s);
+}
