@@ -121,7 +121,8 @@ romimage: file=$BXSHARE/BIOS-bochs-latest
 #  2.2.6 2.1Ghz Athlon XP with Linux 2.6/g++ 3.4         12 to 15 Mips
 #  2.0.1 1.6Ghz Intel P4 with Win2000/g++ 3.3             5 to  7 Mips
 #=======================================================================
-cpu: count=1, ips=10000000, reset_on_triple_fault=1
+#cpu: count=1, ips=10000000, reset_on_triple_fault=1
+cpu: count=1,  ips=1000000, reset_on_triple_fault=1
 
 #=======================================================================
 # MEGS

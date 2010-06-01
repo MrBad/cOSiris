@@ -32,5 +32,11 @@ typedef struct _memory_map {
 	unsigned long type;
 } memory_map;
 
+#define MBOOT_MAGIC 0x2BADB002
+
+#define MBOOTF_MEM		0	// multiboot memory flag
+#define MBOOTF_BOOTD	1	// multiboot boot device flag
+#define MBOOTF_ELF		5	// 
+#define MBOOTF_MMAP		6	// memory map struct
 
 void multiboot_parse(unsigned int magic, multiboot_header *mboot);

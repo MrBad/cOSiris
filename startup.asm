@@ -13,7 +13,7 @@
 	EXTERN code, bss, end, data			; pasate de linker, vezi lscript.txt
 	
 	; functii scrise in asm, apelabile din c
-	STACKSIZE equ 0x4000				; 16k stack size
+	STACKSIZE equ 0x8000				;  stack size
 
 
 [SECTION .text]

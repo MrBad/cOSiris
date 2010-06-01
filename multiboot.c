@@ -2,12 +2,7 @@
 #include "console.h"
 
 
-#define MBOOT_MAGIC 0x2BADB002
 
-#define MBOOTF_MEM		0	// multiboot memory flag
-#define MBOOTF_BOOTD	1	// multiboot boot device flag
-#define MBOOTF_ELF		5	// 
-#define MBOOTF_MMAP		6	// memory map struct
 
 static unsigned short int boot_device = 0;
 
