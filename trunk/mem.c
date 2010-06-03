@@ -173,10 +173,10 @@ void mem_init(multiboot_header *mboot)
 		map_linear_to_physical(kernel_dir, i, i, 3);
 	}
 
-	// ugly - allocate one page for every 4MB physical memory 
+	// ugly - preallocate pages for PDE itself 
 	// in order to access frame stack memory without page fault
 	// todo - get rid of this //
-	for( i=(unsigned int)ikheap; i < up_mem; i += 0x400000) {
+	for( i=(unsigned int)ikheap; i < kinfo.code+up_mem; i += 0x400000) {
 		map_linear_to_physical(kernel_dir, i, i, 3);
 	}
 
