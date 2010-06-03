@@ -45,6 +45,9 @@ unsigned int pop_frame(){
 	return frame_addr;
 }
 
+//
+//	Removes a frame from stack
+//
 unsigned int remove_frame(unsigned int frame_addr){
 	unsigned int i, found;
 	for(i=0, found=0; i < stack_idx; i++) {
@@ -62,6 +65,9 @@ unsigned int remove_frame(unsigned int frame_addr){
 	return found ? 1:0;
 }
 
+//
+//	Called by int 14
+//
 void page_fault(struct iregs *r) {
 	unsigned int fault_addr;
 	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
@@ -73,6 +79,10 @@ void page_fault(struct iregs *r) {
 	
 	return;
 }
+
+//
+//	Maps a virtual to physical address
+//
 void map_linear_to_physical(unsigned int *dir, unsigned int linear_addr, unsigned int physical_addr, unsigned int flags) {
 	unsigned short int t_idx = (linear_addr & 0xFFC00000) >> 22;
 	unsigned short int p_idx = (linear_addr & 0x3FF000) >> 12;
@@ -85,10 +95,28 @@ void map_linear_to_physical(unsigned int *dir, unsigned int linear_addr, unsigne
 		t = pop_frame();
 		dir[t_idx] = t | flags;
 		map_linear_to_physical(dir, t, t, flags);
+		flush_tlb();
 		table = (unsigned int *) t;
 		table[p_idx] = physical_addr | 3;
 	}
 }
+
+//
+//	Dumps a page directory
+//
+void dump_vmm(unsigned int *dir) {
+	kprintf("kernel dir @phys %x\n", dir);
+	unsigned int i;
+	for(i=0; i<1024; i++) {
+		if(dir[i] & P_PRESENT) {
+			kprintf("pde: %i, table addr: 0x%x\n", i, dir[i]);
+		}
+	}
+}
+
+//
+//	Initialize the vmm and heap
+//
 void mem_init(multiboot_header *mboot) 
 {
 	unsigned int i;
@@ -100,6 +128,8 @@ void mem_init(multiboot_header *mboot)
 	frames_stack = ikheap;
 	ikheap += i * sizeof(frames_stack); // make room for frame stack //
 
+	unsigned int up_mem = mboot->mem_upper * 1024;
+	
 	// if boot loader passed a mmap structure //
 	if(testb(mboot->flags, MBOOTF_MMAP)) 
 	{
@@ -121,49 +151,59 @@ void mem_init(multiboot_header *mboot)
 		for(i = 0; i < 640*1024; i += PAGE_SIZE, num_frames++) {
 			push_frame(i);
 		}
-		unsigned int up_mem = mboot->mem_upper * 1024;
 		for(i = 0x100000; i < up_mem; i += PAGE_SIZE, num_frames++) {
 			push_frame(i);
 		}
 	}
 	
+
 	// remove kernel pages from stack //
 	for(i = kinfo.code; i < (unsigned int)ikheap; i+=PAGE_SIZE) {
 		remove_frame(i);
 	}
 	
+	// define the kernel page directory //
 	kernel_dir = (unsigned int *) pop_frame();
 	memset(kernel_dir, '\0', PAGE_SIZE);
 	map_linear_to_physical(kernel_dir, (unsigned int)kernel_dir, (unsigned int)kernel_dir, 3);
 
 
-	
+	// maps all pages from video memory to the end of frames_stack //
 	for(i=0xB8000; i < (unsigned int)ikheap; i+=PAGE_SIZE ) {
 		map_linear_to_physical(kernel_dir, i, i, 3);
 	}
 
+	// ugly - allocate one page for every 4MB physical memory 
+	// in order to access frame stack memory without page fault
+	// todo - get rid of this //
+	for( i=(unsigned int)ikheap; i < up_mem; i += 0x400000) {
+		map_linear_to_physical(kernel_dir, i, i, 3);
+	}
+
 	// init heap //
-//	map_range_any(kernel_dir, KHEAP_START, KHEAP_START+KHEAP_INIT_SIZE, P_PRESENT | P_READ_WRITE);
 	for(i = KHEAP_START; i < KHEAP_START+KHEAP_INIT_SIZE; i+= PAGE_SIZE) {
 		map_linear_to_physical(kernel_dir, i, pop_frame(), 3);
 	}
 
-
 	switch_page_directory(kernel_dir);
-
+	kprintf("%u total physical pages, %u allocated\n", num_frames, num_frames-stack_idx-1);
+	
+	kprintf("Testing memory.\n");
+	dump_vmm(kernel_dir);
 	unsigned int *x = (unsigned int *) 0xDEADC000;
 	map_linear_to_physical(kernel_dir, (unsigned int)x, pop_frame(), 3);
 	flush_tlb();
 	x[0] = 0xDEADC0DE;
 	kprintf("0x%x\n", x[0]);
 
-	unsigned int *arr[1000];
-	for(i=1; i < 1000; i++) {
+	unsigned int *arr[2000];
+	for(i=1; i < 2000; i++) {
 			arr[i] = kalloc(5120); // 5K
 	}
-	kprintf("--0x%X\n", arr[20]);
-	for(i=999; i > 0; i--) {
+	for(i=1999; i > 0; i--) {
 			kfree(arr[i]);
 	}
 	kheap_dump();
+	dump_vmm(kernel_dir);
+	kprintf("end vmm\n");
 }
