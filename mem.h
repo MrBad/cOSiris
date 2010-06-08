@@ -18,6 +18,6 @@ unsigned int pop_frame();
 void push_frame(unsigned int frame_addr);
 void *ikalloc(unsigned int size, int align);
 //void map_linear_to_any(unsigned int *dir, unsigned int linear_addr, unsigned int flags);
-void map_linear_to_physical(unsigned int *dir, unsigned int linear_addr, unsigned int physical_addr, unsigned int flags);
+void map_linear_to_physical(unsigned int linear_addr, unsigned int physical_addr, unsigned int flags);
 //void map_range_any(unsigned int *dir, unsigned int linear_start, unsigned int linear_end, unsigned int flags);
 //void map_range_physical(unsigned int *dir, unsigned int linear_start, unsigned int linear_end, unsigned int physical_start, unsigned int flags);

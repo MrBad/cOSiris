@@ -12,7 +12,15 @@
 #include "console.h"
 #include "kheap.h"
 
-#define KERNEL_DIR_UP	0xFFFFF000	// recursive page dir addr
+#define PDE_IDX(x) ( x >> 22 )
+#define PTE_IDX(x) ( (x >> 12) & 0x03FF )
+
+enum {
+	KERNEL_DIR_MAP	= 0xFFFFF000,	// recursive page dir addr
+	KERNEL_TBL_MAP	= 0xFFC00000,	
+	PAGE_MASK		= 0xFFFFF000,
+};
+
 
 void *ikheap = 0;					// pointer used in base mem alloc
 
@@ -20,8 +28,9 @@ unsigned int num_frames;			// number of frames
 unsigned int *frames_stack;			// will keep a stack of frames
 unsigned int stack_idx;				// index to the frame_stack
 unsigned int up_mem;				// upper memory in bytes
+unsigned int paging_enabled = 0;	// is paging enabled?
 unsigned int *kernel_dir = NULL;	// main kernel page directory
-
+unsigned int *current_dir = NULL;	// current page directory
 
 //
 //	Pushes a free frame address into stack
@@ -70,46 +79,124 @@ unsigned int remove_frame(unsigned int frame_addr){
 //
 void page_fault(struct iregs *r) {
 	unsigned int fault_addr;
+
 	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
+	
+	
+	// page is not present //
+	if(! (r->err_code & 0x1)) {
+		unsigned int pde_idx = PDE_IDX(fault_addr);
+		unsigned int pte_idx = PTE_IDX(fault_addr);
+		
+		if(fault_addr >= KERNEL_TBL_MAP) {
+			kprintf("vmm needs pages pde:%i, pte:%i\n", pde_idx, pte_idx);
+			unsigned int *dir = (unsigned int *)KERNEL_DIR_MAP;
+			if(! dir[pde_idx]) {
+				kprintf("needs another table\n");
+			} else {
+				unsigned int *t = (unsigned int *) KERNEL_TBL_MAP + pde_idx * 1024;
+				t[pte_idx] = pop_frame() | 3;
+				return;
+			}
+		}
+	} 
+	
 	kprintf("Page fault! ( ");
 	kprintf("%s", (r->err_code & 0x1) ? "page-level violation ": "not-present ");
 	kprintf("%s", (r->err_code & 0x2) ? "write ":"read ");
 	kprintf("%s", (r->err_code & 0x4) ? "user-mode ":"supervisor-mode ");
-	kprintf(") at 0x%X\n", fault_addr);
+	kprintf(") at 0x%X, eip:0x%x\n", fault_addr, r->eip);
 	
-	return;
+
+	panic("\n");
 }
 
 //
 //	Maps a virtual to physical address
 //
-void map_linear_to_physical(unsigned int *dir, unsigned int linear_addr, unsigned int physical_addr, unsigned int flags) {
-	unsigned short int t_idx = (linear_addr & 0xFFC00000) >> 22;
-	unsigned short int p_idx = (linear_addr & 0x3FF000) >> 12;
-	unsigned int *table;
-	unsigned int t;
-	if (dir[t_idx] & 0x1) {
-		table = (unsigned int *) (dir[t_idx] & 0xFFFFF000);
-		table[p_idx] = physical_addr | 3;
-	} else {
-		t = pop_frame();
-		dir[t_idx] = t | flags;
-		map_linear_to_physical(dir, t, t, flags);
-		flush_tlb();
-		table = (unsigned int *) t;
-		table[p_idx] = physical_addr | 3;
+void map_linear_to_physical(unsigned int linear_addr, unsigned int physical_addr, unsigned int flags) {
+	unsigned int *table, frame;
+	unsigned int pde_idx = PDE_IDX(linear_addr);
+	unsigned int pte_idx = PTE_IDX(linear_addr);
+	
+	if( paging_enabled) {
+		current_dir = (unsigned int * ) KERNEL_DIR_MAP;
 	}
+	if(! (current_dir[pde_idx] & P_PRESENT)) {
+		frame = pop_frame();
+		current_dir[pde_idx] = frame | P_PRESENT | P_READ_WRITE;
+	}
+		
+	if(paging_enabled) {
+		table = (unsigned int *) (KERNEL_TBL_MAP);
+		table += 1024*pde_idx;
+	} else {
+		table = (unsigned int *) (current_dir[pde_idx] & PAGE_MASK);
+	}
+
+	if(table[pte_idx] & P_PRESENT) {
+		panic("linear_addr 0x%x allready mapped, %x, %x!\n", linear_addr, table, table[pte_idx]);
+	}
+	table[pte_idx] = physical_addr | 3;
+	
+}
+
+//
+//	Returns the physical addr mapped to virtual_addr
+//
+unsigned int get_physical_addr(unsigned int virtual_addr) {
+	unsigned short int t_idx = (virtual_addr & 0xFFC00000) >> 22;
+	unsigned short int p_idx = (virtual_addr & 0x3FF000) >> 12;
+	unsigned int *table;
+	unsigned int *dir;
+	
+	if(! paging_enabled) {
+		dir = kernel_dir;
+		if(! (dir[t_idx & P_PRESENT])) {
+			panic("%x is not mapped\n", virtual_addr);
+		}
+		table = (unsigned int *) (dir[t_idx] & 0xFFFFF000);
+		return (table[p_idx] & 0xFFFFF000);
+	} else {
+		table = (unsigned int *)KERNEL_TBL_MAP + t_idx*1024 + p_idx;
+		return (*table & PAGE_MASK);
+	}
+	
 }
 
 //
 //	Dumps a page directory
 //
-void dump_vmm(unsigned int *dir) {
-	kprintf("kernel dir @phys %x\n", dir);
-	unsigned int i;
-	for(i=0; i<1024; i++) {
-		if(dir[i] & P_PRESENT) {
-			kprintf("pde: %i, table addr: 0x%x\n", i, dir[i]);
+void dump_vmm() {
+	unsigned int i, j;
+	unsigned int *table;
+	if(! paging_enabled) {
+		kprintf("Paging disabled, kernel_dir @phys 0x%x\n", kernel_dir);
+		for(i=0; i<1024; i++) {
+			if(kernel_dir[i] & P_PRESENT) {
+				kprintf("pde: %i, table addr: 0x%x\n", i, (kernel_dir[i] & PAGE_MASK));
+				table = (unsigned int *) (kernel_dir[i] & PAGE_MASK);
+//				for(j=0; j < 1024; j++) {
+//					if(table[j])
+//					kprintf("\tpte: %i, phys: %i\n", j, table[j] & PAGE_MASK);
+//				}
+			}
+		}
+	} else {
+		kprintf("Paging enabled, kernel_dir @phys 0x%x\n", get_physical_addr(KERNEL_DIR_MAP));
+		//*table = (unsigned int *) KERNEL_TBL_MAP;
+		unsigned int *dir = (unsigned int *) KERNEL_DIR_MAP;
+		//kprintf("{%x}\n", *(x+(1024*1023)+1023));
+		for(i=0; i<1024; i++) {
+			if(dir[i] & P_PRESENT) {
+				kprintf("pde: %i, table addr: 0x%x\n", i, dir[i] & PAGE_MASK);
+				table = (unsigned int *) (KERNEL_TBL_MAP + 1024 * i);
+//				for(j=0; j< 1024; j++) {
+					//kprintf("{%i, %i} ", i, j);
+					//if(table[j])
+					//	kprintf("\tpte: %i, phys: %i\n", j, table[j] & PAGE_MASK);
+//				}
+			}
 		}
 	}
 }
@@ -121,6 +208,7 @@ void mem_init(multiboot_header *mboot)
 {
 	unsigned int i;
 
+	paging_enabled = 0;
 	ikheap = (void *) kinfo.end;
 
 	// setup frames stack //
@@ -164,34 +252,30 @@ void mem_init(multiboot_header *mboot)
 	
 	// define the kernel page directory //
 	kernel_dir = (unsigned int *) pop_frame();
-	memset(kernel_dir, '\0', PAGE_SIZE);
-	map_linear_to_physical(kernel_dir, (unsigned int)kernel_dir, (unsigned int)kernel_dir, 3);
+	kernel_dir[1023] = (unsigned int) kernel_dir|3; 
+	current_dir = kernel_dir;
 
-
-	// maps all pages from video memory to the end of frames_stack //
-	for(i=0xB8000; i < (unsigned int)ikheap; i+=PAGE_SIZE ) {
-		map_linear_to_physical(kernel_dir, i, i, 3);
+	for(i=0xB8000; i < 0xC0000; i+=PAGE_SIZE ) {
+		map_linear_to_physical(i, i, 3);
 	}
-
-	// ugly - preallocate pages for PDE itself 
-	// in order to access frame stack memory without page fault
-	// todo - get rid of this //
-	for( i=(unsigned int)ikheap; i < kinfo.code+up_mem; i += 0x400000) {
-		map_linear_to_physical(kernel_dir, i, i, 3);
+	// maps all pages from video memory to the end of frames_stack //
+	for(i=0x100000; i < (unsigned int) ikheap; i+=PAGE_SIZE ) {
+		map_linear_to_physical(i, i, 3);
 	}
 
 	// init heap //
 	for(i = KHEAP_START; i < KHEAP_START+KHEAP_INIT_SIZE; i+= PAGE_SIZE) {
-		map_linear_to_physical(kernel_dir, i, pop_frame(), 3);
+		map_linear_to_physical(i, pop_frame(), 3);
 	}
 
 	switch_page_directory(kernel_dir);
+	paging_enabled = 1;
 	kprintf("%u total physical pages, %u allocated\n", num_frames, num_frames-stack_idx-1);
-	
+
 	kprintf("Testing memory.\n");
-	dump_vmm(kernel_dir);
+	
 	unsigned int *x = (unsigned int *) 0xDEADC000;
-	map_linear_to_physical(kernel_dir, (unsigned int)x, pop_frame(), 3);
+	map_linear_to_physical((unsigned int)x, pop_frame(), 3);
 	flush_tlb();
 	x[0] = 0xDEADC0DE;
 	kprintf("0x%x\n", x[0]);

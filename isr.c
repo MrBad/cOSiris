@@ -115,6 +115,7 @@ void fault_handler(struct iregs *r) {
 	if(r->int_no < 32) {
 		if(r->int_no == 14) {
 			page_fault(r);
+			return;
 		} else { 
 			kprintf("%s Exception\n", exception_msgs[r->int_no]);
 		}
