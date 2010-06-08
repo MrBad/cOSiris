@@ -21,7 +21,7 @@ unsigned int kheap_expand(unsigned int inc_num_bytes) {
 	
 	for(i = 0; i < pages; i++) {
 		p = pop_frame();
-		map_linear_to_physical(kernel_dir, kheap_top+i*PAGE_SIZE, p, P_PRESENT|P_READ_WRITE);
+		map_linear_to_physical(kheap_top+i*PAGE_SIZE, p, P_PRESENT|P_READ_WRITE);
 	}
 	flush_tlb();
 	kheap_top += pages * PAGE_SIZE;
