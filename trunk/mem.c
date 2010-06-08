@@ -12,6 +12,53 @@
 #include "console.h"
 #include "kheap.h"
 
+/*
+		--------------------------------- < 0
+		|								|
+		| 								|					low memory, unmapped by default, managed by frames stack,
+		| 		LOW physical memory		|
+		|								| 
+		|-------------------------------- < 640K
+		| 		UNUSED					|					special zone, unused (BIOS?!), should not be reported by grub
+		|-------------------------------| < 0xB8000
+		|		VIDEO memory			|					video memory, text mode, identity mapped
+		|-------------------------------| < 0xC8000
+		| 		UNUSED					|					special zone, (graphic video memory, BIOS EBDA), should not be reported by grub 
+		|								|
+		|-------------------------------| < 0x100000 == kinfo.code
+		|								|
+		|		KERNEL					|					kernel memory, identity mapped
+		|								|
+		|-------------------------------| < kinfo.end
+		|		FRAMES STACK			|					frames stack, identity mapped - will manage physical memory
+		|-------------------------------| < ikheap
+		|								|
+		.		REST OF PHYS MEM		.					rest of phyisical mem, unmapped by default, managed	by frames stack
+		|								|
+		--------------------------------- < end of physical mem
+		|								|
+		|								|
+		|		HOLE					|
+		|								|
+		--------------------------------- < KHEAP_START					kheap expandable mem allocator, with KHEAP_INIT_SIZE 
+		|		KHEAP					|								initial size, malloc, free 
+		|	 ------------------------	| < KHEAP_START+KHEAP_INIT_SIZE
+		|								|
+		--------------------------------| < KHEAP_END == 0xEFFFF000
+		|								|
+		|								|
+		|		HOLE					|
+		|								|
+		--------------------------------- < KERNEL_TBL_MAP,		1024 PDEs, each containing 1024 PTEs, each mapping 4MB of linear addr 
+		|		Kernel pages			|						4MB, allocated on the fly, mapping the whole mem			
+		|								|
+		|	 ------------------------	| < KERNEL_DIR_MAP
+		|		kernel_dir map			|						mapped to the kernel dir
+		--------------------------------- < 0xFFFFFFFF == 4GB
+		
+
+*/
+
 #define PDE_IDX(x) ( x >> 22 )
 #define PTE_IDX(x) ( (x >> 12) & 0x03FF )
 
@@ -36,7 +83,7 @@ unsigned int *current_dir = NULL;	// current page directory
 //	Pushes a free frame address into stack
 //
 void push_frame(unsigned int frame_addr) {
-	KASSERT((frame_addr & 0xFFFFF000) | (frame_addr == 0));
+	KASSERT((frame_addr & PAGE_MASK) | (frame_addr == 0));
 	frames_stack[stack_idx++] = frame_addr;
 }
 
@@ -90,14 +137,14 @@ void page_fault(struct iregs *r) {
 		
 		if(fault_addr >= KERNEL_TBL_MAP) {
 			kprintf("vmm needs pages pde:%i, pte:%i\n", pde_idx, pte_idx);
-			unsigned int *dir = (unsigned int *)KERNEL_DIR_MAP;
+		/*	unsigned int *dir = (unsigned int *)KERNEL_DIR_MAP;
 			if(! dir[pde_idx]) {
-				kprintf("needs another table\n");
+				panic("needs another table\n");
 			} else {
 				unsigned int *t = (unsigned int *) KERNEL_TBL_MAP + pde_idx * 1024;
 				t[pte_idx] = pop_frame() | 3;
 				return;
-			}
+			}*/
 		}
 	} 
 	
@@ -119,17 +166,18 @@ void map_linear_to_physical(unsigned int linear_addr, unsigned int physical_addr
 	unsigned int pde_idx = PDE_IDX(linear_addr);
 	unsigned int pte_idx = PTE_IDX(linear_addr);
 	
+
 	if( paging_enabled) {
 		current_dir = (unsigned int * ) KERNEL_DIR_MAP;
 	}
+
 	if(! (current_dir[pde_idx] & P_PRESENT)) {
 		frame = pop_frame();
 		current_dir[pde_idx] = frame | P_PRESENT | P_READ_WRITE;
 	}
 		
 	if(paging_enabled) {
-		table = (unsigned int *) (KERNEL_TBL_MAP);
-		table += 1024*pde_idx;
+		table = (unsigned int *) (KERNEL_TBL_MAP) + 1024 * pde_idx;
 	} else {
 		table = (unsigned int *) (current_dir[pde_idx] & PAGE_MASK);
 	}
@@ -137,38 +185,36 @@ void map_linear_to_physical(unsigned int linear_addr, unsigned int physical_addr
 	if(table[pte_idx] & P_PRESENT) {
 		panic("linear_addr 0x%x allready mapped, %x, %x!\n", linear_addr, table, table[pte_idx]);
 	}
-	table[pte_idx] = physical_addr | 3;
-	
+	table[pte_idx] = physical_addr | flags;
 }
 
 //
-//	Returns the physical addr mapped to virtual_addr
+//	Returns the physical addr where virtual_addr is mapped
 //
 unsigned int get_physical_addr(unsigned int virtual_addr) {
-	unsigned short int t_idx = (virtual_addr & 0xFFC00000) >> 22;
-	unsigned short int p_idx = (virtual_addr & 0x3FF000) >> 12;
+	unsigned short int pde_idx = PDE_IDX(virtual_addr);
+	unsigned short int pte_idx = PTE_IDX(virtual_addr);
 	unsigned int *table;
 	unsigned int *dir;
 	
 	if(! paging_enabled) {
-		dir = kernel_dir;
-		if(! (dir[t_idx & P_PRESENT])) {
+		dir = current_dir;
+		if(! (dir[pde_idx] & P_PRESENT)) {
 			panic("%x is not mapped\n", virtual_addr);
 		}
-		table = (unsigned int *) (dir[t_idx] & 0xFFFFF000);
-		return (table[p_idx] & 0xFFFFF000);
+		table = (unsigned int *) (dir[pde_idx] & PAGE_MASK);
+		return (table[pte_idx] & PAGE_MASK);
 	} else {
-		table = (unsigned int *)KERNEL_TBL_MAP + t_idx*1024 + p_idx;
+		table = (unsigned int *)KERNEL_TBL_MAP + pde_idx*1024 + pte_idx;
 		return (*table & PAGE_MASK);
 	}
-	
 }
 
 //
 //	Dumps a page directory
 //
 void dump_vmm() {
-	unsigned int i, j;
+	unsigned int i/*, j*/;
 	unsigned int *table;
 	if(! paging_enabled) {
 		kprintf("Paging disabled, kernel_dir @phys 0x%x\n", kernel_dir);
@@ -184,9 +230,7 @@ void dump_vmm() {
 		}
 	} else {
 		kprintf("Paging enabled, kernel_dir @phys 0x%x\n", get_physical_addr(KERNEL_DIR_MAP));
-		//*table = (unsigned int *) KERNEL_TBL_MAP;
 		unsigned int *dir = (unsigned int *) KERNEL_DIR_MAP;
-		//kprintf("{%x}\n", *(x+(1024*1023)+1023));
 		for(i=0; i<1024; i++) {
 			if(dir[i] & P_PRESENT) {
 				kprintf("pde: %i, table addr: 0x%x\n", i, dir[i] & PAGE_MASK);
@@ -245,47 +289,54 @@ void mem_init(multiboot_header *mboot)
 	}
 	
 
-	// remove kernel pages from stack //
+	// remove kernel pages from stack, we don't want these pages to be allocated, because now kernel is identity mapped //
 	for(i = kinfo.code; i < (unsigned int)ikheap; i+=PAGE_SIZE) {
 		remove_frame(i);
 	}
 	
 	// define the kernel page directory //
 	kernel_dir = (unsigned int *) pop_frame();
-	kernel_dir[1023] = (unsigned int) kernel_dir|3; 
+	kernel_dir[1023] = (unsigned int) kernel_dir|3; // self mapping to the last 4MB of virtual space
 	current_dir = kernel_dir;
 
+	// identity map video memory //
 	for(i=0xB8000; i < 0xC0000; i+=PAGE_SIZE ) {
-		map_linear_to_physical(i, i, 3);
+		map_linear_to_physical(i, i, P_PRESENT|P_READ_WRITE);
 	}
-	// maps all pages from video memory to the end of frames_stack //
-	for(i=0x100000; i < (unsigned int) ikheap; i+=PAGE_SIZE ) {
-		map_linear_to_physical(i, i, 3);
+	
+	// identity map all pages from start of the kernel, to the end of ikheap //
+	for(i = kinfo.code; i < (unsigned int) ikheap; i+=PAGE_SIZE ) {
+		map_linear_to_physical(i, i, P_PRESENT|P_READ_WRITE);
 	}
-
-	// init heap //
+	
+	// map initial kernel heap //
 	for(i = KHEAP_START; i < KHEAP_START+KHEAP_INIT_SIZE; i+= PAGE_SIZE) {
-		map_linear_to_physical(i, pop_frame(), 3);
+		map_linear_to_physical(i, pop_frame(), P_PRESENT|P_READ_WRITE);
 	}
 
+	// enable paging //
 	switch_page_directory(kernel_dir);
 	paging_enabled = 1;
 	kprintf("%u total physical pages, %u allocated\n", num_frames, num_frames-stack_idx-1);
 
 	kprintf("Testing memory.\n");
-	
+
+	// write @ 0xDEADC000, 0xDEADCODE
 	unsigned int *x = (unsigned int *) 0xDEADC000;
-	map_linear_to_physical((unsigned int)x, pop_frame(), 3);
+	map_linear_to_physical((unsigned int)x, pop_frame(), P_PRESENT|P_READ_WRITE);
 	flush_tlb();
 	x[0] = 0xDEADC0DE;
 	kprintf("0x%x\n", x[0]);
 
-	unsigned int *arr[2000];
-	for(i=1; i < 2000; i++) {
-			arr[i] = kalloc(5120); // 5K
+	// malloc 4000 buffers of 5k //
+	unsigned int *arr[1000];
+	for(i=1; i < 1000; i++) {
+		arr[i] = kalloc(5120); // 5K
 	}
-	for(i=1999; i > 0; i--) {
-			kfree(arr[i]);
+	
+	// and free them //
+	for(i=999; i > 0; i--) {
+		kfree(arr[i]);
 	}
 	kheap_dump();
 	dump_vmm(kernel_dir);
