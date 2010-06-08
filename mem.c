@@ -174,6 +174,13 @@ void map_linear_to_physical(unsigned int linear_addr, unsigned int physical_addr
 	if(! (current_dir[pde_idx] & P_PRESENT)) {
 		frame = pop_frame();
 		current_dir[pde_idx] = frame | P_PRESENT | P_READ_WRITE;
+		flush_tlb();
+		if(paging_enabled) {
+			table = (unsigned int *) (KERNEL_TBL_MAP) + 1024 * pde_idx;
+			memset(table, 0, PAGE_SIZE);
+		} else {
+			memset((void *) frame, 0, PAGE_SIZE);
+		}
 	}
 		
 	if(paging_enabled) {
@@ -296,6 +303,7 @@ void mem_init(multiboot_header *mboot)
 	
 	// define the kernel page directory //
 	kernel_dir = (unsigned int *) pop_frame();
+	memset(kernel_dir, 0, PAGE_SIZE);
 	kernel_dir[1023] = (unsigned int) kernel_dir|3; // self mapping to the last 4MB of virtual space
 	current_dir = kernel_dir;
 
