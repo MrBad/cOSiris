@@ -14,46 +14,46 @@
 
 /*
 		--------------------------------- < 0
-		|								|
-		| 								|					low memory, unmapped by default, managed by frames stack,
-		| 		LOW physical memory		|
-		|								| 
+		|                               |
+		|                               |					low memory, unmapped by default, managed by frames stack,
+		|       LOW physical memory     |
+		|                               | 
 		|-------------------------------- < 640K
-		| 		UNUSED					|					special zone, unused (BIOS?!), should not be reported by grub
+		|       UNUSED                  |					special zone, unused (BIOS?!), should not be reported by grub
 		|-------------------------------| < 0xB8000
-		|		VIDEO memory			|					video memory, text mode, identity mapped
+		|       VIDEO memory            |					video memory, text mode, identity mapped
 		|-------------------------------| < 0xC8000
-		| 		UNUSED					|					special zone, (graphic video memory, BIOS EBDA), should not be reported by grub 
-		|								|
+		|       UNUSED                  |					special zone, (graphic video memory, BIOS EBDA), should not be reported by grub 
+		|                               |
 		|-------------------------------| < 0x100000 == kinfo.code
-		|								|
-		|		KERNEL					|					kernel memory, identity mapped
-		|								|
+		|                               |
+		|       KERNEL                  |					kernel memory, identity mapped
+		|                               |
 		|-------------------------------| < kinfo.end
-		|		FRAMES STACK			|					frames stack, identity mapped - will manage physical memory
+		|       FRAMES STACK            |					frames stack, identity mapped - will manage physical memory
 		|-------------------------------| < ikheap
-		|								|
-		.		REST OF PHYS MEM		.					rest of phyisical mem, unmapped by default, managed	by frames stack
-		|								|
+		|                               |
+		.       REST OF PHYS MEM        .					rest of phyisical mem, unmapped by default, managed	by frames stack
+		|                               |
 		--------------------------------- < end of physical mem
-		|								|
-		|								|
-		|		HOLE					|
-		|								|
+		|                               |
+		|                               |
+		|       HOLE                    |
+		|                               |
 		--------------------------------- < KHEAP_START					kheap expandable mem allocator, with KHEAP_INIT_SIZE 
-		|		KHEAP					|								initial size, malloc, free 
-		|	 ------------------------	| < KHEAP_START+KHEAP_INIT_SIZE
-		|								|
+		|       KHEAP                   |								initial size, malloc, free 
+		|	 ------------------------   | < KHEAP_START+KHEAP_INIT_SIZE
+		|                               |
 		--------------------------------| < KHEAP_END == 0xEFFFF000
-		|								|
-		|								|
-		|		HOLE					|
-		|								|
+		|                               |
+		|                               |
+		|       HOLE                    |
+		|                               |
 		--------------------------------- < KERNEL_TBL_MAP,		1024 PDEs, each containing 1024 PTEs, each mapping 4MB of linear addr 
-		|		Kernel pages			|						4MB, allocated on the fly, mapping the whole mem			
-		|								|
-		|	 ------------------------	| < KERNEL_DIR_MAP
-		|		kernel_dir map			|						mapped to the kernel dir
+		|       Kernel pages            |						4MB, allocated on the fly, mapping the whole mem			
+		|                               |
+		|	 ------------------------   | < KERNEL_DIR_MAP
+		|       kernel_dir map          |						mapped to the kernel dir
 		--------------------------------- < 0xFFFFFFFF == 4GB
 		
 
