@@ -174,8 +174,8 @@ void map_linear_to_physical(unsigned int linear_addr, unsigned int physical_addr
 	if(! (current_dir[pde_idx] & P_PRESENT)) {
 		frame = pop_frame();
 		current_dir[pde_idx] = frame | P_PRESENT | P_READ_WRITE;
-		flush_tlb();
 		if(paging_enabled) {
+			flush_tlb();
 			table = (unsigned int *) (KERNEL_TBL_MAP) + 1024 * pde_idx;
 			memset(table, 0, PAGE_SIZE);
 		} else {
@@ -304,29 +304,29 @@ void mem_init(multiboot_header *mboot)
 	// define the kernel page directory //
 	kernel_dir = (unsigned int *) pop_frame();
 	memset(kernel_dir, 0, PAGE_SIZE);
-	kernel_dir[1023] = (unsigned int) kernel_dir|3; // self mapping to the last 4MB of virtual space
+	kernel_dir[1023] = (unsigned int) kernel_dir | P_PRESENT | P_READ_WRITE; // self mapping to the last 4MB of virtual space
 	current_dir = kernel_dir;
 
 	// identity map video memory //
 	for(i=0xB8000; i < 0xC0000; i+=PAGE_SIZE ) {
-		map_linear_to_physical(i, i, P_PRESENT|P_READ_WRITE);
+		map_linear_to_physical(i, i, P_PRESENT | P_READ_WRITE);
 	}
 	
 	// identity map all pages from start of the kernel, to the end of ikheap //
 	for(i = kinfo.code; i < (unsigned int) ikheap; i+=PAGE_SIZE ) {
-		map_linear_to_physical(i, i, P_PRESENT|P_READ_WRITE);
+		map_linear_to_physical(i, i, P_PRESENT | P_READ_WRITE);
 	}
 	
 	// map initial kernel heap //
 	for(i = KHEAP_START; i < KHEAP_START+KHEAP_INIT_SIZE; i+= PAGE_SIZE) {
-		map_linear_to_physical(i, pop_frame(), P_PRESENT|P_READ_WRITE);
+		map_linear_to_physical(i, pop_frame(), P_PRESENT | P_READ_WRITE);
 	}
 
 	// enable paging //
 	switch_page_directory(kernel_dir);
 	paging_enabled = 1;
 	kprintf("%u total physical pages, %u allocated\n", num_frames, num_frames-stack_idx-1);
-
+#if 0
 	kprintf("Testing memory.\n");
 
 	// write @ 0xDEADC000, 0xDEADCODE
@@ -336,17 +336,20 @@ void mem_init(multiboot_header *mboot)
 	x[0] = 0xDEADC0DE;
 	kprintf("0x%x\n", x[0]);
 
-	// malloc 4000 buffers of 5k //
-	unsigned int *arr[1000];
-	for(i=1; i < 1000; i++) {
+	// malloc 2000 buffers of 5k //
+	unsigned int *arr[2000];
+	for(i=1; i < 2000; i++) {
 		arr[i] = kalloc(5120); // 5K
+		x = arr[i];
+		x[1279] = 0xDEADFACE;
 	}
 	
 	// and free them //
-	for(i=999; i > 0; i--) {
+	for(i=1999; i > 0; i--) {
 		kfree(arr[i]);
 	}
 	kheap_dump();
 	dump_vmm(kernel_dir);
 	kprintf("end vmm\n");
+#endif
 }

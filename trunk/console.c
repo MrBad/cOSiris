@@ -38,8 +38,8 @@ void update_cursor (void){
 void scroll2row() {
 	unsigned short lines;
 	unsigned long offset;
-	if(row > SCR_ROWS) {
-		lines =  row - SCR_ROWS + 1;
+	if(row >= SCR_ROWS) {
+		lines =  row - SCR_ROWS  + 1;
 	} else {
 		lines = 0;
 	}

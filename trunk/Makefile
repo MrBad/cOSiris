@@ -9,7 +9,8 @@ BOOTFLAGS = -f bin
 LDFLAGS	= -g -T lscript.txt -Map System.map
 
 OBJS = x86.o console.o kernel.o startup.o multiboot.o gdt.o idt.o isr.o \
-		irq.o timer.o mem.o kheap.o libc.a
+		irq.o timer.o mem.o kheap.o delay.o fd.o \
+		libc.a
 
 bzImage: all
 	objdump --source kernel.bin > kernel.lst
@@ -59,6 +60,12 @@ mem.o: mem.c mem.h
 
 kheap.o: kheap.c kheap.h
 	$(CC) $(CFLAGS) -o kheap.o kheap.c
+
+delay.o: delay.c delay.h
+	$(CC) $(CFLAGS) -o delay.o delay.c
+
+fd.o: fd.c fd.h
+	$(CC) $(CFLAGS) -o fd.o fd.c
 
 clean:
 	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt parport.out System.map lib/libc.a kernel.SYM
