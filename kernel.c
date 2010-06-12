@@ -9,6 +9,8 @@
 #include "irq.h"
 #include "timer.h"
 #include "mem.h"
+#include "delay.h"
+
 ulong_t get_esp(void);
 ulong_t get_ebp(void);
 
@@ -44,9 +46,14 @@ void main(unsigned int magic, multiboot_header *mboot)
 
 	kprintf("Setup timer\n");
 	timer_install();
+	
+	kprintf("Calibrating delay loop... ");
+	unsigned int loops = calibrate_delay_loop();
+	kprintf("done! %i loops for one ms\n", loops);
 
 	while(1) {
-		timer_wait(1000);
+	//	timer_wait(1000);
+		delay(500);
 		kprintf("+");
 	}
 	return;

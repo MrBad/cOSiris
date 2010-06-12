@@ -27,5 +27,5 @@ SECTIONS {
 	bssEnd = .;
 	end = .;
 }
-INPUT(kernel.o startup.o console.o multiboot.o gdt.o idt.o isr.o irq.o x86.o timer.o mem.o kheap.o lib/libc.a)
+INPUT(kernel.o startup.o console.o multiboot.o gdt.o idt.o isr.o irq.o x86.o timer.o mem.o kheap.o delay.o fd.o lib/libc.a)
 OUTPUT(kernel.bin)
