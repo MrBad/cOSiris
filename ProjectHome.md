@@ -1,0 +1,1 @@
+cOSiris is a small hobby/educative C/ASM kernel designed to understand the architecture of i386 CPU.
