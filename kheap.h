@@ -1,18 +1,26 @@
-#define KHEAP_START				0xE0000000			// addr where the heap starts
-#define KHEAP_INIT_SIZE			0x10000				// heap initial size
-#define KHEAP_END				0xEFFFF000			// max heap addr
-#define KHEAP_MAGIC				0xDEADC0DE			// magic number to check if the header mem block was altered
-#define KHEAP_MIN_EXPAND_PAGES	1					// minimum pages to expand in one kheap_expand
+#include "include/types.h"
+#define HEAP_START          0xD0000000
+#define HEAP_INITIAL_SIZE   0x00010000
+#define HEAP_END            0xE0000000
 
-typedef struct mem_block_t {
-	unsigned int magic;
+
+typedef struct block_meta {
+	unsigned int magic_head;
 	unsigned int size;
-	unsigned short int is_free;
-	struct mem_block_t *prev;
-	struct mem_block_t *next;
+	bool free;
+	struct block_meta *next;
+	unsigned int magic_end;
+} block_meta_t;
 
-} mem_block_t;
+typedef struct {
+	unsigned int start_addr;
+	unsigned int end_addr;
+	unsigned int max_addr;
+	bool supervisor;
+	bool readonly;
+} heap_t;
 
-void *kalloc(unsigned int nbytes);
-void kfree(void *ptr);
-void kheap_dump();
+
+extern void heap_init();
+extern heap_t *heap;
+void *malloc(unsigned int nbytes);

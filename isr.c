@@ -3,7 +3,7 @@
 #include "console.h"
 
 
-extern void page_fault(struct iregs *i);
+extern int page_fault(struct iregs *i);
 extern void halt(void);
 
 extern void isr0();
@@ -112,10 +112,13 @@ char *exception_msgs[] = {
 };
 
 void fault_handler(struct iregs *r) {
+	int ret = 0;
 	if(r->int_no < 32) {
 		if(r->int_no == 14) {
-			page_fault(r);
-			return;
+			ret = page_fault(r);
+			if(ret) {
+				return;
+			}
 		} else { 
 			kprintf("%s Exception\n", exception_msgs[r->int_no]);
 		}

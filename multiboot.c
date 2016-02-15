@@ -3,7 +3,6 @@
 
 
 
-
 static unsigned short int boot_device = 0;
 
 void multiboot_parse(unsigned int magic, multiboot_header *mboot) {

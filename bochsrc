@@ -56,11 +56,12 @@ config_interface: textconfig
 #display_library: nogui
 #display_library: rfb, options="timeout=60" # time to wait for client
 #display_library: sdl, options="fullscreen" # startup in fullscreen mode
-display_library: term
+#display_library: x
 #display_library: win32, options="legacyF12" # use F12 to toggle mouse
 #display_library: win32, options="windebug" # use experimental debugger gui
 #display_library: wx
 #display_library: x, options="hideIPS" # disable IPS output in status bar
+display_library: term
 
 #=======================================================================
 # ROMIMAGE:
@@ -122,7 +123,7 @@ romimage: file=$BXSHARE/BIOS-bochs-latest
 #  2.0.1 1.6Ghz Intel P4 with Win2000/g++ 3.3             5 to  7 Mips
 #=======================================================================
 #cpu: count=1, ips=10000000, reset_on_triple_fault=1
-cpu: count=1,  ips=1000000, reset_on_triple_fault=1
+cpu: count=1,  ips=10000000, reset_on_triple_fault=1
 
 #=======================================================================
 # MEGS
@@ -135,7 +136,8 @@ cpu: count=1,  ips=1000000, reset_on_triple_fault=1
 #megs: 64
 #megs: 32
 #megs: 16
-megs: 16
+#megs: 8
+megs: 32
 
 #=======================================================================
 # OPTROMIMAGE[1-4]:
@@ -458,6 +460,7 @@ debugger_log: debugger.out
 #   com4: enabled=1, mode=pipe-server, dev=\\.\pipe\mypipe
 #=======================================================================
 #com1: enabled=1, mode=term, dev=/dev/ttyp9
+com1: enabled=1, mode=file, dev=serial.out
 
 
 #=======================================================================
@@ -523,7 +526,7 @@ parport1: enabled=1, file="parport.out"
 # Examples:
 #   vga_update_interval: 250000
 #=======================================================================
-vga_update_interval: 300000
+#vga_update_interval: 300000
 
 # using for Winstone '98 tests
 #vga_update_interval:  100000
@@ -535,7 +538,7 @@ vga_update_interval: 300000
 # Examples:
 #   keyboard_serial_delay: 200
 #=======================================================================
-keyboard_serial_delay: 250
+#keyboard_serial_delay: 250
 
 #=======================================================================
 # KEYBOARD_PASTE_DELAY:
@@ -552,7 +555,7 @@ keyboard_serial_delay: 250
 # Examples:
 #   keyboard_paste_delay: 100000
 #=======================================================================
-keyboard_paste_delay: 100000
+#keyboard_paste_delay: 100000
 
 #=======================================================================
 # MOUSE: 
@@ -661,7 +664,7 @@ private_colormap: enabled=0
 # Examples:
 #   keyboard_mapping: enabled=1, map=gui/keymaps/x11-pc-de.map
 #=======================================================================
-keyboard_mapping: enabled=0, map=
+#keyboard_mapping: enabled=0, map=
 
 #=======================================================================
 # KEYBOARD_TYPE:
@@ -701,7 +704,7 @@ keyboard_mapping: enabled=0, map=
 # Example:
 #   i440fxsupport: enabled=1, slot1=pcivga, slot2=ne2k
 #=======================================================================
-i440fxsupport: enabled=1
+#i440fxsupport: enabled=1
 
 #=======================================================================
 # USB1:
@@ -739,7 +742,7 @@ i440fxsupport: enabled=1
 # Example:
 #   magic_break: enabled=1
 #=======================================================================
-#magic_break: enabled=1
+magic_break: enabled=1
 
 #=======================================================================
 # DEBUG_SYMBOLS:

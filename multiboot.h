@@ -1,4 +1,18 @@
 #define testb(buf, bit) (buf & (1 << bit))
+
+
+#define MBOOT_MAGIC 0x2BADB002
+#define MBOOTF_MEM		0	// multiboot memory flag
+#define MBOOTF_BOOTD	1	// multiboot boot device flag
+#define MBOOTF_ELF		5	//
+#define MBOOTF_MMAP		6	// memory map struct
+
+#define MEM_USABLE      1
+#define MEM_RESERVED    2
+#define MEM_ACPI        3
+#define MEM_ACPI_NVS    4
+#define MEM_BAD         5
+
 typedef struct _multiboot_header {
 	unsigned long flags;			// 0
 	unsigned long mem_lower;		// 4
@@ -32,11 +46,5 @@ typedef struct _memory_map {
 	unsigned long type;
 } memory_map;
 
-#define MBOOT_MAGIC 0x2BADB002
-
-#define MBOOTF_MEM		0	// multiboot memory flag
-#define MBOOTF_BOOTD	1	// multiboot boot device flag
-#define MBOOTF_ELF		5	// 
-#define MBOOTF_MMAP		6	// memory map struct
 
 void multiboot_parse(unsigned int magic, multiboot_header *mboot);

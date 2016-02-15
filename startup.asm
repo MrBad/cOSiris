@@ -13,7 +13,7 @@
 	EXTERN code, bss, end, data			; pasate de linker, vezi lscript.txt
 	
 	; functii scrise in asm, apelabile din c
-	STACKSIZE equ 0x8000				;  stack size
+	STACKSIZE equ 0x10000				; 64k stack size
 
 
 [SECTION .text]
@@ -57,6 +57,10 @@ get_ebp:
 ;	pop ebp
 ;	ret
 
+GLOBAL bochs_magic_break
+bochs_magic_break:
+    xchg bx, bx
+    ret
 
 GLOBAL get_kernel_info
 get_kernel_info:
@@ -309,8 +313,8 @@ isr_common:
 	mov gs, ax
 	mov eax, esp
 	push eax	 ; push us to stack
-	mov eax, fault_handler
-	call eax
+	call fault_handler
+;	call eax
 	pop eax
 	pop gs
 	pop fs
@@ -462,11 +466,18 @@ irq_common:
 ;	mov cr0, eax
 ;	ret
 
+
+global bochs_break
+bochs_break:
+    xchg bx, bx
+
 GLOBAL switch_page_directory
 switch_page_directory:
 	push ebp
 	mov ebp, esp
 	mov eax, [ebp+8]
+	mov cr3, eax
+	mov eax, cr3
 	mov cr3, eax
 	mov eax, cr0
 	or eax, 0x80000000
@@ -480,6 +491,16 @@ flush_tlb:
 	mov cr3, eax
 	ret
 
+;flush_tlb:
+;	push ebp
+;	mov ebp, esp
+;
+ ;   mov eax, cr0
+  ;  or eax, 0x80000000
+   ; mov cr0, eax
+;
+;	pop ebp
+;	ret
 
 [SECTION .bss]
 align 4

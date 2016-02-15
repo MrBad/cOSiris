@@ -1,5 +1,5 @@
 #include <string.h>
-void *memcpy(void *dest, const void *src, size_t n) {
+void *memcpy(void *dest, void *src, size_t n) {
 	size_t i;
 	char *d = (char *) dest;
 	const char *s = (const char *) src;

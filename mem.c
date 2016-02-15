@@ -1,355 +1,289 @@
-/*
-	low level functions to allocate deallocate pages of memory
-*/
-
-#include <types.h>
-#include <string.h>
-#include "assert.h"
-#include "kernel.h"
-#include "mem.h"
+#include "include/types.h"
+#include "include/string.h"
+#include "console.h"
 #include "isr.h"
 #include "multiboot.h"
-#include "console.h"
+#include "assert.h"
+#include "mem.h"
 #include "kheap.h"
-
-/*
-		--------------------------------- < 0
-		|                               |
-		|                               |                   low memory, unmapped by default, managed by frames stack,
-		|       LOW physical memory     |
-		|                               | 
-		|-------------------------------- < 640K
-		|       UNUSED                  |                   special zone, unused (BIOS?!), should not be reported by grub
-		|-------------------------------| < 0xB8000
-		|       VIDEO memory            |                   video memory, text mode, identity mapped
-		|-------------------------------| < 0xC8000
-		|       UNUSED                  |                   special zone, (graphic video memory, BIOS EBDA), should not be reported by grub 
-		|                               |
-		|-------------------------------| < 0x100000 == kinfo.code
-		|                               |
-		|       KERNEL                  |                   kernel memory, identity mapped
-		|                               |
-		|-------------------------------| < kinfo.end
-		|       FRAMES STACK            |                   frames stack, identity mapped - will manage physical memory
-		|-------------------------------| < ikheap
-		|                               |
-		.       REST OF PHYS MEM        .                   rest of phyisical mem, unmapped by default, managed	by frames stack
-		|                               |
-		--------------------------------- < end of physical mem
-		|                               |
-		|                               |
-		|       HOLE                    |
-		|                               |
-		--------------------------------- < KHEAP_START                 kheap expandable mem allocator, with KHEAP_INIT_SIZE 
-		|       KHEAP                   |                               initial size, malloc, free 
-		|	 ------------------------   | < KHEAP_START+KHEAP_INIT_SIZE
-		|                               |
-		--------------------------------| < KHEAP_END == 0xEFFFF000
-		|                               |
-		|                               |
-		|       HOLE                    |
-		|                               |
-		--------------------------------- < KERNEL_TBL_MAP      1024 PDEs, each containing 1024 PTEs, each mapping 4MB of linear addr 
-		|       Kernel pages            |                       4MB, allocated on the fly, mapping the whole mem			
-		|                               |
-		|	 ------------------------   | < KERNEL_DIR_MAP
-		|       kernel_dir map          |                       mapped to the kernel dir
-		--------------------------------- < 0xFFFFFFFF == 4GB
-		
-
-*/
-
-#define PDE_IDX(x) ( x >> 22 )
-#define PTE_IDX(x) ( (x >> 12) & 0x03FF )
-
-enum {
-	KERNEL_DIR_MAP	= 0xFFFFF000,	// recursive page dir addr
-	KERNEL_TBL_MAP	= 0xFFC00000,	
-	PAGE_MASK		= 0xFFFFF000,
-};
+#include "x86.h"
 
 
-void *ikheap = 0;					// pointer used in base mem alloc
+unsigned int num_frames = 0;
+unsigned int *frames_stack;
+unsigned int stack_idx = 0;
 
-unsigned int num_frames;			// number of frames
-unsigned int *frames_stack;			// will keep a stack of frames
-unsigned int stack_idx;				// index to the frame_stack
-unsigned int up_mem;				// upper memory in bytes
-unsigned int paging_enabled = 0;	// is paging enabled?
-unsigned int *kernel_dir = NULL;	// main kernel page directory
-unsigned int *current_dir = NULL;	// current page directory
+void *kmalloc_ptr = 0;
+void *kmalloc_max = 0;
+bool paging_on = false;
+unsigned int *dir = NULL;
+unsigned int *reserved_page = (unsigned int *) (PAGE_SIZE * 1023);
+unsigned int fault_counter = 0;
 
-//
-//	Pushes a free frame address into stack
-//
+
 void push_frame(unsigned int frame_addr) {
-	KASSERT((frame_addr & PAGE_MASK) | (frame_addr == 0));
+	KASSERT(frame_addr & 0xFFFFF000);
+	KASSERT(frame_addr != 0);
 	frames_stack[stack_idx++] = frame_addr;
 }
 
-//
-//	Pops a free frame address from stack
-//
-unsigned int pop_frame(){
-	if(stack_idx == 0) {
-		panic("Out of physical memory!");
-	}
+unsigned int pop_frame() {
 	stack_idx--;
-	KASSERT(stack_idx != num_frames);
+//	KASSERT(stack_idx != num_frames);
+	if (stack_idx == 1) {
+		panic("Out of memory in pop_frame\n");
+	}
 	unsigned int frame_addr = frames_stack[stack_idx];
+	KASSERT(frame_addr != 0);
 	frames_stack[stack_idx] = 0;
 	return frame_addr;
 }
+//
+//void remove_frame(unsigned int frame_addr) {
+//	unsigned int i, found;
+//	for (i = 0, found = 0; i < stack_idx; i++) {
+//		if (frames_stack[i] == frame_addr) {
+//			found = 1;
+//			stack_idx--;
+//		}
+//		if (found) {
+//			frames_stack[i] = frames_stack[i + 1];
+//		}
+//	}
+//	if (!found) {
+//		panic("In remove_frame: cannot find 0x%X frame\n", frame_addr);
+//	}
+//}
 
-//
-//	Removes a frame from stack
-//
-unsigned int remove_frame(unsigned int frame_addr){
-	unsigned int i, found;
-	for(i=0, found=0; i < stack_idx; i++) {
-		if(frames_stack[i] == frame_addr) {
-			found=1;
-			stack_idx--;
-		}
-		if(found) {
-			frames_stack[i] = frames_stack[i+1];
-		}
-	}
-	if(!found) {
-		panic("In remove_frame: cannot find 0x%X frame\n", frame_addr);
-	}
-	return found ? 1:0;
+
+static inline void invlpg(unsigned int addr) {
+	asm volatile("invlpg (%0)"::"r" (addr) : "memory");
 }
 
-//
-//	Called by int 14
-//
-void page_fault(struct iregs *r) {
+
+/**
+ * Page fault isr
+ */
+int page_fault(struct iregs *r) {
 	unsigned int fault_addr;
-
 	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
-	
-	
-	// page is not present //
-	if(! (r->err_code & 0x1)) {
-		unsigned int pde_idx = PDE_IDX(fault_addr);
-		unsigned int pte_idx = PTE_IDX(fault_addr);
-		
-		if(fault_addr >= KERNEL_TBL_MAP) {
-			kprintf("vmm needs pages pde:%i, pte:%i\n", pde_idx, pte_idx);
-		/*	unsigned int *dir = (unsigned int *)KERNEL_DIR_MAP;
-			if(! dir[pde_idx]) {
-				panic("needs another table\n");
-			} else {
-				unsigned int *t = (unsigned int *) KERNEL_TBL_MAP + pde_idx * 1024;
-				t[pte_idx] = pop_frame() | 3;
-				return;
-			}*/
-		}
-	} 
-	
-	kprintf("Page fault! ( ");
-	kprintf("%s", (r->err_code & 0x1) ? "page-level violation ": "not-present ");
-	kprintf("%s", (r->err_code & 0x2) ? "write ":"read ");
-	kprintf("%s", (r->err_code & 0x4) ? "user-mode ":"supervisor-mode ");
-	kprintf(") at 0x%X, eip:0x%x\n", fault_addr, r->eip);
-	
-
-	panic("\n");
+	unsigned short int table_idx = fault_addr >> 22;
+	unsigned short int page_idx = fault_addr >> 12 & 0x03FF;
+	extern unsigned int get_esp();
+	fault_counter++;
+	if (fault_counter > 10) {
+		halt("Too many faults, addr: 0x%X\n", fault_addr);
+	}
+	kprintf("____\nFAULT: %s 0x%X, ", r->err_code & P_PRESENT ? "page violation" : "not present", fault_addr);
+	kprintf("stack: 0x%X\n", get_esp());
+	kprintf("frame_stack index: 0x%i\n", stack_idx);
+	kprintf("dir_idx: %i, table_idx: %i\n", table_idx, page_idx);
+	kprintf("%s, ", r->err_code & P_READ_WRITE ? "write" : "read", fault_addr);
+	kprintf("%s\n", r->err_code & P_USER ? "user-mode" : "kernel", fault_addr);
+	kprintf("%s", is_mapped(fault_addr) ? "mapped" : "not mapped");
+	if (HEAP_START < fault_addr && fault_addr < HEAP_END) {
+		kprintf(", in heap\n");
+	}
+	kprintf("\n%s", paging_on ? "paging ON" : "paging OFF");
+//	panic("\npanic\n____");
+	return false;
 }
 
-//
-//	Maps a virtual to physical address
-//
-void map_linear_to_physical(unsigned int linear_addr, unsigned int physical_addr, unsigned int flags) {
-	unsigned int *table, frame;
-	unsigned int pde_idx = PDE_IDX(linear_addr);
-	unsigned int pte_idx = PTE_IDX(linear_addr);
-	
 
-	if( paging_enabled) {
-		current_dir = (unsigned int * ) KERNEL_DIR_MAP;
+/**
+ * kernel dumb placement allocator
+ */
+void *kmalloc(unsigned int size, int align, unsigned *phys) {
+	void *tmp = 0;
+	KASSERT(kmalloc_ptr != NULL);
+	KASSERT(kmalloc_max != NULL);
+	// if align and not allready aligned
+	if (align && ((unsigned int) kmalloc_ptr & 0xFFF)) {
+		kmalloc_ptr = (void *) ((unsigned int) kmalloc_ptr & 0xFFFFF000) + 0x1000;
 	}
+	KASSERT(kmalloc_ptr + size < kmalloc_max);
+	tmp = kmalloc_ptr;
+	if (phys) {
+		*phys = (unsigned) tmp;
+	}
+	kmalloc_ptr += size;
+	return tmp;
+}
 
-	if(! (current_dir[pde_idx] & P_PRESENT)) {
-		frame = pop_frame();
-		current_dir[pde_idx] = frame | P_PRESENT | P_READ_WRITE;
-		if(paging_enabled) {
-			flush_tlb();
-			table = (unsigned int *) (KERNEL_TBL_MAP) + 1024 * pde_idx;
-			memset(table, 0, PAGE_SIZE);
-		} else {
+/**
+ * Checks if this virtual address is mapped anywhere
+ */
+int is_mapped(unsigned int virtual_addr) {
+	unsigned int *table = NULL;
+	unsigned short int dir_idx, table_idx;
+	dir_idx = virtual_addr / PAGE_SIZE / 1024;
+	table_idx = (virtual_addr % (PAGE_SIZE * 1024)) / PAGE_SIZE;
+	if (!(dir[dir_idx] & P_PRESENT)) {
+		return false;
+	}
+	table = (unsigned int *) (dir[dir_idx] & 0xFFFFF000); // mask flags bits
+	if (!(table[table_idx] & P_PRESENT)) {
+		return false;
+	}
+	return true;
+}
+
+/**
+ * Gets physical address of the virtual one
+ */
+unsigned int get_phys_addr(unsigned int virtual_addr) {
+	unsigned int *table = NULL;
+	unsigned short int dir_idx, table_idx;
+	dir_idx = virtual_addr / PAGE_SIZE / 1024;
+	table_idx = (virtual_addr % (PAGE_SIZE * 1024)) / PAGE_SIZE;
+	if (!is_mapped(virtual_addr)) {
+		panic("NOT MAPPED %X\n", virtual_addr);
+	}
+	table = (unsigned int *) (dir[dir_idx] & 0xFFFFF000); // mask flags bits
+	return (table[table_idx] & ~0xFFF) + (virtual_addr & 0xFFF);
+}
+
+void unmap(unsigned int virtual_addr) {
+	unsigned short int dir_idx, table_idx;
+	unsigned int *table = NULL;
+	unsigned int all_empty, i;
+
+	dir_idx = virtual_addr >> 22;
+	table_idx = virtual_addr >> 12 & 0x03FF;
+	KASSERT(is_mapped(virtual_addr));
+
+	table = (unsigned int *) (dir[dir_idx] & 0xFFFFF000); // mask flags bits
+	table[table_idx] = 0;
+
+	all_empty = true;
+	for (i = 0; i < 1024; i++) {
+		if (table[i] != 0) {
+			all_empty = false;
+			break;
+		}
+	}
+	if (all_empty) {
+		dir[dir_idx] = 0;
+	}
+	if (virtual_addr != (unsigned int) reserved_page) {
+		push_frame(virtual_addr);
+	}
+}
+
+/**
+ * Maps a virtual address to physical one, using flags
+ */
+void map(unsigned int virtual_addr, unsigned int physical_addr, unsigned short int flags) {
+	unsigned int *table = NULL;
+	unsigned int frame = 0;
+	unsigned short int dir_idx, table_idx;
+	dir_idx = virtual_addr >> 22;
+	table_idx = virtual_addr >> 12 & 0x03FF;
+
+	if (!dir[dir_idx] & P_PRESENT) {
+		if (paging_on) {
+			kprintf("Making table for dir_idx: %i, %s\n", dir_idx, paging_on ? "paging ON" : "paging OFF");
+			frame = pop_frame();
+			map((unsigned int) reserved_page, frame, P_PRESENT | P_READ_WRITE);
+			memset((void *) reserved_page, 0, PAGE_SIZE);
+			unmap((unsigned int) reserved_page);
+		}
+		else {
+			kmalloc(PAGE_SIZE, true, &frame);
+//			frame = pop_frame();
+//			map(frame, frame, P_READ_WRITE | P_PRESENT);
+//			kprintf("->%X\n", frame);
 			memset((void *) frame, 0, PAGE_SIZE);
 		}
+		dir[dir_idx] = frame | P_PRESENT | P_READ_WRITE;
 	}
-		
-	if(paging_enabled) {
-		table = (unsigned int *) (KERNEL_TBL_MAP) + 1024 * pde_idx;
-	} else {
-		table = (unsigned int *) (current_dir[pde_idx] & PAGE_MASK);
+	table = (unsigned int *) (dir[dir_idx] & 0xFFFFF000); // mask flags bits
+	if (paging_on && !is_mapped((unsigned int) table)) {
+		map((unsigned int) reserved_page, (unsigned int) table, P_PRESENT | P_READ_WRITE);
+		reserved_page[table_idx] = physical_addr | flags;
+		unmap((unsigned int) reserved_page);
 	}
-
-	if(table[pte_idx] & P_PRESENT) {
-		panic("linear_addr 0x%x allready mapped, %x, %x!\n", linear_addr, table, table[pte_idx]);
-	}
-	table[pte_idx] = physical_addr | flags;
-}
-
-//
-//	Returns the physical addr where virtual_addr is mapped
-//
-unsigned int get_physical_addr(unsigned int virtual_addr) {
-	unsigned short int pde_idx = PDE_IDX(virtual_addr);
-	unsigned short int pte_idx = PTE_IDX(virtual_addr);
-	unsigned int *table;
-	unsigned int *dir;
-	
-	if(! paging_enabled) {
-		dir = current_dir;
-		if(! (dir[pde_idx] & P_PRESENT)) {
-			panic("%x is not mapped\n", virtual_addr);
-		}
-		table = (unsigned int *) (dir[pde_idx] & PAGE_MASK);
-		return (table[pte_idx] & PAGE_MASK);
-	} else {
-		table = (unsigned int *)KERNEL_TBL_MAP + pde_idx*1024 + pte_idx;
-		return (*table & PAGE_MASK);
+	else {
+		table[table_idx] = physical_addr | flags;
 	}
 }
 
-//
-//	Dumps a page directory
-//
-void dump_vmm() {
-	unsigned int i/*, j*/;
-	unsigned int *table;
-	if(! paging_enabled) {
-		kprintf("Paging disabled, kernel_dir @phys 0x%x\n", kernel_dir);
-		for(i=0; i<1024; i++) {
-			if(kernel_dir[i] & P_PRESENT) {
-				kprintf("pde: %i, table addr: 0x%x\n", i, (kernel_dir[i] & PAGE_MASK));
-				table = (unsigned int *) (kernel_dir[i] & PAGE_MASK);
-//				for(j=0; j < 1024; j++) {
-//					if(table[j])
-//					kprintf("\tpte: %i, phys: %i\n", j, table[j] & PAGE_MASK);
-//				}
-			}
+void *sbrk(unsigned int increment) {
+	unsigned int start = heap->end_addr;
+	unsigned int frame, i;
+	unsigned int iterations = increment / PAGE_SIZE;
+	KASSERT(heap);
+
+	if (iterations < 1) {
+		iterations++;
+	}
+	for (i = 0; i < iterations; ++i) {
+		frame = pop_frame();
+		map(heap->end_addr, frame, P_PRESENT | P_READ_WRITE);
+		heap->end_addr += PAGE_SIZE;
+		if (heap->end_addr % PAGE_SIZE > 0) {
+			panic("---%X\n", frame);
 		}
-	} else {
-		kprintf("Paging enabled, kernel_dir @phys 0x%x\n", get_physical_addr(KERNEL_DIR_MAP));
-		unsigned int *dir = (unsigned int *) KERNEL_DIR_MAP;
-		for(i=0; i<1024; i++) {
-			if(dir[i] & P_PRESENT) {
-				kprintf("pde: %i, table addr: 0x%x\n", i, dir[i] & PAGE_MASK);
-				table = (unsigned int *) (KERNEL_TBL_MAP + 1024 * i);
-//				for(j=0; j< 1024; j++) {
-					//kprintf("{%i, %i} ", i, j);
-					//if(table[j])
-					//	kprintf("\tpte: %i, phys: %i\n", j, table[j] & PAGE_MASK);
-//				}
-			}
+		if (heap->end_addr > heap->max_addr) {
+			panic("Out of memory on sbrk: heap end addr: 0x%X, size: %iM\n", heap->end_addr,
+			      (heap->end_addr - heap->start_addr) / 1024 / 1024);
 		}
 	}
+	return (void *) start;
 }
 
-//
-//	Initialize the vmm and heap
-//
-void mem_init(multiboot_header *mboot) 
-{
-	unsigned int i;
+void mem_init(multiboot_header *mboot, unsigned int *free_mem_ptr) {
+	extern unsigned int end; // generated by linker - ldlink.ld
+	unsigned int mem; // maximum available memory
+	unsigned int num_frames, i;
 
-	paging_enabled = 0;
-	ikheap = (void *) kinfo.end;
 
-	// setup frames stack //
-	i = (((mboot->mem_upper/1024) + 2)*1024*1024) / PAGE_SIZE;	// aproximate size of frames_stack
-	frames_stack = ikheap;
-	ikheap += i * sizeof(frames_stack); // make room for frame stack //
-
-	unsigned int up_mem = mboot->mem_upper * 1024;
-	
-	// if boot loader passed a mmap structure //
-	if(testb(mboot->flags, MBOOTF_MMAP)) 
-	{
-		memory_map* mmap;
-		mmap = (memory_map *) mboot->mmap_addr;
-		do {
-			if(mmap->type == 1) {
-				unsigned int base = (mmap->base_addr_high << 16) + mmap->base_addr_low;
-				unsigned int length = (mmap->length_high << 16) + mmap->length_low;
-				for(i = base; i < length; i += PAGE_SIZE, num_frames++) {
-					push_frame(i);
-				}
-			}
-			mmap = (memory_map *) ((unsigned long) mmap + mmap->size + sizeof(mmap->size));
-		}
-		while ((unsigned long) mmap < mboot->mmap_addr + mboot->mmap_length);
-	} else { 
-		// aproximate the memory //
-		for(i = 0; i < 640*1024; i += PAGE_SIZE, num_frames++) {
-			push_frame(i);
-		}
-		for(i = 0x100000; i < up_mem; i += PAGE_SIZE, num_frames++) {
-			push_frame(i);
-		}
+	mem = (unsigned int) 0x100000 + (mboot->mem_upper) * 1024;
+	kprintf("MEM: 0x%X\n", mem);
+	if(free_mem_ptr) {
+		kmalloc_ptr = (void *)free_mem_ptr;
 	}
-	
+	else {
+		kmalloc_ptr = (void *) &end;
+	}
+	kmalloc_max = (void *) mem;
 
-	// remove kernel pages from stack, we don't want these pages to be allocated, because now kernel is identity mapped //
-	for(i = kinfo.code; i < (unsigned int)ikheap; i+=PAGE_SIZE) {
-		remove_frame(i);
-	}
-	
-	// define the kernel page directory //
-	kernel_dir = (unsigned int *) pop_frame();
-	memset(kernel_dir, 0, PAGE_SIZE);
-	kernel_dir[1023] = (unsigned int) kernel_dir | P_PRESENT | P_READ_WRITE; // self mapping to the last 4MB of virtual space
-	current_dir = kernel_dir;
 
-	// identity map video memory //
-	for(i=0xB8000; i < 0xC0000; i+=PAGE_SIZE ) {
-		map_linear_to_physical(i, i, P_PRESENT | P_READ_WRITE);
+	dir = (unsigned int *) kmalloc(PAGE_SIZE, true, NULL);
+	memset(dir, 0, PAGE_SIZE);
+
+	num_frames = (mem - (unsigned int) &end) / PAGE_SIZE;
+	frames_stack = kmalloc(num_frames * sizeof(int), true, NULL);
+	memset(frames_stack, 0, num_frames * sizeof(int));
+
+	kmalloc_ptr = (unsigned int *) (((unsigned int) kmalloc_ptr & 0xFFFFF000) + PAGE_SIZE); // align
+	KASSERT((unsigned) kmalloc_ptr % PAGE_SIZE == 0);
+
+	for (i = (unsigned int) kmalloc_ptr; i < mem; i += PAGE_SIZE) {
+		push_frame(i);
 	}
-	
-	// identity map all pages from start of the kernel, to the end of ikheap //
-	for(i = kinfo.code; i < (unsigned int) ikheap; i+=PAGE_SIZE ) {
-		map_linear_to_physical(i, i, P_PRESENT | P_READ_WRITE);
+	for (i = 0xB8000; i < (unsigned int) kmalloc_ptr; i += PAGE_SIZE) {
+		map(i, i, P_PRESENT | P_READ_WRITE);
 	}
-	
-	// map initial kernel heap //
-	for(i = KHEAP_START; i < KHEAP_START+KHEAP_INIT_SIZE; i+= PAGE_SIZE) {
-		map_linear_to_physical(i, pop_frame(), P_PRESENT | P_READ_WRITE);
+	for (i = HEAP_START; i < HEAP_START + HEAP_INITIAL_SIZE; i += PAGE_SIZE) {
+		map(i, pop_frame(), P_PRESENT | P_READ_WRITE | P_USER);
 	}
 
-	// enable paging //
-	switch_page_directory(kernel_dir);
-	paging_enabled = 1;
-	kprintf("%u total physical pages, %u allocated\n", num_frames, num_frames-stack_idx-1);
-#if 0
-	kprintf("Testing memory.\n");
+	heap->start_addr = HEAP_START;
+	heap->end_addr = HEAP_START + HEAP_INITIAL_SIZE;
+	heap->max_addr = HEAP_END;
+	heap->readonly = false;
+	heap->supervisor = true;
+	switch_page_directory(dir);
+	paging_on = true;
 
-	// write @ 0xDEADC000, 0xDEADCODE
-	unsigned int *x = (unsigned int *) 0xDEADC000;
-	map_linear_to_physical((unsigned int)x, pop_frame(), P_PRESENT|P_READ_WRITE);
-	flush_tlb();
-	x[0] = 0xDEADC0DE;
-	kprintf("0x%x\n", x[0]);
+	kmalloc_max = kmalloc_ptr; // invalidate kmalloc //
+//	kprintf("%X\n", kmalloc_ptr);
 
-	// malloc 2000 buffers of 5k //
-	unsigned int *arr[2000];
-	for(i=1; i < 2000; i++) {
-		arr[i] = kalloc(5120); // 5K
-		x = arr[i];
-		x[1279] = 0xDEADFACE;
-	}
-	
-	// and free them //
-	for(i=1999; i > 0; i--) {
-		kfree(arr[i]);
-	}
-	kheap_dump();
-	dump_vmm(kernel_dir);
-	kprintf("end vmm\n");
-#endif
+//	kprintf("zero heap\n");
+//	for (i = HEAP_START; i < HEAP_START + HEAP_INITIAL_SIZE; i++) {
+//		char *p = (char *) i;
+//		*p = 0;
+//	}
+//	kprintf("Zeroed heap\n");
 }

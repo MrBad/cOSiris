@@ -1,132 +1,172 @@
-#include <types.h>
-#include <string.h>
-#include "kheap.h"
 #include "console.h"
 #include "mem.h"
+#include "kheap.h"
 #include "assert.h"
+#include "include/types.h"
+#include "include/string.h"
 
+#define MAGIC_HEAD 0xDEADC0DE
+#define MAGIC_END 0xDEADBABA
 
-static mem_block_t *start_block = NULL;		// points to the base of the list
-unsigned int heap_ok = 0;					// was heap inited
-unsigned int kheap_top = 0;					// end addr of the list
+extern void halt();
 
-unsigned int kheap_expand(unsigned int inc_num_bytes) {
-	unsigned int i, p;
-	unsigned int pages = (inc_num_bytes / PAGE_SIZE) + 1;
-	pages = pages < KHEAP_MIN_EXPAND_PAGES ? KHEAP_MIN_EXPAND_PAGES : pages;
-	
-	KASSERT((kheap_top + pages * PAGE_SIZE) < KHEAP_END);
+extern bool heap_active;
 
-	//kprintf("-expand heap with %d, to 0x%x\n", pages, kheap_top);
-	
-	for(i = 0; i < pages; i++) {
-		p = pop_frame();
-		map_linear_to_physical(kheap_top+i*PAGE_SIZE, p, P_PRESENT|P_READ_WRITE);
-	}
-	flush_tlb();
-	kheap_top += pages * PAGE_SIZE;
-	return pages * PAGE_SIZE;
-}
+heap_t myheap = {0};
+heap_t *heap = &myheap;
+block_meta_t *first_block = 0;
 
-void kheap_contract() {
-	panic("kheap_contract() unimplemented");
-}
+//unsigned int calls = 0;
+//extern page_directory_t *kernel_dir;
 
-void kheap_dump() {
-	mem_block_t *p;
-	p = start_block;
-	while(p) {
-		kprintf("ptr: 0x%X, prev: 0x%X, next: 0x%X, sz: %uKb, free: %u, \n", p, p->prev, p->next, p->size/1024, p->is_free);
+void debug_dump_list(block_meta_t *p) {
+//	block_meta_t *p;
+//	p = first_block;
+	while (p) {
+		KASSERT(p->magic_head == MAGIC_HEAD);
+		KASSERT(p->magic_end == MAGIC_END);
+		kprintf("node: 0x%X, magic_head: 0x%X, magic_end: %X, size: %i, %s, next: 0x%X\n", p, p->magic_head,
+		        p->magic_end,
+		        p->size, p->free ? "free" : "used", p->next);
 		p = p->next;
 	}
 }
 
-void *kalloc(unsigned int nbytes) {
-	
-	mem_block_t *p, *k;
-	unsigned short int found;
-	unsigned int numbytes = 0;
-	// if start block is empty, init the list //
-	// in the first stage, list will contain one member - start_block - which will map the KHEAP_INIT_SIZE memory //
-	if(! start_block) {
-		start_block = (mem_block_t *) KHEAP_START;
-		start_block->magic = KHEAP_MAGIC;
-		start_block->size = KHEAP_INIT_SIZE - sizeof(mem_block_t); // init size minus size of start_block //
-		start_block->is_free = 1;
-		start_block->next = NULL;
-		start_block->prev = NULL;
-		
-		kheap_top = KHEAP_INIT_SIZE + KHEAP_START;
-		heap_ok = 1;
+void *malloc(unsigned int nbytes) {
+	block_meta_t *p, *n;
+	unsigned int next_size;
+	char *c;
+	nbytes = (nbytes / 4 + 1) * 4; // align to 4 bytes
+
+	if (first_block == NULL) {
+		KASSERT(HEAP_INITIAL_SIZE > sizeof(block_meta_t));
+		kprintf("Setup initial heap, at: 0x%X, initial size: 0x%X\n", HEAP_START, HEAP_INITIAL_SIZE);
+		first_block = (block_meta_t *) HEAP_START;
+		first_block->free = true;
+		first_block->size = HEAP_INITIAL_SIZE - sizeof(block_meta_t);
+		first_block->magic_head = MAGIC_HEAD;
+		first_block->magic_end = MAGIC_END;
+		first_block->next = NULL;
 	}
-	
-	p = start_block;
-	found = 0;
+	KASSERT(first_block != NULL);
+	KASSERT(first_block->magic_head == MAGIC_HEAD);
+	KASSERT(first_block->magic_end == MAGIC_END);
+	p = first_block;
 
-	for(p = start_block, found = 0; p; p = p->next) {
-
-		if(p->is_free) {
-			// if this is the last node and we don't have enough space //
-			if(p->next == NULL && p->size <= nbytes+sizeof(mem_block_t)) { // less and equal will always keep few free bytes at the top of the heap
-				numbytes = kheap_expand(nbytes);
-				if(! numbytes) {
-					panic("Cannot expand kheap\n");
-				}
-				p->size += numbytes;
-			}
-
-			if(p->size == nbytes) {
-				p->is_free = 0;
-				found = 1;
-			} else { // found a big enough block, which will be split - p will point to new size, k to the rest of free space
-				k = p;
-				
-				k = (mem_block_t *) ((unsigned int)k + sizeof(mem_block_t) + nbytes); // jump nbytes+sizeof struct
-				k->magic = KHEAP_MAGIC;
-				k->size = p->size - nbytes - sizeof(mem_block_t); // new shrinked free space
-				k->is_free = 1;
-				k->next = p->next;
-				k->prev = p;
-				
-				p->size = nbytes;
-				p->is_free = 0;
-				p->next = k;
-				found = 1;
-			}
-
-			if(found) {
-				break;
-			}
+	while (p) {
+		//	kprintf(".");
+		if (!p->free) {
+			p = p->next;
+			continue;
 		}
+		if ((p->size < nbytes + sizeof(block_meta_t)) && p->next == NULL) {
+//			kprintf("SBRK 1");
+			sbrk(PAGE_SIZE * 2);
+			p->size += PAGE_SIZE * 2;
+			continue;
+		}
+		else {
+//			kprintf("SPLIT; p: 0x%X orig_size: %i, nbytes: %i, meta: %i\n",p+1, p->size, nbytes, sizeof(block_meta_t));
+			c = (char *) p;
+			next_size = p->size - nbytes - sizeof(block_meta_t);
+			n = p->next;
+			p->size = nbytes;
+			p->free = false;
+			p->next = (block_meta_t *) (c + sizeof(block_meta_t) + nbytes);
+			p->next->free = true;
+			p->next->size = next_size;
+			p->next->magic_head = MAGIC_HEAD;
+			p->next->magic_end = MAGIC_END;
+			p->next->next = n;
+			return p + 1;
+		}
+//		p = p->next;
 	}
-	KASSERT(found);
-	return found ? p+1 : NULL;
+//	debug_dump_list();
+
+	kprintf("%X\n", p);
+	kprintf("Out of memory: malloc %u\n", nbytes);
+	halt();
+	return NULL;
 }
 
-void kfree(void *ptr) {
-	mem_block_t *p;
-	p = ptr - sizeof(mem_block_t);
-	if(p->magic != KHEAP_MAGIC) {
-		// find prev magic //
-		panic("Invalid magic number in kfree: 0x%x\n", p);
-		return;
-	}
-	p->is_free = 1;
-	if(p->prev) {
-		if(p->prev->is_free) {
-			p->prev->size += p->size + sizeof(mem_block_t);
-			p->prev->next = p->next;
-			p->next->prev = p->prev;
-			p->magic = 0;
-			p = p->prev;
+void free(void *ptr) {
+	block_meta_t *p, *prev;
+	p = first_block;
+	for (; ;) {
+		if (p + 1 == ptr) {
+			KASSERT(p->magic_head == MAGIC_HEAD);
+			KASSERT(p->magic_end == MAGIC_END);
+			p->free = true;
+			if (p->next && p->next->free) {
+				p->size += p->next->size + sizeof(block_meta_t);
+				p->next = p->next->next;
+			}
+			if (prev && prev->free) {
+				prev->size += p->size + sizeof(block_meta_t);
+				prev->next = p->next;
+			}
+			break;
 		}
-	}
-	if(p->next) {
-		if(p->next->is_free) {
-//			kprintf("Next is free: 0x%X\n", p->next);
-			p->size += p->next->size + sizeof(mem_block_t);
-			p->next->magic=0;
-			p->next = p->next->next;
+		if (!p->next) {
+			kprintf("Bad free pointer\n");
+			halt();
+			break;
 		}
+		prev = p;
+		p = p->next;
 	}
+}
+
+void *calloc(unsigned nbytes) {
+	void *p = malloc(nbytes);
+	memset(p, 0, nbytes);
+	return p;
+}
+
+
+void heap_init() {
+
+	kprintf("In heap \n");
+	KASSERT((HEAP_INITIAL_SIZE / PAGE_SIZE) > 0);
+	if (!heap) {
+		panic("Heap is not initialized\n");
+	}
+//	unsigned int i;
+//	char *p;
+
+	kprintf("heap->end_addr: %X, size: x%X\n", heap->end_addr, heap->end_addr-heap->start_addr);
+
+//	char *k[6000];
+//	for (i = 200; i < 6000; i++) {
+//		p = malloc(i);
+//		memset(p, 0, i);
+//		k[i] = p;
+//	}
+//	kprintf("Freeing\n");
+//	for (i = 200; i < 6000; i++) {
+//		free(k[i]);
+//	}
+//	kprintf("OK\n");
+
+
+
+//	char *k = (char *) malloc(4096*10*sizeof(int));
+//	for (i = 4096; i < 5000; i++) {
+//		p = malloc(i);
+//		memset(p, 0, i);
+//		k[i] = p;
+//	}
+//	for (i = 4096; i < 5000; i++) {
+//		free((void *)k[i]);
+//	}
+//	free(k);
+
+//	debug_dump_list(first_block);
+//	kprintf("heap->end_addr: %X, size: %iMB\n", heap->end_addr, (heap->end_addr-heap->start_addr)/1024/1024);
+//	halt();
+
+//	p=malloc(10);
+//	memset(p, 'A', 10);
+
 }

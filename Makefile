@@ -1,74 +1,37 @@
+export CFLAGS="-j 4"
 CC = gcc
-CFLAGS = -g -Wall -W -nostdlib -fno-builtin -ffreestanding -c -I include
+CFLAGS = -g -m32 -Wall -W -nostdlib -fno-builtin -ffreestanding -c -I include
 ASM = nasm
 ASMFLAGS = -g -f elf
 LD = ld
 RM = rm -f
+BOCHS=/usr/local/bochs-term/bin/bochs
 
 BOOTFLAGS = -f bin
-LDFLAGS	= -g -T lscript.txt -Map System.map
+LDFLAGS	= -g -melf_i386 -T ldscript.ld #-Map System.map
 
 OBJS = x86.o console.o kernel.o startup.o multiboot.o gdt.o idt.o isr.o \
-		irq.o timer.o mem.o kheap.o delay.o fd.o \
-		libc.a
+		irq.o timer.o mem.o kheap.o vfs.o initrd.o kbd.o serial.o lib/libc.a
 
 bzImage: all
 	objdump --source kernel.bin > kernel.lst
-	objcopy --only-keep-debug kernel.bin kernel.sym
-	nm kernel.bin | sort > kernel.SYM
+	#objcopy --only-keep-debug kernel.bin kernel.sym
+	nm kernel.bin | sort > kernel.sym
 	strip -s kernel.bin
 	gzip -c -9 kernel.bin > kernel
 
 all: $(OBJS)
-	$(LD) $(LDFLAGS)
+	$(LD) $(LDFLAGS) -o kernel.bin $(OBJS)
 
-libc.a: lib/Makefile
+lib/libc.a: lib/Makefile
 	make -C lib/ -f Makefile
 
 startup.o: startup.asm
 	$(ASM) $(ASMFLAGS) startup.asm
 
-kernel.o: kernel.c kernel.h
-	$(CC) $(CFLAGS) -o kernel.o kernel.c
-
-console.o: console.c console.h
-	$(CC) $(CFLAGS) -o console.o console.c
-
-multiboot.o: multiboot.c multiboot.h
-	$(CC) $(CFLAGS) -o multiboot.o multiboot.c
-
-gdt.o: gdt.c gdt.h
-	$(CC) $(CFLAGS) -o gdt.o gdt.c
-
-idt.o: idt.c idt.h
-	$(CC) $(CFLAGS) -o idt.o idt.c
-
-isr.o: isr.c isr.h
-	$(CC) $(CFLAGS) -o isr.o isr.c
-
-irq.o: irq.c irq.h
-	$(CC) $(CFLAGS) -o irq.o irq.c
-
-x86.o: x86.c x86.h
-	$(CC) $(CFLAGS) -o x86.o x86.c
-
-timer.o: timer.c timer.h
-	$(CC) $(CFLAGS) -o timer.o timer.c
-
-mem.o: mem.c mem.h
-	$(CC) $(CFLAGS) -o mem.o mem.c
-
-kheap.o: kheap.c kheap.h
-	$(CC) $(CFLAGS) -o kheap.o kheap.c
-
-delay.o: delay.c delay.h
-	$(CC) $(CFLAGS) -o delay.o delay.c
-
-fd.o: fd.c fd.h
-	$(CC) $(CFLAGS) -o fd.o fd.c
 
 clean:
-	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt parport.out System.map lib/libc.a kernel.SYM
+	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt parport.out System.map lib/libc.a debugger.out serial.out
 
 distclean:
 	make clean
@@ -89,4 +52,4 @@ fd:
 	rm -rf mnt
 
 run: fdimg
-	bochs -f bochsrc -q
+	$(BOCHS) -f bochsrc -q
