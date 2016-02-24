@@ -1,3 +1,5 @@
+cOSiris is a small kernel written in C (and some ASM) for i386, for fun.
+
 Inspired by linux-0.01, osd, ics-os, geekos, osdev site.
 
 
