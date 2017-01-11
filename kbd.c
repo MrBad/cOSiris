@@ -72,7 +72,7 @@ unsigned char kbd_map_shift[128] = {
 bool shift_pressed = false;
 
 void kbd_handler() {
-	char scancode = 0;
+	unsigned char scancode = 0;
 	if(inb(0x64) & 1)
 	scancode = inb(0x60);
 //	kprintf("%X ", scancode);

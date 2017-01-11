@@ -1,3 +1,6 @@
+#ifndef _ISR_H
+#define _ISR_H
+
 struct iregs
 {
 	unsigned int gs, fs, es, ds;      /* pushed the segs last */
@@ -10,4 +13,4 @@ struct iregs
 extern void isr_handler();
 extern void isr_init();
 
-
+#endif

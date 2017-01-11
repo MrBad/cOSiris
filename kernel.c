@@ -24,7 +24,7 @@ unsigned int initrd_location, initrd_end;
 void main(unsigned int magic, multiboot_header *mboot) {
 
 	console_init();
-//	multiboot_parse(magic, mboot);
+	multiboot_parse(magic, mboot);
 	kprintf("cOSiris\n");
 
 	get_kernel_info(&kinfo);

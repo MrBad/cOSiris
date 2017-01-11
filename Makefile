@@ -39,11 +39,11 @@ distclean:
 
 fdimg: bzImage
 	cp grub.img fd.img
-	mkdir mnt
-	mount fd.img mnt -oloop -tmsdos
-	cp kernel mnt
-	umount mnt
-	rm -rf mnt
+	if [ ! -d mnt ]; then mkdir mnt; fi
+	sudo mount fd.img mnt -oloop -tmsdos
+	sudo cp kernel mnt
+	sudo umount mnt
+	sudo rm -rf mnt
 fd:
 	mkdir mnt
 	mount /dev/fd0 mnt

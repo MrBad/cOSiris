@@ -52,13 +52,13 @@ void scroll2row() {
 }
 
 void scroll_up() {
-//	row = 0;
-//	scroll2row();
+	row = 0;
+	scroll2row();
 }
 
 void scroll_down() {
-//	row = SCR_ROWS;
-//	scroll2row();
+	row = SCR_ROWS;
+	scroll2row();
 }
 
 void gotoxy(void) {
