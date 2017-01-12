@@ -8,7 +8,7 @@ int serial_received() {
 	return inb(PORT + 5) & 1;
 }
 
-char read_serial() {
+char serial_read() {
 	while (serial_received() == 0);
 	return inb(PORT);
 }
@@ -21,7 +21,7 @@ void serial_putc(char a) {
 	while (is_transmit_empty() == 0);
 	outb(PORT,a);
 }
-void write_serial(char *buf) {
+void serial_write(char *buf) {
 	for (;;) {
 		if(*buf == 0) {
 			break;
@@ -36,12 +36,12 @@ void serial_debug(char *fmt, ...) {
 	va_start(args, fmt);
 	vsprintf(buf, fmt, args);
 	va_end(args);
-	write_serial(buf);
+	serial_write(buf);
 	return;
 }
 
 
-void init_serial() {
+void serial_init() {
 	outb(PORT + 1, 0x00);    // Disable all interrupts
 	outb(PORT + 3, 0x80);    // Enable DLAB (set baud rate divisor)
 	outb(PORT + 0, 0x03);    // Set divisor to 3 (lo byte) 38400 baud

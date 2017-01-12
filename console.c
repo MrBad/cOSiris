@@ -7,6 +7,7 @@
 #include "x86.h"
 #include <stdarg.h>
 #include <string.h>
+#include "serial.h"
 
 extern void halt(void);
 
@@ -139,6 +140,7 @@ void kprintf(char *fmt, ...) {
 	va_end(args);
 
 	console_write(buf);
+	serial_write(buf);
 	return;
 }
 

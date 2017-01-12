@@ -1,4 +1,4 @@
 #include "x86.h"
-void write_serial(char *buf);
+void serial_write(char *buf);
 void serial_debug(char *fmt, ...);
-void init_serial();
+void serial_init();

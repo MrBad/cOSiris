@@ -24,6 +24,7 @@ unsigned int initrd_location, initrd_end;
 void main(unsigned int magic, multiboot_header *mboot) {
 
 	console_init();
+	serial_init();
 	multiboot_parse(magic, mboot);
 	kprintf("cOSiris\n");
 
@@ -57,9 +58,6 @@ void main(unsigned int magic, multiboot_header *mboot) {
 		initrd_location = *((unsigned int *) mboot->mods_addr);
 		initrd_end = *(unsigned int *) (mboot->mods_addr + 4);
 	}
-	init_serial();
-	write_serial("Hello xxx\n");
-
 
 	kprintf("Setup paging\n");
 	mem_init(mboot, initrd_end);
