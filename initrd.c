@@ -76,8 +76,6 @@ struct fs_node *initrd_finddir(struct fs_node *node, char *name) {
 
 fs_node_t *initrd_init(unsigned int location) {
 	kprintf("Initrd init\n");
-
-
 	// initialise the root node
 	initrd_root = (fs_node_t *) malloc(sizeof(fs_node_t));
 	strcpy(initrd_root->name, "initrd");
@@ -108,6 +106,8 @@ fs_node_t *initrd_init(unsigned int location) {
 
 	initrd_header = (initrd_header_t *) location;
 	file_headers = (initrd_file_header_t *) (location + sizeof(initrd_header_t));
+	// kprintf("%d, %d\n", sizeof(fs_node_t), initrd_header->nfiles);
+	// return NULL;
 
 	root_nodes = (fs_node_t *) malloc(sizeof(fs_node_t) * initrd_header->nfiles);
 	nroot_nodes = initrd_header->nfiles;
@@ -132,4 +132,3 @@ fs_node_t *initrd_init(unsigned int location) {
 
 	return initrd_root;
 }
-

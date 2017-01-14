@@ -1,3 +1,5 @@
+#define VGA_FB_ADDR 0xB8000
+
 extern void console_init(void);
 extern void scroll_up();
 extern void scroll_down();

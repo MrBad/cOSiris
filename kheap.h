@@ -1,6 +1,6 @@
 #include "include/types.h"
 #define HEAP_START          0xD0000000
-#define HEAP_INITIAL_SIZE   0x00010000
+#define HEAP_INITIAL_SIZE   0x00100000
 #define HEAP_END            0xE0000000
 
 

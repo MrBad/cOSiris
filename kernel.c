@@ -16,15 +16,19 @@
 #include "serial.h"
 
 ulong_t get_esp(void);
-
 ulong_t get_ebp(void);
 
 unsigned int initrd_location, initrd_end;
+void call_test_sp(unsigned int t) {
+	unsigned int huge[65536];
+	kprintf("%p\n",t);
+}
 
 void main(unsigned int magic, multiboot_header *mboot) {
 
 	console_init();
 	serial_init();
+
 	multiboot_parse(magic, mboot);
 	kprintf("cOSiris\n");
 
@@ -62,29 +66,33 @@ void main(unsigned int magic, multiboot_header *mboot) {
 	kprintf("Setup paging\n");
 	mem_init(mboot, initrd_end);
 
-//	kprintf("Setup heap\n");
-//	heap_init(mboot);
+	// call_test_sp(0xDEADC0DE);
+	// kprintf("Setup heap\n");
+	heap_init(mboot);
+	kprintf("Initialise initrd\n");
+	// Initialise the initial ramdisk, and set it as the filesystem root.
+	unsigned int i;
+	kprintf("initrd %p - %p\n",initrd_location, initrd_end);
 
-	// kprintf("Initialise initrd\n");
-	// // Initialise the initial ramdisk, and set it as the filesystem root.
-	// fs_node_t *fs_root = initrd_init(initrd_location);
-	// // list the contents of //
-	// unsigned int i = 0;
-	// struct dirent *node = 0;
-	// while((node = readdir_fs(fs_root, i))) {
-	// 	kprintf("Found file %s\n", node->name);
-	// 	fs_node_t *fs_node = finddir_fs(fs_root, node->name);
-	// 	if(fs_node->flags & FS_DIRECTORY) {
-	// 		kprintf("\tDir\t\n");
-	// 	} else {
-	// 		char buff[256];
-	// 		unsigned int size;
-	// 		size = read_fs(fs_node, 0, 256, buff);
-	// 		buff[size] = 0;
-	// 		kprintf("\t%s\n", buff);
-	// 	}
-	// 	i++;
-	// }
+	fs_node_t *fs_root = initrd_init(initrd_location);
+	// list the contents of //
+	i = 0;
+	struct dirent *node = 0;
+	while((node = readdir_fs(fs_root, i))) {
+		kprintf("Found file %s\n", node->name);
+		fs_node_t *fs_node = finddir_fs(fs_root, node->name);
+		if(fs_node->flags & FS_DIRECTORY) {
+			kprintf("\tDir\t\n");
+		} else {
+			char buff[256];
+			unsigned int size;
+			size = read_fs(fs_node, 0, 256, buff);
+			buff[size] = 0;
+			kprintf("\t%s\n", buff);
+		}
+		i++;
+	}
+
 
 	kprintf("Press esc to exit.\n");
 

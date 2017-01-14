@@ -1,3 +1,6 @@
+#ifndef _MULTIBOOT_H
+#define _MULTIBOOT_H
+
 #define testb(buf, bit) (buf & (1 << bit))
 
 
@@ -38,8 +41,8 @@ typedef struct _multiboot_header {
 } multiboot_header;
 
 typedef struct _memory_map {
-	unsigned long size;				
-	unsigned long base_addr_low;	
+	unsigned long size;
+	unsigned long base_addr_low;
 	unsigned long base_addr_high;
 	unsigned long length_low;
 	unsigned long length_high;
@@ -48,3 +51,5 @@ typedef struct _memory_map {
 
 
 void multiboot_parse(unsigned int magic, multiboot_header *mboot);
+
+#endif

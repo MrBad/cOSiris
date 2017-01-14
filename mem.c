@@ -1,71 +1,40 @@
-#include "include/types.h"
-#include "include/string.h"
-#include "console.h"
-#include "isr.h"
-#include "multiboot.h"
-#include "assert.h"
+#include <types.h>		// types //
+#include "string.h"		// memset //
+#include "console.h"	// kprint, panic//
+#include "assert.h"		// KASSERT /
+#include "isr.h" 		// iregs //
+#include "multiboot.h"	// multiboot_header //
+#include "kernel.h" 	// kinfo_t //
+#include "kheap.h"		// HEAP defs //
 #include "mem.h"
-#include "kheap.h"
-#include "x86.h"
+
+// extern void halt(void);
 
 
-unsigned int num_frames = 0;
-unsigned int *frames_stack;
-unsigned int stack_idx = 0;
 
-void *kmalloc_ptr = 0;
-void *kmalloc_max = 0;
-bool paging_on = false;
-unsigned int *kernel_dir = NULL;
-unsigned int *current_dir = NULL;
-unsigned int *reserved_page = (unsigned int *) (PAGE_SIZE * 1023);
-unsigned int fault_counter = 0;
+phys_t	last_free_page = 0;
+size_t	num_pages = 0;
+dir_t	*kernel_dir = NULL;
 
+#define RESV_PAGE		0xFFBFE000ul
+#define PTABLES_ADDR 	0xFFC00000ul
+#define PDIR_ADDR		0xFFFFF000ul
 
-void push_frame(unsigned int frame_addr) {
-	KASSERT(frame_addr & 0xFFFFF000);
-	KASSERT(frame_addr != 0);
-	frames_stack[stack_idx++] = frame_addr;
-}
+bool is_mapped(virt_t addr);
 
-unsigned int pop_frame() {
-	stack_idx--;
-//	KASSERT(stack_idx != num_frames);
-	if (stack_idx == 1) {
-		panic("Out of memory in pop_frame\n");
-	}
-	unsigned int frame_addr = frames_stack[stack_idx];
-	KASSERT(frame_addr != 0);
-	frames_stack[stack_idx] = 0;
-	return frame_addr;
-}
-//
-//void remove_frame(unsigned int frame_addr) {
-//	unsigned int i, found;
-//	for (i = 0, found = 0; i < stack_idx; i++) {
-//		if (frames_stack[i] == frame_addr) {
-//			found = 1;
-//			stack_idx--;
-//		}
-//		if (found) {
-//			frames_stack[i] = frames_stack[i + 1];
-//		}
-//	}
-//	if (!found) {
-//		panic("In remove_frame: cannot find 0x%X frame\n", frame_addr);
-//	}
-//}
-
-
-static inline void invlpg(unsigned int addr) {
-	asm volatile("invlpg (%0)"::"r" (addr) : "memory");
+static bool pg_on = false;
+bool paging_on()
+{
+	return pg_on;
 }
 
 
 /**
  * Page fault isr
  */
-int page_fault(struct iregs *r) {
+int page_fault(struct iregs *r)
+{
+	static int fault_counter = 0;
 	unsigned int fault_addr;
 	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
 	unsigned short int table_idx = fault_addr >> 22;
@@ -75,137 +44,230 @@ int page_fault(struct iregs *r) {
 	if (fault_counter > 10) {
 		halt("Too many faults, addr: 0x%X\n", fault_addr);
 	}
-	kprintf("____\nFAULT: %s 0x%X, ", r->err_code & P_PRESENT ? "page violation" : "not present", fault_addr);
+	kprintf("____\nFAULT: %s addr: %p, ", r->err_code & P_PRESENT ? "page violation" : "not present", fault_addr);
 	kprintf("stack: 0x%X\n", get_esp());
-	kprintf("frame_stack index: 0x%i\n", stack_idx);
-	kprintf("dir_idx: %i, table_idx: %i\n", table_idx, page_idx);
+	kprintf("eip: 0x%p\n", r->eip);
+	kprintf("vaddr: %p, dir_idx: %i, table_idx: %i\n", table_idx*1024*PAGE_SIZE+page_idx*PAGE_SIZE, table_idx, page_idx);
 	kprintf("%s, ", r->err_code & P_READ_WRITE ? "write" : "read", fault_addr);
 	kprintf("%s\n", r->err_code & P_USER ? "user-mode" : "kernel", fault_addr);
 	kprintf("%s", is_mapped(fault_addr) ? "mapped" : "not mapped");
 	if (HEAP_START < fault_addr && fault_addr < HEAP_END) {
 		kprintf(", in heap\n");
 	}
-	kprintf("\n%s", paging_on ? "paging ON" : "paging OFF");
+	kprintf("\n%s", paging_on() ? "paging ON" : "paging OFF");
 //	panic("\npanic\n____");
 	return false;
 }
 
-
-/**
- * kernel dumb placement allocator
- */
-void *kmalloc(unsigned int size, int align, unsigned *phys) {
-	void *tmp = 0;
-	KASSERT(kmalloc_ptr != NULL);
-	KASSERT(kmalloc_max != NULL);
-	// if align and not allready aligned
-	if (align && ((unsigned int) kmalloc_ptr & 0xFFF)) {
-		kmalloc_ptr = (void *) ((unsigned int) kmalloc_ptr & 0xFFFFF000) + 0x1000;
+//
+//	----------
+//	ptr->next pointer to next free page
+//	page 4096-4
+//  .........
+//
+phys_t *page_alloc()
+{
+	phys_t *addr;
+	KASSERT(last_free_page != 0);
+	addr = (phys_t *)last_free_page;
+	if(paging_on()) {
+		map(RESV_PAGE, (phys_t)addr, P_PRESENT|P_READ_WRITE);
+		last_free_page = *((phys_t *)RESV_PAGE);
+		*((phys_t *)RESV_PAGE) = 0;
+		unmap(RESV_PAGE);
+		//kprintf("Alloc %p\n", addr);
+	} else {
+		last_free_page = *addr;
+		*addr = 0; // unlink next //
 	}
-	KASSERT(kmalloc_ptr + size < kmalloc_max);
-	tmp = kmalloc_ptr;
-	if (phys) {
-		*phys = (unsigned) tmp;
-	}
-	kmalloc_ptr += size;
-	return tmp;
+	num_pages--;
+	return addr;
 }
 
-/**
- * Checks if this virtual address is mapped anywhere
- */
-int is_mapped(unsigned int virtual_addr) {
-	unsigned int *table = NULL;
-	unsigned short int dir_idx, table_idx;
-	dir_idx = virtual_addr / PAGE_SIZE / 1024;
-	table_idx = (virtual_addr % (PAGE_SIZE * 1024)) / PAGE_SIZE;
-	if (!(current_dir[dir_idx] & P_PRESENT)) {
+// allocs and bzero page //
+phys_t *page_calloc()
+{
+	phys_t *addr;
+	addr = page_alloc();
+	if(paging_on()) {
+		map(RESV_PAGE, (phys_t)addr, P_PRESENT|P_READ_WRITE);
+		memset((void *)RESV_PAGE, 0, PAGE_SIZE);
+		unmap(RESV_PAGE);
+	} else {
+		memset(addr, 0, PAGE_SIZE);
+	}
+	return addr;
+}
+
+void page_free(phys_t addr)
+{
+	KASSERT(!(addr & 0xFFF));
+	// kprintf("%p, %p, nump: %d\n", addr, last_free_page, num_pages);
+	if(paging_on()){
+		map(RESV_PAGE, (phys_t)addr, P_PRESENT|P_READ_WRITE);
+		*((phys_t *)RESV_PAGE) = last_free_page;
+		unmap(RESV_PAGE);
+		kprintf("freep %p\n", addr);
+	}else {
+		*((phys_t *)addr) = last_free_page;
+	}
+	last_free_page = addr;
+	num_pages++;
+}
+
+static void reserve_region(phys_t addr, size_t length, phys_t kernel_end_addr)
+{
+	struct kinfo_t kinfo;
+	phys_t ptr;
+
+	get_kernel_info(&kinfo);
+
+	for(ptr = addr; ptr - addr < length; ptr+=PAGE_SIZE) {
+		if(ptr == 0) {
+			*((phys_t *) addr) = 0;
+			continue;
+		}
+		if(ptr >= VGA_FB_ADDR && ptr <= kernel_end_addr) {
+			continue;
+		}
+		page_free(ptr);
+	}
+}
+
+static void reserve_memory(multiboot_header *mb, phys_t kernel_end_addr)
+{
+	memory_map *mm;
+	mm = (memory_map *) mb->mmap_addr;
+	do {
+		if(mm->type == 1) {
+			phys_t addr;
+			size_t length;
+			addr = (mm->base_addr_high << 16) + mm->base_addr_low;
+			length = (mm->length_high << 16) + mm->length_low;
+			reserve_region(addr, length, kernel_end_addr);
+		}
+        mm = (memory_map *) ((unsigned long) mm + mm->size + sizeof(mm->size));
+    } while((unsigned long) mm < mb->mmap_addr + mb->mmap_length);
+}
+
+static void recursively_map_page_directory(dir_t *dir)
+{
+	dir[1023] = (phys_t) dir | P_PRESENT | P_READ_WRITE;
+}
+
+static void identity_map_kernel(dir_t *dir, phys_t kernel_end_addr)
+{
+	struct kinfo_t kinfo;
+	phys_t addr, *table;
+	int dir_idx, tbl_idx;
+
+	get_kernel_info(&kinfo);
+
+	for(addr = VGA_FB_ADDR; addr <= kernel_end_addr; addr += PAGE_SIZE) {
+		dir_idx = (addr / PAGE_SIZE) / 1024;
+		tbl_idx = (addr / PAGE_SIZE) % 1024;
+		if(!(dir[dir_idx] & P_PRESENT)) {
+			dir[dir_idx] = (uint32_t) page_calloc() | P_PRESENT | P_READ_WRITE;
+		}
+		table = (phys_t *)(dir[dir_idx] & 0xFFFFF000);
+		table[tbl_idx] = addr | P_PRESENT | P_READ_WRITE;
+	}
+	// create table for reserved_page //
+	dir_idx = (RESV_PAGE/PAGE_SIZE)/1024;
+	dir[dir_idx] = (uint32_t)page_calloc() | P_PRESENT | P_READ_WRITE;
+
+}
+
+
+static void dump_dir()
+{
+	int dir_idx, tbl_idx;
+	dir_t *dir = (dir_t *)PDIR_ADDR;
+	virt_t *table;
+	for(dir_idx = 0; dir_idx < 1024; dir_idx++)
+	{
+		if(dir[dir_idx] & P_PRESENT) {
+			kprintf("Dir: %d\n", dir_idx);
+			for(tbl_idx=0; tbl_idx < 1024; tbl_idx++) {
+				table = (uint32_t *) (PTABLES_ADDR + dir_idx * PAGE_SIZE);
+				if(table[tbl_idx] & P_PRESENT) {
+					kprintf("%d ",tbl_idx);
+				}
+			}
+			kprintf("\n");
+		}
+	}
+}
+
+bool is_mapped(virt_t addr)
+{
+	dir_t *dir = (dir_t *) PDIR_ADDR;
+	virt_t *table;
+	if(addr & 0xFFF) {
+		panic("Not aligned: %p\n", addr);
+	}
+	int dir_idx = (addr / PAGE_SIZE) / 1024;
+	int tbl_idx = (addr / PAGE_SIZE) % 1024;
+	if(!(dir[dir_idx] & P_PRESENT)) {
 		return false;
 	}
-	table = (unsigned int *) (current_dir[dir_idx] & 0xFFFFF000); // mask flags bits
-	if (!(table[table_idx] & P_PRESENT)) {
+	table = (virt_t *) (PTABLES_ADDR + dir_idx * PAGE_SIZE);
+	if(!(table[tbl_idx] & P_PRESENT)) {
 		return false;
 	}
 	return true;
 }
 
-/**
- * Gets physical address of the virtual one
- */
-unsigned int get_phys_addr(unsigned int virtual_addr) {
-	unsigned int *table = NULL;
-	unsigned short int dir_idx, table_idx;
-	dir_idx = virtual_addr / PAGE_SIZE / 1024;
-	table_idx = (virtual_addr % (PAGE_SIZE * 1024)) / PAGE_SIZE;
-	if (!is_mapped(virtual_addr)) {
-		panic("NOT MAPPED %X\n", virtual_addr);
-	}
-	table = (unsigned int *) (current_dir[dir_idx] & 0xFFFFF000); // mask flags bits
-	return (table[table_idx] & ~0xFFF) + (virtual_addr & 0xFFF);
+phys_t virt_to_phys(virt_t addr)
+{
+	virt_t *table;
+	int dir_idx = (addr / PAGE_SIZE) / 1024;
+	int tbl_idx = (addr / PAGE_SIZE) % 1024;
+	KASSERT(addr & 0xFFF);
+	KASSERT(is_mapped(addr));
+	table = (virt_t *) (PTABLES_ADDR + dir_idx * PAGE_SIZE);
+	return table[tbl_idx] & 0xFFFFF000;
 }
 
-void unmap(unsigned int virtual_addr) {
-	unsigned short int dir_idx, table_idx;
-	unsigned int *table = NULL;
-	unsigned int all_empty, i;
-
-	dir_idx = virtual_addr >> 22;
-	table_idx = virtual_addr >> 12 & 0x03FF;
-	KASSERT(is_mapped(virtual_addr));
-
-	table = (unsigned int *) (current_dir[dir_idx] & 0xFFFFF000); // mask flags bits
-	table[table_idx] = 0;
-
-	all_empty = true;
-	for (i = 0; i < 1024; i++) {
-		if (table[i] != 0) {
-			all_empty = false;
-			break;
-		}
-	}
-	if (all_empty) {
-		current_dir[dir_idx] = 0;
-	}
-	if (virtual_addr != (unsigned int) reserved_page) {
-		push_frame(virtual_addr);
-	}
+static void invlpg(virt_t addr)
+{
+    asm volatile("invlpg (%0)"::"r" (addr) : "memory");
 }
 
-/**
- * Maps a virtual address to physical one, using flags
- */
-void map(unsigned int virtual_addr, unsigned int physical_addr, unsigned short int flags) {
-	unsigned int *table = NULL;
-	unsigned int frame = 0;
-	unsigned short int dir_idx, table_idx;
-	dir_idx = virtual_addr >> 22;
-	table_idx = virtual_addr >> 12 & 0x03FF;
+// todo more testing //
+void unmap(virt_t virtual_addr)
+{
+	map(virtual_addr, 0, 0);
+}
 
-	if (!current_dir[dir_idx] & P_PRESENT) {
-		if (paging_on) {
-			kprintf("Making table for dir_idx: %i, %s\n", dir_idx, paging_on ? "paging ON" : "paging OFF");
-			frame = pop_frame();
-			map((unsigned int) reserved_page, frame, P_PRESENT | P_READ_WRITE);
-			memset((void *) reserved_page, 0, PAGE_SIZE);
-			unmap((unsigned int) reserved_page);
-		}
-		else {
-			kmalloc(PAGE_SIZE, true, &frame); // will be mapped in mem_init()
-//			frame = pop_frame();
-//			map(frame, frame, P_READ_WRITE | P_PRESENT);
-//			kprintf("->%X\n", frame);
-			memset((void *) frame, 0, PAGE_SIZE);
-		}
-		current_dir[dir_idx] = frame | P_PRESENT | P_READ_WRITE;
+void map(virt_t virtual_addr, phys_t physical_addr, flags_t flags)
+{
+	dir_t *dir = (dir_t *) PDIR_ADDR;
+	virt_t *table;
+	int dir_idx = (virtual_addr / PAGE_SIZE) / 1024;
+	int tbl_idx = (virtual_addr / PAGE_SIZE) % 1024;
+
+	table = (virt_t *)(PTABLES_ADDR + dir_idx * PAGE_SIZE);
+
+	if(! dir[dir_idx] & P_PRESENT) {
+		dir[dir_idx] = (phys_t) page_alloc() | flags;
+		invlpg((virt_t) table);
+		memset(table, 0, PAGE_SIZE);
 	}
-	table = (unsigned int *) (current_dir[dir_idx] & 0xFFFFF000); // mask flags bits
-	if (paging_on && !is_mapped((unsigned int) table)) {
-		map((unsigned int) reserved_page, (unsigned int) table, P_PRESENT | P_READ_WRITE);
-		reserved_page[table_idx] = physical_addr | flags;
-		unmap((unsigned int) reserved_page);
-	}
-	else {
-		table[table_idx] = physical_addr | flags;
+	table[tbl_idx] = physical_addr | flags;
+	invlpg(virtual_addr);
+}
+
+static void setup_heap()
+{
+	heap->start_addr = HEAP_START;
+	heap->end_addr = HEAP_START + HEAP_INITIAL_SIZE;
+	heap->max_addr = HEAP_END;
+	heap->readonly = false;
+	heap->supervisor = true;
+	virt_t p;
+	for(p = heap->start_addr; p <= heap->end_addr; p += PAGE_SIZE) {
+		map(p, (phys_t) page_alloc(), P_PRESENT | P_READ_WRITE);
 	}
 }
 
@@ -214,12 +276,11 @@ void *sbrk(unsigned int increment) {
 	unsigned int frame, i;
 	unsigned int iterations = increment / PAGE_SIZE;
 	KASSERT(heap);
-
 	if (iterations < 1) {
 		iterations++;
 	}
 	for (i = 0; i < iterations; ++i) {
-		frame = pop_frame();
+		frame = (phys_t) page_alloc();
 		map(heap->end_addr, frame, P_PRESENT | P_READ_WRITE);
 		heap->end_addr += PAGE_SIZE;
 		if (heap->end_addr % PAGE_SIZE > 0) {
@@ -232,78 +293,19 @@ void *sbrk(unsigned int increment) {
 	}
 	return (void *) start;
 }
-void dump_current_dir()
+
+void mem_init(multiboot_header *mb, phys_t kernel_end_addr)
 {
-	unsigned int i, j;
-	unsigned int *table, block;
-	for(i = 0; i < 1024; i++) {
-		if(current_dir[i] & P_PRESENT) {
-			table = (unsigned int *) (current_dir[i] & 0xFFFFF000);
-			kprintf("dir_idx: %d, is %s\n", i, is_mapped((unsigned int)table) ? "present":"not present");
-			for(j=0; j< 1024; j++) {
-				if(table[j] & P_PRESENT) {
-					block =  (table[j] & 0xFFFFF000);
-					// virtual -> mapped to -> physical //
-					kprintf("%08X-%08X ", i * PAGE_SIZE * 1024 + j * PAGE_SIZE, block);
-				}
-			}
-			kprintf("\n");
-		}
-	}
-}
+	reserve_memory(mb, kernel_end_addr);
+	kprintf("Available memory: %d pages, %d MB\n", num_pages, num_pages * 4/1024);
+	kernel_dir = page_calloc();
+	kernel_end_addr = ((kernel_end_addr / PAGE_SIZE)+1)*PAGE_SIZE;
+	identity_map_kernel(kernel_dir, kernel_end_addr);
+	recursively_map_page_directory(kernel_dir);
 
+	switch_page_directory(kernel_dir);
+	pg_on = true;
 
-
-void mem_init(multiboot_header *mboot, unsigned int *free_mem_ptr) {
-	extern unsigned int end; // generated by linker - ldlink.ld
-	unsigned int mem; // maximum available memory
-	unsigned int num_frames, i;
-
-
-	mem = (unsigned int) 0x100000 + (mboot->mem_upper) * 1024;
-	kprintf("MEM: 0x%X\n", mem);
-	if(free_mem_ptr) {
-		kmalloc_ptr = (void *)free_mem_ptr;
-	}
-	else {
-		kmalloc_ptr = (void *) &end;
-	}
-	kmalloc_max = (void *) mem;
-
-
-	kernel_dir = (unsigned int *) kmalloc(PAGE_SIZE, true, NULL);
-	memset(kernel_dir, 0, PAGE_SIZE);
-	current_dir = kernel_dir;
-
-	num_frames = (mem - (unsigned int) &end) / PAGE_SIZE;
-	frames_stack = kmalloc(num_frames * sizeof(int), true, NULL);
-	memset(frames_stack, 0, num_frames * sizeof(int));
-
-	kmalloc_ptr = (unsigned int *) (((unsigned int) kmalloc_ptr & 0xFFFFF000) + PAGE_SIZE); // align
-	KASSERT((unsigned) kmalloc_ptr % PAGE_SIZE == 0);
-
-	for (i = (unsigned int) kmalloc_ptr; i < mem; i += PAGE_SIZE) {
-		push_frame(i);
-	}
-	for (i = HEAP_START; i < HEAP_START + HEAP_INITIAL_SIZE; i += PAGE_SIZE) {
-		map(i, pop_frame(), P_PRESENT | P_READ_WRITE | P_USER);
-	}
-
-	// map all alocated space, this allways should come last,
-	// because kmalloc_ptr grows when paging is off //
-	for (i = 0xB8000; i < (unsigned int) kmalloc_ptr; i += PAGE_SIZE) {
-		map(i, i, P_PRESENT | P_READ_WRITE);
-	}
-
-	heap->start_addr = HEAP_START;
-	heap->end_addr = HEAP_START + HEAP_INITIAL_SIZE;
-	heap->max_addr = HEAP_END;
-	heap->readonly = false;
-	heap->supervisor = true;
-	switch_page_directory(current_dir);
-	paging_on = true;
-
-	kmalloc_max = kmalloc_ptr; // invalidate kmalloc //
-
-	dump_current_dir();
+	setup_heap();
+	//dump_dir();
 }

@@ -54,13 +54,13 @@ void *malloc(unsigned int nbytes) {
 	p = first_block;
 
 	while (p) {
-		//	kprintf(".");
+			// kprintf(".");
 		if (!p->free) {
 			p = p->next;
 			continue;
 		}
 		if ((p->size < nbytes + sizeof(block_meta_t)) && p->next == NULL) {
-//			kprintf("SBRK 1");
+			// kprintf("SBRK 1");
 			sbrk(PAGE_SIZE * 2);
 			p->size += PAGE_SIZE * 2;
 			continue;
@@ -127,27 +127,27 @@ void *calloc(unsigned nbytes) {
 
 void heap_init() {
 
-	kprintf("In heap \n");
+	//kprintf("In heap \n");
 	KASSERT((HEAP_INITIAL_SIZE / PAGE_SIZE) > 0);
 	if (!heap) {
 		panic("Heap is not initialized\n");
 	}
-//	unsigned int i;
-//	char *p;
+	// unsigned int i;
+	// char *p;
 
-	kprintf("heap->end_addr: %X, size: x%X\n", heap->end_addr, heap->end_addr-heap->start_addr);
+	kprintf("heap_init(): heap->end_addr: %X, size: x%X\n", heap->end_addr, heap->end_addr-heap->start_addr);
 
-//	char *k[6000];
-//	for (i = 200; i < 6000; i++) {
-//		p = malloc(i);
-//		memset(p, 0, i);
-//		k[i] = p;
-//	}
-//	kprintf("Freeing\n");
-//	for (i = 200; i < 6000; i++) {
-//		free(k[i]);
-//	}
-//	kprintf("OK\n");
+	// char *k[6000];
+	// for (i = 200; i < 6000; i++) {
+	// 	p = malloc(i);
+	// 	memset(p, 0, i);
+	// 	k[i] = p;
+	// }
+	// kprintf("Freeing\n");
+	// for (i = 200; i < 6000; i++) {
+	// 	free(k[i]);
+	// }
+	// kprintf("OK\n");
 
 
 
@@ -163,7 +163,7 @@ void heap_init() {
 //	free(k);
 
 //	debug_dump_list(first_block);
-//	kprintf("heap->end_addr: %X, size: %iMB\n", heap->end_addr, (heap->end_addr-heap->start_addr)/1024/1024);
+	kprintf("heap->end_addr: %X, size: %iMB\n", heap->end_addr, (heap->end_addr-heap->start_addr)/1024/1024);
 //	halt();
 
 //	p=malloc(10);

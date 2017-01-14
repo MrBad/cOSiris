@@ -1,3 +1,8 @@
+#ifndef _MEM_H
+#define _MEM_H
+
+#include "multiboot.h"
+
 //#include "multiboot.h"
 #define PAGE_SIZE 4096
 
@@ -13,24 +18,13 @@
 #define P_SIZE                          1<<7    // valabil pt page directoru - pagini de 4K sau 4M
 #define P_GLOBAL                        1<<8    // if set, prevents TLB from updating the cache if CR3 is reset
 
-//typedef struct page {
-//	unsigned int present    : 1;   // Page present in memory
-//	unsigned int writable   : 1;   // Read-only if clear, readwrite if set
-//	unsigned int user       : 1;   // Supervisor level only if clear
-//	unsigned int accessed   : 1;   // Has the page been accessed since last refresh?
-//	unsigned int dirty      : 1;   // Has the page been written to since last refresh?
-//	unsigned int unused     : 7;   // Amalgamation of unused and reserved bits
-//	unsigned int frame      : 20;  // Frame address (shifted right 12 bits)
-//} page_t;
-//
-//typedef struct page_table {
-//	page_t pages[1024];
-//} page_table_t;
-//
-//typedef struct page_directory {
-//	page_table_t *tables[1024];
-//	unsigned int tablesPhysical[1024];
-//} page_directory_t;
+
+typedef unsigned int uint32_t;
+typedef unsigned short int uint16_t;
+typedef uint32_t phys_t;
+typedef uint32_t virt_t;
+typedef uint32_t dir_t;
+typedef uint16_t flags_t;
 
 extern void switch_page_directory(unsigned int *dir);
 extern void flush_tlb();
@@ -39,6 +33,10 @@ extern void flush_tlb();
 
 void *sbrk(unsigned int increment);
 //extern void *kmalloc(unsigned int size, int align, unsigned *phys);
-void map(unsigned int virt_addr, unsigned int phys_addr, unsigned short int flags);
-int is_mapped(unsigned int virtual_addr);
-void mem_init();
+// void map(unsigned int virt_addr, unsigned int phys_addr, unsigned short int flags);
+// int is_mapped(unsigned int virtual_addr);
+void map(virt_t virtual_addr, phys_t physical_addr, flags_t flags);
+void unmap(virt_t virtual_addr);
+void mem_init(multiboot_header *mb, phys_t kernel_end_addr);
+
+#endif

@@ -3,3 +3,4 @@ typedef unsigned long ulong_t;
 #define false 0
 #define true 1
 typedef unsigned char bool;
+typedef unsigned int size_t;
