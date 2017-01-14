@@ -37,6 +37,6 @@ void *sbrk(unsigned int increment);
 // int is_mapped(unsigned int virtual_addr);
 void map(virt_t virtual_addr, phys_t physical_addr, flags_t flags);
 void unmap(virt_t virtual_addr);
-void mem_init(multiboot_header *mb, phys_t kernel_end_addr);
+void mem_init(multiboot_header *mb);
 
 #endif

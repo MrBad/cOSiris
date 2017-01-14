@@ -64,16 +64,16 @@ void main(unsigned int magic, multiboot_header *mboot) {
 	}
 
 	kprintf("Setup paging\n");
-	mem_init(mboot, initrd_end);
+	mem_init(mboot);
 
 	// call_test_sp(0xDEADC0DE);
 	// kprintf("Setup heap\n");
 	heap_init(mboot);
 	kprintf("Initialise initrd\n");
 	// Initialise the initial ramdisk, and set it as the filesystem root.
-	unsigned int i;
-	kprintf("initrd %p - %p\n",initrd_location, initrd_end);
 
+	kprintf("initrd %p - %p\n", initrd_location, initrd_end);
+	unsigned int i;
 	fs_node_t *fs_root = initrd_init(initrd_location);
 	// list the contents of //
 	i = 0;
@@ -82,7 +82,7 @@ void main(unsigned int magic, multiboot_header *mboot) {
 		kprintf("Found file %s\n", node->name);
 		fs_node_t *fs_node = finddir_fs(fs_root, node->name);
 		if(fs_node->flags & FS_DIRECTORY) {
-			kprintf("\tDir\t\n");
+			kprintf("\tDir %s\t\n", fs_node->name);
 		} else {
 			char buff[256];
 			unsigned int size;
@@ -92,7 +92,6 @@ void main(unsigned int magic, multiboot_header *mboot) {
 		}
 		i++;
 	}
-
 
 	kprintf("Press esc to exit.\n");
 
