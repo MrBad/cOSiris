@@ -14,7 +14,7 @@ extern bool heap_active;
 
 heap_t myheap = {0};
 heap_t *heap = &myheap;
-block_meta_t *first_block = 0;
+// block_meta_t *first_block = 0;
 
 //unsigned int calls = 0;
 //extern page_directory_t *kernel_dir;
@@ -25,11 +25,28 @@ void debug_dump_list(block_meta_t *p) {
 	while (p) {
 		KASSERT(p->magic_head == MAGIC_HEAD);
 		KASSERT(p->magic_end == MAGIC_END);
-		kprintf("node: 0x%X, magic_head: 0x%X, magic_end: %X, size: %i, %s, next: 0x%X\n", p, p->magic_head,
+		kprintf("node: 0x%X, magic_head: 0x%X, magic_end: %X, size: %i, %s, next: 0x%X\n", p+1, p->magic_head,
 		        p->magic_end,
 		        p->size, p->free ? "free" : "used", p->next);
 		p = p->next;
 	}
+}
+
+void heap_dump()
+{
+	kprintf("HEAP\tstart_addr: %p, end_addr: %p, max_addr: %p, \n", heap->start_addr, heap->end_addr, heap->max_addr);
+}
+
+void init_first_block()
+{
+	KASSERT(HEAP_INITIAL_SIZE > sizeof(block_meta_t));
+	kprintf("Setup initial heap, at: 0x%X, initial size: 0x%X\n", HEAP_START, HEAP_INITIAL_SIZE);
+	first_block = (block_meta_t *) HEAP_START;
+	first_block->free = true;
+	first_block->size = HEAP_INITIAL_SIZE - sizeof(block_meta_t);
+	first_block->magic_head = MAGIC_HEAD;
+	first_block->magic_end = MAGIC_END;
+	first_block->next = NULL;
 }
 
 void *malloc(unsigned int nbytes) {
@@ -60,7 +77,7 @@ void *malloc(unsigned int nbytes) {
 			continue;
 		}
 		if ((p->size < nbytes + sizeof(block_meta_t)) && p->next == NULL) {
-			// kprintf("SBRK 1");
+			// kprintf(".");
 			sbrk(PAGE_SIZE * 2);
 			p->size += PAGE_SIZE * 2;
 			continue;
@@ -73,6 +90,11 @@ void *malloc(unsigned int nbytes) {
 			p->size = nbytes;
 			p->free = false;
 			p->next = (block_meta_t *) (c + sizeof(block_meta_t) + nbytes);
+			if((unsigned int)p->next <= heap->end_addr) { // happens on last and large blocks
+				sbrk(PAGE_SIZE * 2);
+				KASSERT(p->next->next == NULL);
+				p->next->size += PAGE_SIZE * 2;
+			}
 			p->next->free = true;
 			p->next->size = next_size;
 			p->next->magic_head = MAGIC_HEAD;
@@ -80,7 +102,7 @@ void *malloc(unsigned int nbytes) {
 			p->next->next = n;
 			return p + 1;
 		}
-//		p = p->next;
+		// p = p->next;
 	}
 //	debug_dump_list();
 
@@ -109,7 +131,7 @@ void free(void *ptr) {
 			break;
 		}
 		if (!p->next) {
-			kprintf("Bad free pointer\n");
+			kprintf("Bad free pointer: %p, mem: %p, size: %d, mgh: %X, mge: %X, %s\n", ptr, p+1, p->size, p->magic_head, p->magic_end, p->free ? "free":"used");
 			halt();
 			break;
 		}
@@ -124,6 +146,34 @@ void *calloc(unsigned nbytes) {
 	return p;
 }
 
+void *malloc_page() {
+	char *mem = malloc(PAGE_SIZE * 3);
+	unsigned int mem_start, mem_end, mem_length, new_start;
+	mem_start = (unsigned int) mem;
+	mem_length = 3 * PAGE_SIZE;
+	mem_end = mem_start + mem_length;
+	block_meta_t *p, *n;
+	if(mem_start & 0xFFF){ // if is not PAGE_SIZE alligned
+		new_start = (mem_start & 0xFFFFF000) + PAGE_SIZE;
+		if(new_start - mem_start < sizeof(block_meta_t)) {
+			new_start += PAGE_SIZE;
+		}
+		p = ((block_meta_t *) mem_start) - 1;
+		n = ((block_meta_t *) new_start) - 1;
+		n->free = false;
+		n->next = p->next;
+		n->magic_head = MAGIC_HEAD;
+		n->magic_end = MAGIC_END;
+		n->size = mem_end - new_start;
+		p->size = new_start - mem_start - sizeof(block_meta_t);
+		p->next = n;
+		KASSERT(n->size >= PAGE_SIZE);
+		KASSERT((unsigned int)n->next > (new_start + n->size));
+		free(p+1);
+		return n + 1;
+	}
+	return mem;
+}
 
 void heap_init() {
 
@@ -132,41 +182,58 @@ void heap_init() {
 	if (!heap) {
 		panic("Heap is not initialized\n");
 	}
-	// unsigned int i;
-	// char *p;
+	init_first_block();
+	unsigned int i;
+	char *p;
 
 	kprintf("heap_init(): heap->end_addr: %X, size: x%X\n", heap->end_addr, heap->end_addr-heap->start_addr);
+	free(malloc(1));
+	char *k[3000];
+	kprintf("Alloc\n");
+	for (i = 2000; i < 3000; i++) {
+		p = malloc(i);
+		memset(p, 0, i);
 
-	// char *k[6000];
-	// for (i = 200; i < 6000; i++) {
+		k[i] = p;
+	}
+
+	kprintf("Freeing\n");
+	for (i = 2000; i < 3000; i++) {
+		free(k[i]);
+	}
+	kprintf("OK\n");
+
+
+// char *p = malloc(4080);
+// kprintf("%p\n", p);
+//
+// char *page;
+// page = malloc_page();
+// kprintf("%p\n", page);
+// memset(page, 0, PAGE_SIZE);
+// memset(p, 0, 4080);
+// free(page);
+// free(p);
+
+
+	// unsigned int i; char *p;
+	// char *k = (char *) malloc(4096*10*sizeof(int));
+	// for (i = 4096; i < 5000; i++) {
 	// 	p = malloc(i);
 	// 	memset(p, 0, i);
 	// 	k[i] = p;
 	// }
-	// kprintf("Freeing\n");
-	// for (i = 200; i < 6000; i++) {
-	// 	free(k[i]);
+	// for (i = 4096; i < 5000; i++) {
+	// 	free((void *)k[i]);
 	// }
-	// kprintf("OK\n");
+	// free(k);
 
-
-
-//	char *k = (char *) malloc(4096*10*sizeof(int));
-//	for (i = 4096; i < 5000; i++) {
-//		p = malloc(i);
-//		memset(p, 0, i);
-//		k[i] = p;
-//	}
-//	for (i = 4096; i < 5000; i++) {
-//		free((void *)k[i]);
-//	}
-//	free(k);
 
 //	debug_dump_list(first_block);
-	kprintf("heap->end_addr: %X, size: %iMB\n", heap->end_addr, (heap->end_addr-heap->start_addr)/1024/1024);
+	// kprintf("heap->end_addr: %X, size: %iMB\n", heap->end_addr, (heap->end_addr-heap->start_addr)/1024/1024);
 //	halt();
 
 //	p=malloc(10);
 //	memset(p, 'A', 10);
-
+	debug_dump_list(first_block);
 }

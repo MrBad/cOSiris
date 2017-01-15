@@ -28,13 +28,12 @@ bool paging_on()
 	return pg_on;
 }
 
-
+int fault_counter = 0;
 /**
  * Page fault isr
  */
 int page_fault(struct iregs *r)
 {
-	static int fault_counter = 0;
 	unsigned int fault_addr;
 	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
 	unsigned short int table_idx = fault_addr >> 22;
@@ -53,6 +52,8 @@ int page_fault(struct iregs *r)
 	kprintf("%s", is_mapped(fault_addr) ? "mapped" : "not mapped");
 	if (HEAP_START < fault_addr && fault_addr < HEAP_END) {
 		kprintf(", in heap\n");
+		heap_dump();
+		debug_dump_list(first_block);
 	}
 	kprintf("\n%s", paging_on() ? "paging ON" : "paging OFF");
 	//	panic("\npanic\n____");
@@ -247,7 +248,7 @@ bool is_mapped(virt_t addr)
 	dir_t *dir = (dir_t *) PDIR_ADDR;
 	virt_t *table;
 	if(addr & 0xFFF) {
-		panic("Not aligned: %p\n", addr);
+		kprintf("is_mapped(): Not aligned: %p\n", addr);
 	}
 	int dir_idx = (addr / PAGE_SIZE) / 1024;
 	int tbl_idx = (addr / PAGE_SIZE) % 1024;
@@ -309,7 +310,7 @@ static void setup_heap()
 	heap->readonly = false;
 	heap->supervisor = true;
 	virt_t p;
-	for(p = heap->start_addr; p <= heap->end_addr; p += PAGE_SIZE) {
+	for(p = heap->start_addr; p < heap->end_addr; p += PAGE_SIZE) {
 		map(p, (phys_t) frame_alloc(), P_PRESENT | P_READ_WRITE);
 	}
 }
@@ -319,11 +320,14 @@ void *sbrk(unsigned int increment) {
 	unsigned int frame, i;
 	unsigned int iterations = increment / PAGE_SIZE;
 	KASSERT(heap);
+	KASSERT(!(increment & 0xFFF));
 	if (iterations < 1) {
 		iterations++;
 	}
 	for (i = 0; i < iterations; ++i) {
 		frame = (phys_t) frame_alloc();
+		KASSERT(!(heap->end_addr & 0xFFF));
+		KASSERT(frame);
 		map(heap->end_addr, frame, P_PRESENT | P_READ_WRITE);
 		heap->end_addr += PAGE_SIZE;
 		if (heap->end_addr % PAGE_SIZE > 0) {
