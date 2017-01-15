@@ -106,9 +106,8 @@ void *malloc(unsigned int nbytes) {
 	return NULL;
 }
 
-void heap_contract()
+static void heap_contract()
 {
-	static int hciter = 0;
 	block_meta_t *p = first_block;
 	virt_t addr;
 	virt_t new_end;
@@ -127,7 +126,6 @@ void heap_contract()
 			unmap(addr);
 		}
 		heap->end_addr = new_end;
-		hciter++;
 	}
 }
 
@@ -271,18 +269,18 @@ void heap_init() {
 	}
 	init_first_block();
 
-	kprintf("test_mem_1 %s\n", test_mem_1() ? "passed":"FAILED");
-	kprintf("test_mem_2 %s\n", test_mem_2() ? "passed":"FAILED");
-	kprintf("test_mem_3 %s\n", test_mem_3() ? "passed":"FAILED");
-	// debug_dump_list(first_block);
+	// kprintf("test_mem_1 %s\n", test_mem_1() ? "passed":"FAILED");
+	// kprintf("test_mem_2 %s\n", test_mem_2() ? "passed":"FAILED");
+	// kprintf("test_mem_3 %s\n", test_mem_3() ? "passed":"FAILED");
+	// // debug_dump_list(first_block);
+	// // heap_dump();
+	// malloc(12); malloc(10000);
+	// heap_contract();
+	// kprintf("test_mem_1 %s\n", test_mem_1() ? "passed":"FAILED");
+	// kprintf("test_mem_2 %s\n", test_mem_2() ? "passed":"FAILED");
+	// kprintf("test_mem_3 %s\n", test_mem_3() ? "passed":"FAILED");
 	// heap_dump();
-	malloc(12); malloc(10000);
-	heap_contract();
-	kprintf("test_mem_1 %s\n", test_mem_1() ? "passed":"FAILED");
-	kprintf("test_mem_2 %s\n", test_mem_2() ? "passed":"FAILED");
-	kprintf("test_mem_3 %s\n", test_mem_3() ? "passed":"FAILED");
-	heap_dump();
-	heap_contract();
-	heap_dump();
+	// heap_contract();
+	// heap_dump();
 	return;
 }
