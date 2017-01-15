@@ -25,8 +25,7 @@ void debug_dump_list(block_meta_t *p) {
 	while (p) {
 		KASSERT(p->magic_head == MAGIC_HEAD);
 		KASSERT(p->magic_end == MAGIC_END);
-		kprintf("node: 0x%X, ptr: %p, magic_head: 0x%X, magic_end: %X, size: %d, %s, next: 0x%X\n", p, p+1, p->magic_head,
-		        p->magic_end,
+		kprintf("node: 0x%X, ptr: %p, size: %8d, %s, next: 0x%X\n", p, p+1,
 		        p->size, p->free ? "free" : "used", p->next);
 		KASSERT(p != p->next);
 		p = p->next;
@@ -83,12 +82,13 @@ void *malloc(unsigned int nbytes) {
 			p->size = nbytes;
 			p->free = false;
 			p->next = (block_meta_t *) (c + sizeof(block_meta_t) + nbytes);
-			if((unsigned int)p->next >= heap->end_addr) { // happens on last and large blocks
-				sbrk(PAGE_SIZE * 2);
-				// kprintf(".");
-				KASSERT(p->next->next == NULL);
-				p->next->size += PAGE_SIZE * 2;
-			}
+			KASSERT((unsigned int)p->next < heap->end_addr);
+			// if((unsigned int)p->next >= heap->end_addr) { // happens on last and large blocks
+			// 	sbrk(PAGE_SIZE * 2);
+			// 	kprintf(".");
+			// 	KASSERT(p->next->next == NULL);
+			// 	p->next->size += PAGE_SIZE * 2;
+			// }
 			p->next->free = true;
 			p->next->size = next_size;
 			p->next->magic_head = MAGIC_HEAD;
@@ -135,18 +135,20 @@ void free(void *ptr) {
 	}
 }
 
-void *calloc(unsigned nbytes) {
+void *calloc(unsigned int nbytes) {
 	void *p = malloc(nbytes);
 	memset(p, 0, nbytes);
 	return p;
 }
 
-// Allocate a PAGE_SIZE block of memory, PAGE_SIZE aligned
-void *malloc_page()
+// Allocate a nbytes of memory, multiple of PAGE_SIZE, PAGE_SIZE aligned
+void *malloc_aligned(unsigned int nbytes)
 {
 	block_meta_t *p, *n;
 	void *m;
-	unsigned int p_size = PAGE_SIZE * 2 + sizeof(block_meta_t);
+	KASSERT(nbytes); // > 0
+	KASSERT(!(nbytes & 0xFFF)); // is PAGE_SIZE aligned?
+	unsigned int p_size = nbytes + PAGE_SIZE + sizeof(block_meta_t);
 	m = malloc(p_size);
 	// kprintf("Alloc at: %p, p_size: %d\n", m, p_size);
 	if(!((unsigned int)m & 0xFFF)) {
@@ -184,7 +186,7 @@ bool test_mem_1()
 	//kprintf("Alloc\n");
 	for (i = 4000; i < 5000; i++) {
 		p = malloc(i);
-		memset(p, 0, i);
+		memset(p, 'A', i);
 		k[i] = (unsigned int )p;
 	}
 	//kprintf("Freeing\n");
@@ -203,8 +205,11 @@ bool test_mem_2()
 {
 	void *i, *j, *p, *k;
 	i = malloc(4000);
-	p = malloc_page();
-	k = malloc_page();
+	p = malloc_aligned(2*PAGE_SIZE);
+	memset(p, 'A', 2*PAGE_SIZE);
+	k = malloc_aligned(PAGE_SIZE);
+	memset(k, 'B', PAGE_SIZE);
+	// debug_dump_list(first_block);
 	free(p);
 	free(k);
 	j = malloc(10);

@@ -65,11 +65,11 @@ void main(unsigned int magic, multiboot_header *mboot) {
 	// call_test_sp(0xDEADC0DE);
 	// kprintf("Setup heap\n");
 	heap_init(mboot);
-	
+
 	kprintf("Initialise initrd\n");
 	// Initialise the initial ramdisk, and set it as the filesystem root.
 
-	kprintf("initrd %p - %p\n", initrd_location, initrd_end);
+	// kprintf("initrd %p - %p\n", initrd_location, initrd_end);
 	unsigned int i;
 	fs_node_t *fs_root = initrd_init(initrd_location);
 	// list the contents of //
