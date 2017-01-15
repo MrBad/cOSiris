@@ -57,16 +57,7 @@ void *malloc(unsigned int nbytes) {
 	char *c;
 	if(nbytes % 4 != 0)
 		nbytes = (nbytes / 4 + 1) * 4; // align to 4 bytes
-	if (first_block == NULL) {
-		KASSERT(HEAP_INITIAL_SIZE > sizeof(block_meta_t));
-		kprintf("Setup initial heap, at: 0x%X, initial size: 0x%X\n", HEAP_START, HEAP_INITIAL_SIZE);
-		first_block = (block_meta_t *) HEAP_START;
-		first_block->free = true;
-		first_block->size = HEAP_INITIAL_SIZE - sizeof(block_meta_t);
-		first_block->magic_head = MAGIC_HEAD;
-		first_block->magic_end = MAGIC_END;
-		first_block->next = NULL;
-	}
+
 	KASSERT(first_block != NULL);
 	KASSERT(first_block->magic_head == MAGIC_HEAD);
 	KASSERT(first_block->magic_end == MAGIC_END);
@@ -150,6 +141,7 @@ void *calloc(unsigned nbytes) {
 	return p;
 }
 
+// Allocate a PAGE_SIZE block of memory, PAGE_SIZE aligned
 void *malloc_page()
 {
 	block_meta_t *p, *n;
@@ -158,7 +150,7 @@ void *malloc_page()
 	m = malloc(p_size);
 	// kprintf("Alloc at: %p, p_size: %d\n", m, p_size);
 	if(!((unsigned int)m & 0xFFF)) {
-		kprintf("ALIGNED?\n");
+		//kprintf("ALIGNED?\n");
 		return m;
 	}
 	p = (block_meta_t *) m - 1;
@@ -166,7 +158,7 @@ void *malloc_page()
 	if((unsigned int)n < (unsigned int)m) {
 		n = (block_meta_t *)(((unsigned int)m & 0xFFFFF000) + PAGE_SIZE * 2)-1;
 	}
-	
+
 	// kprintf("p:%p, m:%p, n:%p, n+1:%p, m+psize:%p\n", p,m,n,n+1,(unsigned int)m+p_size);
 	KASSERT((unsigned int)n > (unsigned int)m);
 	KASSERT(((unsigned int)(n+1)+PAGE_SIZE) < ((unsigned int)m+p_size));
@@ -237,4 +229,5 @@ void heap_init() {
 	kprintf("test_mem_2 %s\n", test_mem_2() ? "passed":"FAILED");
 	debug_dump_list(first_block);
 	heap_dump();
+	return;
 }
