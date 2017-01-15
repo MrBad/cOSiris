@@ -70,8 +70,8 @@ void *malloc(unsigned int nbytes) {
 		}
 		if ((p->size < nbytes + sizeof(block_meta_t)) && p->next == NULL) {
 			// kprintf("+");
-			sbrk(PAGE_SIZE * 2);
-			p->size += PAGE_SIZE * 2;
+			sbrk(PAGE_SIZE);
+			p->size += PAGE_SIZE;
 			continue;
 		}
 		else if(p->size >= nbytes) {
@@ -106,6 +106,31 @@ void *malloc(unsigned int nbytes) {
 	return NULL;
 }
 
+void heap_contract()
+{
+	static int hciter = 0;
+	block_meta_t *p = first_block;
+	virt_t addr;
+	virt_t new_end;
+
+	while (p->next) {
+		p = p->next;
+	}
+	if(p->size > HEAP_INITIAL_SIZE) {
+		KASSERT((unsigned int)(p+1) + p->size == heap->end_addr);
+		new_end = ((unsigned int)(p+1) & 0xFFFFF000) + HEAP_INITIAL_SIZE;
+		KASSERT(is_mapped(new_end));
+		p->size = new_end - (unsigned int)(p+1);
+		for(addr = new_end; addr < heap->end_addr; addr+=PAGE_SIZE) {
+			KASSERT(is_mapped(addr));
+			frame_free(virt_to_phys(addr));
+			unmap(addr);
+		}
+		heap->end_addr = new_end;
+		hciter++;
+	}
+}
+
 void free(void *ptr) {
 	block_meta_t *p, *prev = NULL;
 	p = first_block;
@@ -133,7 +158,9 @@ void free(void *ptr) {
 		prev = p;
 		p = p->next;
 	}
+	heap_contract();
 }
+
 
 void *calloc(unsigned int nbytes) {
 	void *p = malloc(nbytes);
@@ -142,7 +169,7 @@ void *calloc(unsigned int nbytes) {
 }
 
 // Allocate a nbytes of memory, multiple of PAGE_SIZE, PAGE_SIZE aligned
-void *malloc_aligned(unsigned int nbytes)
+void *malloc_page_aligned(unsigned int nbytes)
 {
 	block_meta_t *p, *n;
 	void *m;
@@ -205,9 +232,9 @@ bool test_mem_2()
 {
 	void *i, *j, *p, *k;
 	i = malloc(4000);
-	p = malloc_aligned(2*PAGE_SIZE);
+	p = malloc_page_aligned(2*PAGE_SIZE);
 	memset(p, 'A', 2*PAGE_SIZE);
-	k = malloc_aligned(PAGE_SIZE);
+	k = malloc_page_aligned(PAGE_SIZE);
 	memset(k, 'B', PAGE_SIZE);
 	// debug_dump_list(first_block);
 	free(p);
@@ -218,6 +245,20 @@ bool test_mem_2()
 	if(first_block->next == NULL && first_block->size == heap->end_addr-heap->start_addr - sizeof(block_meta_t)) {
 		return true;
 	}
+	return false;
+}
+bool test_mem_3() {
+	unsigned int *p = malloc_page_aligned(PAGE_SIZE*3);
+	virt_t *table;
+	int dir_idx = ((unsigned int)p / PAGE_SIZE) / 1024;
+	int tbl_idx = ((unsigned int)p / PAGE_SIZE) % 1024;
+	table = (virt_t *) (PTABLES_ADDR + dir_idx * PAGE_SIZE);
+	if((table[tbl_idx] & 0xFFFFF000) == (unsigned int)virt_to_phys((virt_t)p)) {
+		free(p);
+		// kprintf("same: %p, %p\n", table[tbl_idx] & 0xFFFFF000, virt_to_phys(p));
+		return true;
+	}
+	free(p);
 	return false;
 }
 
@@ -232,7 +273,16 @@ void heap_init() {
 
 	kprintf("test_mem_1 %s\n", test_mem_1() ? "passed":"FAILED");
 	kprintf("test_mem_2 %s\n", test_mem_2() ? "passed":"FAILED");
-	debug_dump_list(first_block);
+	kprintf("test_mem_3 %s\n", test_mem_3() ? "passed":"FAILED");
+	// debug_dump_list(first_block);
+	// heap_dump();
+	malloc(12); malloc(10000);
+	heap_contract();
+	kprintf("test_mem_1 %s\n", test_mem_1() ? "passed":"FAILED");
+	kprintf("test_mem_2 %s\n", test_mem_2() ? "passed":"FAILED");
+	kprintf("test_mem_3 %s\n", test_mem_3() ? "passed":"FAILED");
+	heap_dump();
+	heap_contract();
 	heap_dump();
 	return;
 }

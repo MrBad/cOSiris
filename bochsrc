@@ -137,7 +137,7 @@ cpu: count=1,  ips=10000000, reset_on_triple_fault=1
 #megs: 32
 #megs: 16
 #megs: 8
-megs: 512
+megs: 32
 
 #=======================================================================
 # OPTROMIMAGE[1-4]:

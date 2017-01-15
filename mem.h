@@ -2,6 +2,7 @@
 #define _MEM_H
 
 #include "multiboot.h"
+#include <types.h>
 
 //#include "multiboot.h"
 #define PAGE_SIZE 4096
@@ -26,6 +27,10 @@ typedef uint32_t virt_t;
 typedef uint32_t dir_t;
 typedef uint16_t flags_t;
 
+#define RESV_PAGE		0xFFBFE000ul
+#define PTABLES_ADDR 	0xFFC00000ul
+#define PDIR_ADDR		0xFFFFF000ul
+
 extern void switch_page_directory(unsigned int *dir);
 extern void flush_tlb();
 
@@ -38,5 +43,8 @@ void *sbrk(unsigned int increment);
 void map(virt_t virtual_addr, phys_t physical_addr, flags_t flags);
 void unmap(virt_t virtual_addr);
 void mem_init(multiboot_header *mb);
+phys_t virt_to_phys(virt_t addr);
+bool is_mapped(virt_t addr);
+void frame_free(phys_t addr);
 
 #endif

@@ -16,11 +16,8 @@ phys_t	last_free_page = 0;
 size_t	num_pages = 0;
 dir_t	*kernel_dir = NULL;
 
-#define RESV_PAGE		0xFFBFE000ul
-#define PTABLES_ADDR 	0xFFC00000ul
-#define PDIR_ADDR		0xFFFFF000ul
 
-bool is_mapped(virt_t addr);
+
 
 static bool pg_on = false;
 bool paging_on()
@@ -107,7 +104,7 @@ void frame_free(phys_t addr)
 		map(RESV_PAGE, (phys_t)addr, P_PRESENT|P_READ_WRITE);
 		*((phys_t *)RESV_PAGE) = last_free_page;
 		unmap(RESV_PAGE);
-		kprintf("freep %p\n", addr);
+		// kprintf("freep %p\n", addr);
 	}else {
 		*((phys_t *)addr) = last_free_page;
 	}
@@ -267,8 +264,10 @@ phys_t virt_to_phys(virt_t addr)
 	virt_t *table;
 	int dir_idx = (addr / PAGE_SIZE) / 1024;
 	int tbl_idx = (addr / PAGE_SIZE) % 1024;
-	KASSERT(addr & 0xFFF);
-	KASSERT(is_mapped(addr));
+	KASSERT(!(addr & 0xFFF));
+	if(! is_mapped(addr)) {
+		panic("%p is not mapped\n", addr);
+	}
 	table = (virt_t *) (PTABLES_ADDR + dir_idx * PAGE_SIZE);
 	return table[tbl_idx] & 0xFFFFF000;
 }
