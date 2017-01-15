@@ -24,6 +24,9 @@ typedef struct {
 } heap_t;
 
 block_meta_t *first_block;
+void heap_dump();
+void debug_dump_list(block_meta_t *);
+
 
 extern void heap_init();
 extern heap_t *heap;

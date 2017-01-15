@@ -15,20 +15,22 @@ extern bool heap_active;
 heap_t myheap = {0};
 heap_t *heap = &myheap;
 // block_meta_t *first_block = 0;
-
 //unsigned int calls = 0;
 //extern page_directory_t *kernel_dir;
 
 void debug_dump_list(block_meta_t *p) {
 //	block_meta_t *p;
 //	p = first_block;
+	static int dplitr = 0;
 	while (p) {
 		KASSERT(p->magic_head == MAGIC_HEAD);
 		KASSERT(p->magic_end == MAGIC_END);
-		kprintf("node: 0x%X, magic_head: 0x%X, magic_end: %X, size: %i, %s, next: 0x%X\n", p+1, p->magic_head,
+		kprintf("node: 0x%X, ptr: %p, magic_head: 0x%X, magic_end: %X, size: %d, %s, next: 0x%X\n", p, p+1, p->magic_head,
 		        p->magic_end,
 		        p->size, p->free ? "free" : "used", p->next);
+		KASSERT(p != p->next);
 		p = p->next;
+		if(dplitr++ > 20) {panic("Too many iterations\n");}
 	}
 }
 
@@ -53,8 +55,8 @@ void *malloc(unsigned int nbytes) {
 	block_meta_t *p, *n;
 	unsigned int next_size;
 	char *c;
-	nbytes = (nbytes / 4 + 1) * 4; // align to 4 bytes
-
+	if(nbytes % 4 != 0)
+		nbytes = (nbytes / 4 + 1) * 4; // align to 4 bytes
 	if (first_block == NULL) {
 		KASSERT(HEAP_INITIAL_SIZE > sizeof(block_meta_t));
 		kprintf("Setup initial heap, at: 0x%X, initial size: 0x%X\n", HEAP_START, HEAP_INITIAL_SIZE);
@@ -77,21 +79,22 @@ void *malloc(unsigned int nbytes) {
 			continue;
 		}
 		if ((p->size < nbytes + sizeof(block_meta_t)) && p->next == NULL) {
-			// kprintf(".");
+			// kprintf("+");
 			sbrk(PAGE_SIZE * 2);
 			p->size += PAGE_SIZE * 2;
 			continue;
 		}
-		else {
-//			kprintf("SPLIT; p: 0x%X orig_size: %i, nbytes: %i, meta: %i\n",p+1, p->size, nbytes, sizeof(block_meta_t));
+		else if(p->size >= nbytes) {
+			// kprintf("SPLIT; p: 0x%X orig_size: %i, nbytes: %i, meta: %i\n",p+1, p->size, nbytes, sizeof(block_meta_t));
 			c = (char *) p;
 			next_size = p->size - nbytes - sizeof(block_meta_t);
 			n = p->next;
 			p->size = nbytes;
 			p->free = false;
 			p->next = (block_meta_t *) (c + sizeof(block_meta_t) + nbytes);
-			if((unsigned int)p->next <= heap->end_addr) { // happens on last and large blocks
+			if((unsigned int)p->next >= heap->end_addr) { // happens on last and large blocks
 				sbrk(PAGE_SIZE * 2);
+				// kprintf(".");
 				KASSERT(p->next->next == NULL);
 				p->next->size += PAGE_SIZE * 2;
 			}
@@ -102,7 +105,7 @@ void *malloc(unsigned int nbytes) {
 			p->next->next = n;
 			return p + 1;
 		}
-		// p = p->next;
+		p = p->next;
 	}
 //	debug_dump_list();
 
@@ -113,7 +116,7 @@ void *malloc(unsigned int nbytes) {
 }
 
 void free(void *ptr) {
-	block_meta_t *p, *prev;
+	block_meta_t *p, *prev = NULL;
 	p = first_block;
 	for (; ;) {
 		if (p + 1 == ptr) {
@@ -131,7 +134,8 @@ void free(void *ptr) {
 			break;
 		}
 		if (!p->next) {
-			kprintf("Bad free pointer: %p, mem: %p, size: %d, mgh: %X, mge: %X, %s\n", ptr, p+1, p->size, p->magic_head, p->magic_end, p->free ? "free":"used");
+			kprintf("Bad free pointer: %p, mem: %p, size: %d, mgh: %X, mge: %X, %s\n",
+				ptr, p+1, p->size, p->magic_head, p->magic_end, p->free ? "free":"used");
 			halt();
 			break;
 		}
@@ -146,33 +150,78 @@ void *calloc(unsigned nbytes) {
 	return p;
 }
 
-void *malloc_page() {
-	char *mem = malloc(PAGE_SIZE * 3);
-	unsigned int mem_start, mem_end, mem_length, new_start;
-	mem_start = (unsigned int) mem;
-	mem_length = 3 * PAGE_SIZE;
-	mem_end = mem_start + mem_length;
+void *malloc_page()
+{
 	block_meta_t *p, *n;
-	if(mem_start & 0xFFF){ // if is not PAGE_SIZE alligned
-		new_start = (mem_start & 0xFFFFF000) + PAGE_SIZE;
-		if(new_start - mem_start < sizeof(block_meta_t)) {
-			new_start += PAGE_SIZE;
-		}
-		p = ((block_meta_t *) mem_start) - 1;
-		n = ((block_meta_t *) new_start) - 1;
-		n->free = false;
-		n->next = p->next;
-		n->magic_head = MAGIC_HEAD;
-		n->magic_end = MAGIC_END;
-		n->size = mem_end - new_start;
-		p->size = new_start - mem_start - sizeof(block_meta_t);
-		p->next = n;
-		KASSERT(n->size >= PAGE_SIZE);
-		KASSERT((unsigned int)n->next > (new_start + n->size));
-		free(p+1);
-		return n + 1;
+	void *m;
+	unsigned int p_size = PAGE_SIZE * 2 + sizeof(block_meta_t);
+	m = malloc(p_size);
+	// kprintf("Alloc at: %p, p_size: %d\n", m, p_size);
+	if(!((unsigned int)m & 0xFFF)) {
+		kprintf("ALIGNED?\n");
+		return m;
 	}
-	return mem;
+	p = (block_meta_t *) m - 1;
+	n = (block_meta_t *)(((unsigned int)m & 0xFFFFF000) + PAGE_SIZE)-1;
+	if((unsigned int)n < (unsigned int)m) {
+		n = (block_meta_t *)(((unsigned int)m & 0xFFFFF000) + PAGE_SIZE * 2)-1;
+	}
+	
+	// kprintf("p:%p, m:%p, n:%p, n+1:%p, m+psize:%p\n", p,m,n,n+1,(unsigned int)m+p_size);
+	KASSERT((unsigned int)n > (unsigned int)m);
+	KASSERT(((unsigned int)(n+1)+PAGE_SIZE) < ((unsigned int)m+p_size));
+
+	n->magic_head = MAGIC_HEAD;
+	n->magic_end = MAGIC_END;
+	n->free = false;
+	n->next = p->next;
+	n->size = (unsigned int)m+p_size - (unsigned int)(n+1);
+	p->size = (unsigned int)n-(unsigned int)m;
+	p->next = n;
+	free(m);
+	return n+1;
+}
+
+bool test_mem_1()
+{
+	unsigned int i;
+	char *p;
+	free(malloc(1));
+	int *k;
+	k = (int *)malloc(10000 * sizeof(int));
+	//kprintf("Alloc\n");
+	for (i = 4000; i < 5000; i++) {
+		p = malloc(i);
+		memset(p, 0, i);
+		k[i] = (unsigned int )p;
+	}
+	//kprintf("Freeing\n");
+	for (i = 4000; i < 5000; i++) {
+		free((void *)k[i]);
+	}
+	free(k);
+	if(first_block->next == NULL && first_block->size == heap->end_addr-heap->start_addr - sizeof(block_meta_t)) {
+		return true;
+	}
+	return false;
+}
+
+
+bool test_mem_2()
+{
+	void *i, *j, *p, *k;
+	i = malloc(4000);
+	p = malloc_page();
+	k = malloc_page();
+	free(p);
+	free(k);
+	j = malloc(10);
+	free(i);
+	free(j);
+	if(first_block->next == NULL && first_block->size == heap->end_addr-heap->start_addr - sizeof(block_meta_t)) {
+		return true;
+	}
+	return false;
 }
 
 void heap_init() {
@@ -183,57 +232,9 @@ void heap_init() {
 		panic("Heap is not initialized\n");
 	}
 	init_first_block();
-	unsigned int i;
-	char *p;
 
-	kprintf("heap_init(): heap->end_addr: %X, size: x%X\n", heap->end_addr, heap->end_addr-heap->start_addr);
-	free(malloc(1));
-	char *k[3000];
-	kprintf("Alloc\n");
-	for (i = 2000; i < 3000; i++) {
-		p = malloc(i);
-		memset(p, 0, i);
-
-		k[i] = p;
-	}
-
-	kprintf("Freeing\n");
-	for (i = 2000; i < 3000; i++) {
-		free(k[i]);
-	}
-	kprintf("OK\n");
-
-
-// char *p = malloc(4080);
-// kprintf("%p\n", p);
-//
-// char *page;
-// page = malloc_page();
-// kprintf("%p\n", page);
-// memset(page, 0, PAGE_SIZE);
-// memset(p, 0, 4080);
-// free(page);
-// free(p);
-
-
-	// unsigned int i; char *p;
-	// char *k = (char *) malloc(4096*10*sizeof(int));
-	// for (i = 4096; i < 5000; i++) {
-	// 	p = malloc(i);
-	// 	memset(p, 0, i);
-	// 	k[i] = p;
-	// }
-	// for (i = 4096; i < 5000; i++) {
-	// 	free((void *)k[i]);
-	// }
-	// free(k);
-
-
-//	debug_dump_list(first_block);
-	// kprintf("heap->end_addr: %X, size: %iMB\n", heap->end_addr, (heap->end_addr-heap->start_addr)/1024/1024);
-//	halt();
-
-//	p=malloc(10);
-//	memset(p, 'A', 10);
+	kprintf("test_mem_1 %s\n", test_mem_1() ? "passed":"FAILED");
+	kprintf("test_mem_2 %s\n", test_mem_2() ? "passed":"FAILED");
 	debug_dump_list(first_block);
+	heap_dump();
 }

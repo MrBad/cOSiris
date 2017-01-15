@@ -19,10 +19,6 @@ ulong_t get_esp(void);
 ulong_t get_ebp(void);
 
 unsigned int initrd_location, initrd_end;
-void call_test_sp(unsigned int t) {
-	unsigned int huge[65536];
-	kprintf("%p\n",t);
-}
 
 void main(unsigned int magic, multiboot_header *mboot) {
 

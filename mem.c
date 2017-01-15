@@ -223,7 +223,7 @@ static void identity_map_kernel(dir_t *dir, multiboot_header *mb)
 }
 
 
-static void dump_dir()
+void dump_dir()
 {
 	int dir_idx, tbl_idx;
 	dir_t *dir = (dir_t *)PDIR_ADDR;
