@@ -125,56 +125,7 @@ void task_switch()
 	asm volatile("sti");
 	asm volatile("jmp *%ecx");
 
-	/*asm volatile("			\
-	cli;                 \
-	mov %0, %%ecx;       \
-	mov %1, %%esp;       \
-	mov %2, %%ebp;       \
-	mov %3, %%cr3;       \
-	mov $0x12345, %%eax; \
-	sti;                 \
-	jmp *%%ecx           "
-			   : : "r"(eip), "r"(esp), "r"(ebp), "r"(current_task->page_directory));
-	*/
 }
-/*
-void task_switch() {
-	uint32_t esp, ebp, eip;
-	if(!current_task) {
-		return;
-	}
-
-	esp = get_esp();
-	ebp = get_ebp();
-	eip = get_eip();
-	if(eip == 0x12345) {
-		return;
-	}
-
-	current_task->eip = eip;
-	current_task->esp = esp;
-	current_task->ebp = ebp;
-
-	current_task = current_task->next;
-	if(!current_task) {
-		current_task = ready_queue;
-	}
-
-	kprintf("pid:%d, esp:%p, ebp:%p, eip:%p, pd:%p\n", current_task->pid, current_task->esp, current_task->ebp, current_task->eip, current_task->page_directory);
-//	switch_page_directory(current_task->page_directory);
-//	kprintf("pid:%d, esp:%p, ebp:%p, eip:%p, pd:%p\n", current_task->pid, current_task->esp, current_task->ebp, current_task->eip, current_task->page_directory);
-
-	eip = current_task->eip;
-	esp = current_task->esp;
-	ebp = current_task->ebp;
-
-	//return;
-	// char *c = "Shutdown";
-	// while (*c) { outb(0x8900, *c++); }
-return;
-
-}
-*/
 int getpid() {
 	return (current_task->pid);
 }

@@ -115,7 +115,7 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 		malloc(100);
 		debug_dump_list(first_block);
 	}
-	sti();
+
 
 
 	// cli();
@@ -127,7 +127,7 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	// list_root(fs_root);
 	// sti();
 	kprintf("OKI DOKI");
-
+sti();
 
 
 //	while(1) {
