@@ -108,20 +108,24 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	if(ret == 0) {
 		kprintf("I am the child, with pid: %d\n", getpid());
+		malloc(20);
+		debug_dump_list(first_block);
 	} else {
 		kprintf("I am your father, with pid: %d\n", getpid());
+		malloc(100);
+		debug_dump_list(first_block);
 	}
 	sti();
 
 
-	cli();
-	kprintf("Initialise initrd: %d\n", getpid());
-	// Initialise the initial ramdisk, and set it as the filesystem root.
-
-	kprintf("initrd %p - %p\n", initrd_location, initrd_end);
-	fs_root = initrd_init(initrd_location);
-	list_root(fs_root);
-	sti();
+	// cli();
+	// kprintf("Initialise initrd: %d\n", getpid());
+	// // Initialise the initial ramdisk, and set it as the filesystem root.
+	//
+	// kprintf("initrd %p - %p\n", initrd_location, initrd_end);
+	// fs_root = initrd_init(initrd_location);
+	// list_root(fs_root);
+	// sti();
 	kprintf("OKI DOKI");
 
 
