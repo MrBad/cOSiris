@@ -27,11 +27,16 @@ typedef uint32_t virt_t;
 typedef uint32_t dir_t;
 typedef uint16_t flags_t;
 
-#define RESV_PAGE		0xFFBFE000ul
-#define PTABLES_ADDR 	0xFFC00000ul
-#define PDIR_ADDR		0xFFFFF000ul
+dir_t *kernel_dir;
 
-extern void switch_page_directory(unsigned int *dir);
+// #define KERNEL_STACK_LOW	0xFFBED000ul	// 10000 stack
+// #define KERNEL_STACK_HI		0xFFBFD000ul
+#define KERNEL_STACK_HI		0xFF118000ul
+#define RESV_PAGE			0xFFBFE000ul
+#define PTABLES_ADDR 		0xFFC00000ul
+#define PDIR_ADDR			0xFFFFF000ul
+
+extern void switch_pd(dir_t *dir);
 extern void flush_tlb();
 
 //extern void *kmalloc_ptr;
@@ -45,6 +50,12 @@ void unmap(virt_t virtual_addr);
 void mem_init(multiboot_header *mb);
 phys_t virt_to_phys(virt_t addr);
 bool is_mapped(virt_t addr);
+
+phys_t *frame_alloc();
+phys_t *frame_calloc();
 void frame_free(phys_t addr);
+dir_t *clone_directory();
+void switch_page_directory(dir_t *dir);
+
 
 #endif

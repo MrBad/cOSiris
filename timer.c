@@ -2,9 +2,10 @@
 #include "isr.h"
 #include "irq.h"
 #include "console.h"
+#include "task.h"
 
 // programmable interval timer //
-// timer has clock @ 1193180Hz 
+// timer has clock @ 1193180Hz
 #define pit_data1 0x40		// data channel 1 register - generate irq0
 #define pit_data2 0x41		// data channel 2 register - sys specific
 #define pit_data3 0x42		// data channel 3 register - speaker
@@ -20,8 +21,11 @@ void timer_phase (int hz) {
 
 unsigned int timer_ticks = 0;
 
-void timer_handler(/*struct iregs *r*/) {
+void timer_handler(struct iregs *r) {
 	timer_ticks++;
+	// if(timer_ticks % 1000 == 0) {
+		task_switch(r);
+	// }
 //	if(timer_ticks % 100 == 0) {
 //		kprintf(".");
 //	}
@@ -43,12 +47,3 @@ void timer_wait(int ms)
 		nop();
 	}
 }
-
-
-
-
-
-
-
-
-

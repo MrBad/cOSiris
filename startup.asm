@@ -5,13 +5,12 @@
 	MULTIBOOT_HEADER_MAGIC	equ 0x1BADB002	; grub, magic - one bad boot?
 	MULTIBOOT_HEADER_FLAGS	equ MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO	; grub, flags
 	CHECKSUM equ -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)				; grub, checksum
-	
-	
-	
+
+
+
 	GLOBAL start						; punct de intrare, unde va sari dupa ce grub incarca tot
 	EXTERN main							; c main file
 	EXTERN code, bss, end, data			; pasate de linker, vezi lscript.txt
-	
 	; functii scrise in asm, apelabile din c
 	STACKSIZE equ 0x10000				; 64k stack size
 
@@ -29,18 +28,25 @@
 align 8
 start:
 	mov esp, stack+STACKSIZE
-	push ebx
-	push eax
+	mov ebp, esp
+	push esp
+	push STACKSIZE
+	push ebx	; ptr struct multiboot_header
+	push eax	; magic
 	call main
 	jmp $
 
 
 
-; functii apelate din C 
+; functii apelate din C
 GLOBAL get_esp
 get_esp:
 	mov eax, esp
 	ret
+GLOBAL get_eip
+get_eip:
+	pop eax
+	jmp eax
 
 GLOBAL get_ebp
 get_ebp:
@@ -108,7 +114,7 @@ idt_load:
 ;; isrs ;;
 GLOBAL isr0, isr1, isr2, isr3, isr4, isr5, isr6, isr7
 GLOBAL isr8, isr9, isr10, isr11, isr12, isr13, isr14, isr15
-GLOBAL isr16, isr17, isr18, isr19, isr20, isr21, isr22, isr23 
+GLOBAL isr16, isr17, isr18, isr19, isr20, isr21, isr22, isr23
 GLOBAL isr24, isr25, isr26, isr27, isr28, isr29, isr30, isr31
 
 
@@ -162,7 +168,7 @@ isr7:
 
 isr8:
 	cli
-	push byte 8	; - allready pushed
+	push byte 8	; - already pushed
 	jmp isr_common
 
 isr9:
@@ -471,8 +477,8 @@ global bochs_break
 bochs_break:
     xchg bx, bx
 
-GLOBAL switch_page_directory
-switch_page_directory:
+GLOBAL switch_pd
+switch_pd:
 	push ebp
 	mov ebp, esp
 	mov eax, [ebp+8]
@@ -503,6 +509,10 @@ flush_tlb:
 ;	ret
 
 [SECTION .bss]
-align 4
+align 4096
 stack:
 	resb STACKSIZE                     ; reserve 16k stack on a doubleword boundary
+
+[SECTION .data]
+	stack_ptr		dd	0
+	stack_size		dd	0

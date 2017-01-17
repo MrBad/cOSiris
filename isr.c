@@ -119,7 +119,7 @@ void fault_handler(struct iregs *r) {
 			if(ret) {
 				return;
 			}
-		} else { 
+		} else {
 			kprintf("%s Exception\n", exception_msgs[r->int_no]);
 		}
 		kprintf("  ds:  0x%-8X  es:  0x%-8X  fs:   0x%-8X  gs:   0x%-8X\n", r->ds, r->es, r->fs, r->gs);

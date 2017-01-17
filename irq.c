@@ -42,13 +42,13 @@ void irq_uninstall_handler(int irq){
 void irq_remap(void) {
 	outb(port_8259M, 0x11); // init master
 	outb(port_8259S, 0x11); // init slave
-	
+
 	outb(port_8259M+1, 0x20);	// intreruperea de baza pt master - 0x20 (remapate dupa primele 32 entries in IDT, care sunt isrs)
 	outb(port_8259S+1, 0x28);	// intreruperea de baza pt slave - 0x20+8
 
 	outb(port_8259M+1, 0x04);	// primul chip e master
 	outb(port_8259S+1, 0x02);	// al doilea chip e slave
-	
+
 	outb(port_8259M+1, 0x01);	// mod 8086 pt amandoua
 	outb(port_8259S+1, 0x01);
 
@@ -78,16 +78,16 @@ void irq_install(void){
 
 void irq_handler(struct iregs *r) {
 	// a blank function pointer //
+
 	void (*handler) (struct iregs *r);
 	handler = irq_routines[r->int_no - 32];
 	if(handler) {
 		handler(r);
 	}
 	if(r->int_no >= 0x28) {	// daca e intrerupere pe slave, send end of interrupt
-		outb(port_8259S, 0x20); 
+		outb(port_8259S, 0x20);
 	}
-	
+
 	// trimite end of interrupt pe master indiferent (sclavul e legat la master irq2, triggereaza ambele)
-//	kprintf("x%X ", &handler);
 	outb(port_8259M, 0x20);
 }

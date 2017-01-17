@@ -167,6 +167,7 @@ void *calloc(unsigned int nbytes) {
 }
 
 // Allocate a nbytes of memory, multiple of PAGE_SIZE, PAGE_SIZE aligned
+// to be tested more!!!
 void *malloc_page_aligned(unsigned int nbytes)
 {
 	block_meta_t *p, *n;
@@ -185,10 +186,14 @@ void *malloc_page_aligned(unsigned int nbytes)
 	if((unsigned int)n < (unsigned int)m) {
 		n = (block_meta_t *)(((unsigned int)m & 0xFFFFF000) + PAGE_SIZE * 2)-1;
 	}
-
-	// kprintf("p:%p, m:%p, n:%p, n+1:%p, m+psize:%p\n", p,m,n,n+1,(unsigned int)m+p_size);
-	KASSERT((unsigned int)n > (unsigned int)m);
-	KASSERT(((unsigned int)(n+1)+PAGE_SIZE) < ((unsigned int)m+p_size));
+	if((unsigned int)n < (unsigned int)m) {
+		kprintf("p:%p, m:%p, n:%p, n+1:%p, m+psize:%p\n", p,m,n,n+1,(unsigned int)m+p_size);
+		panic("n < m\n");
+	}
+	if(((unsigned int)(n+1)+PAGE_SIZE) > ((unsigned int)m+p_size)) {
+		kprintf("p:%p, m:%p, n:%p, n+1:%p, m+psize:%p\n", p,m,n,n+1,(unsigned int)m+p_size);
+		panic("((n+1)+PAGE_SIZE) > m + p_size)\n");
+	}
 
 	n->magic_head = MAGIC_HEAD;
 	n->magic_end = MAGIC_END;

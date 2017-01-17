@@ -7,19 +7,17 @@
 #include "kernel.h" 	// kinfo_t //
 #include "kheap.h"		// HEAP defs //
 #include "mem.h"
+#include "x86.h"
 
 // extern void halt(void);
-
-
 
 phys_t	last_free_page = 0;
 size_t	num_pages = 0;
 dir_t	*kernel_dir = NULL;
+bool pg_on = false;
 
+extern void shutdown();
 
-
-
-static bool pg_on = false;
 bool paging_on()
 {
 	return pg_on;
@@ -54,6 +52,7 @@ int page_fault(struct iregs *r)
 	}
 	kprintf("\n%s", paging_on() ? "paging ON" : "paging OFF");
 	//	panic("\npanic\n____");
+	shutdown();
 	return false;
 }
 
@@ -99,13 +98,11 @@ phys_t *frame_calloc()
 void frame_free(phys_t addr)
 {
 	KASSERT(!(addr & 0xFFF));
-	// kprintf("%p, %p, nump: %d\n", addr, last_free_page, num_pages);
 	if(paging_on()){
 		map(RESV_PAGE, (phys_t)addr, P_PRESENT|P_READ_WRITE);
 		*((phys_t *)RESV_PAGE) = last_free_page;
 		unmap(RESV_PAGE);
-		// kprintf("freep %p\n", addr);
-	}else {
+	} else {
 		*((phys_t *)addr) = last_free_page;
 	}
 	last_free_page = addr;
@@ -115,6 +112,7 @@ void frame_free(phys_t addr)
 static phys_t round_page_up(phys_t addr) {
 	return ((addr/PAGE_SIZE)+1) * PAGE_SIZE;
 }
+
 
 static void reserve_region(phys_t addr, size_t length, multiboot_header *mb)
 {
@@ -153,7 +151,6 @@ static void reserve_region(phys_t addr, size_t length, multiboot_header *mb)
 }
 
 
-
 static void reserve_memory(multiboot_header *mb)
 {
 	memory_map *mm;
@@ -172,7 +169,13 @@ static void reserve_memory(multiboot_header *mb)
 
 static void recursively_map_page_directory(dir_t *dir)
 {
-	dir[1023] = (phys_t) dir | P_PRESENT | P_READ_WRITE;
+	if(paging_on()){
+		map(RESV_PAGE, (phys_t) dir, P_PRESENT | P_READ_WRITE);
+		((virt_t *) RESV_PAGE)[1023] = (phys_t)dir | P_PRESENT | P_READ_WRITE;
+		unmap(RESV_PAGE);
+	} else {
+		dir[1023] = (phys_t) dir | P_PRESENT | P_READ_WRITE;
+	}
 }
 
 // identity maps a PAGE_SIZE page located at addr
@@ -191,10 +194,7 @@ static void identity_map_page(dir_t *dir, phys_t addr)
 
 static void identity_map_kernel(dir_t *dir, multiboot_header *mb)
 {
-	struct kinfo_t kinfo;
 	phys_t addr;
-
-	get_kernel_info(&kinfo);
 
 	// identity maps pages from VGA addr to kernel end //
 	for(addr = VGA_FB_ADDR; addr <= kinfo.end; addr += PAGE_SIZE) {
@@ -310,16 +310,20 @@ static void setup_heap()
 	heap->supervisor = true;
 	virt_t p;
 	for(p = heap->start_addr; p < heap->end_addr; p += PAGE_SIZE) {
-		map(p, (phys_t) frame_alloc(), P_PRESENT | P_READ_WRITE);
+		map(p, (phys_t) frame_alloc(), P_PRESENT | P_READ_WRITE | P_USER);
 	}
 }
 
 void *sbrk(unsigned int increment) {
 	unsigned int start = heap->end_addr;
 	unsigned int frame, i;
-	unsigned int iterations = increment / PAGE_SIZE;
+	unsigned int iterations;
 	KASSERT(heap);
 	KASSERT(!(increment & 0xFFF));
+	if(increment == 0) {
+		return (void *)heap->end_addr;
+	}
+	iterations = increment / PAGE_SIZE;
 	if (iterations < 1) {
 		iterations++;
 	}
@@ -327,17 +331,187 @@ void *sbrk(unsigned int increment) {
 		frame = (phys_t) frame_alloc();
 		KASSERT(!(heap->end_addr & 0xFFF));
 		KASSERT(frame);
-		map(heap->end_addr, frame, P_PRESENT | P_READ_WRITE);
+		map(heap->end_addr, frame, P_PRESENT);
 		heap->end_addr += PAGE_SIZE;
-		if (heap->end_addr % PAGE_SIZE > 0) {
-			panic("---%X\n", frame);
-		}
-		if (heap->end_addr > heap->max_addr) {
-			panic("Out of memory on sbrk: heap end addr: 0x%X, size: %iM\n", heap->end_addr,
+		if (heap->end_addr >= heap->max_addr) {
+			panic("Out of memory in sbrk: heap end addr: 0x%X08, size: %iM\n", heap->end_addr,
 					(heap->end_addr - heap->start_addr) / 1024 / 1024);
 		}
 	}
 	return (void *) start;
+}
+
+
+// to be tested more //
+// so ugly code, but i preffered indirect temp mapping via RESV_PAGE instead using malloc_page_aligned
+// witch is not yet safe nor mature //
+// also - using direct frame assigning is more efficient
+// also i did not turn off paging...
+// dir_t *clone_directory()
+// {
+// 	cli();
+// 	dir_t *new_dir = frame_calloc();
+// 	// memset(new_dir, 0, PAGE_SIZE);
+// 	dir_t *curr_dir = (dir_t *)PDIR_ADDR;
+// 	virt_t *table;
+// 	phys_t *new_table;
+// 	int dir_idx=0, tbl_idx=0;
+// 	unsigned char *p, *k;
+//
+// 	for(dir_idx = 0; dir_idx < 1023; dir_idx++) {
+// 		if(curr_dir[dir_idx] & P_PRESENT) {
+//
+//
+// 			if(dir_idx == 0) { // link kernel entries //
+// 				map(RESV_PAGE, (phys_t) new_dir, P_PRESENT | P_READ_WRITE);
+// 				((dir_t *)RESV_PAGE)[dir_idx] = curr_dir[dir_idx];
+// 				unmap(RESV_PAGE);
+// 				// new_dir[dir_idx] = curr_dir[dir_idx];
+// 			}
+//
+// 			else {
+//
+//
+// 				kprintf("{DIR:%d, %p\n", dir_idx, table);
+// 				new_table = frame_calloc();
+//
+// 				map(RESV_PAGE, (phys_t) new_dir, P_PRESENT | P_READ_WRITE);
+// 				((dir_t *)RESV_PAGE)[dir_idx] = (phys_t)new_table | P_PRESENT | P_READ_WRITE;
+// 				unmap(RESV_PAGE);
+//
+// 				// new_dir[dir_idx] = (phys_t)new_table | P_PRESENT | P_READ_WRITE | P_USER;
+// 				if(dir_idx == 1022) {
+// 					kprintf("---->----\n");
+// 					continue;
+// 				}
+// 				table = (virt_t *) (PTABLES_ADDR + dir_idx * PAGE_SIZE);
+// 				for(tbl_idx = 0; tbl_idx < 1024; tbl_idx++) {
+// 					if(table[tbl_idx] & P_PRESENT) {
+// 						p = (char *)(dir_idx*1024*PAGE_SIZE+tbl_idx*PAGE_SIZE);
+// 						k = (char *)RESV_PAGE;
+// 						kprintf("-[%p-\n", p);
+// 						void *page = frame_calloc();
+// 						map(RESV_PAGE, (phys_t) page, P_PRESENT | P_READ_WRITE);
+// 						// memcpy((void *)RESV_PAGE, (void *) (dir_idx*1024*PAGE_SIZE+tbl_idx*PAGE_SIZE), PAGE_SIZE);
+//
+// 						for(;(unsigned int)k < RESV_PAGE+PAGE_SIZE;p++,k++) {
+// 							*p = *k;
+// 						}
+// 						unmap(RESV_PAGE);
+//
+// 						map(RESV_PAGE, (phys_t) new_table, P_PRESENT | P_READ_WRITE);
+// 						((virt_t *) RESV_PAGE)[tbl_idx] = (phys_t) page | P_PRESENT | P_READ_WRITE;
+// 						unmap(RESV_PAGE);
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// 	sti();
+// 	return new_dir;
+// }
+
+virt_t *temp_map(phys_t *page)
+{
+	map(RESV_PAGE, (phys_t)page, P_PRESENT|P_READ_WRITE);
+	return (virt_t *)RESV_PAGE;
+}
+
+void temp_unmap()
+{
+	unmap(RESV_PAGE);
+}
+
+dir_t *clone_directory() {
+static int iter = 0;
+	int dir_idx, tbl_idx;
+	dir_t *curr_dir = (dir_t *)PDIR_ADDR;
+	dir_t *new_dir = (dir_t *)frame_calloc();
+	phys_t *new_table;
+	virt_t *table, *addr;
+	phys_t *frame;
+	virt_t *from_addr;
+	for(dir_idx = 0; dir_idx < 1023; dir_idx++) {
+		if(curr_dir[dir_idx] & P_PRESENT) {
+			if(dir_idx == 0) {
+				addr = temp_map(new_dir);
+				addr[0] = curr_dir[0];
+				temp_unmap();
+			}
+			else {
+				new_table = frame_calloc();
+				addr = temp_map(new_dir);
+				addr[dir_idx] = (phys_t)new_table | P_PRESENT | P_READ_WRITE;
+				temp_unmap();
+
+				table = (virt_t *) (PTABLES_ADDR + dir_idx * PAGE_SIZE);
+				for(tbl_idx = 0; tbl_idx < 1024; tbl_idx++) {
+					if(table[tbl_idx] & P_PRESENT) {
+						frame = (phys_t *)frame_calloc();
+						from_addr = (virt_t *)(dir_idx * 1024 * PAGE_SIZE + tbl_idx * PAGE_SIZE);
+
+						kprintf("copy phys: %p->%p\n", from_addr, frame);
+						addr = temp_map(frame);
+						memcpy(addr, from_addr, PAGE_SIZE);
+						int j;
+						for(j=0; j < 1024; j++) {
+							addr[j] = from_addr[j];
+						}
+						temp_unmap();
+
+						addr = temp_map(new_table);
+						addr[tbl_idx] = (phys_t)frame | P_PRESENT | P_READ_WRITE;
+						temp_unmap();
+					}
+				}
+			}
+		}
+	}
+
+	addr = temp_map(new_dir);
+	addr[1023] = (phys_t)new_dir | P_PRESENT | P_READ_WRITE;
+	temp_unmap();
+	iter++;
+	return new_dir;
+}
+
+void move_stack_up()
+{
+	KASSERT(pg_on);
+	cli();
+	phys_t *frame;
+	extern unsigned int stack_ptr, stack_size;
+	unsigned int *p, *k, i;
+	unsigned int offset = KERNEL_STACK_HI - stack_ptr;
+
+	for(i = stack_size / PAGE_SIZE; i; i--) {
+		frame = frame_calloc();
+		map(KERNEL_STACK_HI - PAGE_SIZE * i, (unsigned int)frame, P_PRESENT | P_READ_WRITE);
+		for(p = (unsigned int *)(stack_ptr-PAGE_SIZE*i); (unsigned int)p < stack_ptr-PAGE_SIZE*(i-1); p++) {
+			k = (unsigned int*)((unsigned int)p+offset);
+			if(*p < stack_ptr && *p >= stack_ptr-stack_size) {
+				*k = (unsigned int)*p + offset;
+			} else {
+				*k = *p;
+			}
+		}
+	}
+
+	unsigned int old_esp, old_ebp, new_esp, new_ebp;
+	asm volatile("movl %%esp, %0" : "=r"(old_esp));
+	asm volatile("movl %%ebp, %0" : "=r"(old_ebp));
+	new_esp = old_esp + offset;
+	new_ebp = old_ebp + offset;
+	asm volatile("movl %0, %%esp"::"r"(new_esp));
+	asm volatile("movl %0, %%ebp"::"r"(new_ebp));
+	sti();
+}
+
+
+void switch_page_directory(dir_t *dir)
+{
+	// recursively_map_page_directory(dir);
+	switch_pd(dir);
 }
 
 void mem_init(multiboot_header *mb)
@@ -350,7 +524,22 @@ void mem_init(multiboot_header *mb)
 
 	switch_page_directory(kernel_dir);
 	pg_on = true;
+	move_stack_up();
 
 	setup_heap();
-	//dump_dir();
+	heap_init(mb);
+
+	// dump_dir();
+	// // kprintf("Curr dir at: %p, kdir: %p\n", virt_to_phys(PDIR_ADDR), kernel_dir);
+	// cli();
+	// dir_t *new_dir = clone_directory();
+	// kprintf("switching 2\n");
+	// switch_page_directory(new_dir);
+	// switch_pd(new_dir);
+	// asm volatile("movl %0, %%cr3" : : "r"(new_dir));
+	// sti();
+
+	// dump_dir();
+	kprintf("Curr dir at: %p, kdir: %p\n", virt_to_phys(PDIR_ADDR), kernel_dir);
+	// heap_dump();
 }

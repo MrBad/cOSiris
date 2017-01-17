@@ -14,14 +14,49 @@
 #include "vfs.h"
 #include "initrd.h"
 #include "serial.h"
+#include "task.h"
 
 ulong_t get_esp(void);
 ulong_t get_ebp(void);
-
+fs_node_t *fs_root;
 unsigned int initrd_location, initrd_end;
+unsigned int stack_ptr, stack_size;
 
-void main(unsigned int magic, multiboot_header *mboot) {
+void list_root(fs_node_t *fs_root)
+{
+	// list the contents of //
+	unsigned int i = 0;
+	struct dirent *node = 0;
+	while((node = readdir_fs(fs_root, i))) {
+		kprintf("Found file %s\n", node->name);
+		fs_node_t *fs_node = finddir_fs(fs_root, node->name);
+		if(fs_node->flags & FS_DIRECTORY) {
+			kprintf("\tDir %s\t\n", fs_node->name);
+		} else {
+			char buff[256];
+			unsigned int size;
+			size = read_fs(fs_node, 0, 256, buff);
+			buff[size] = 0;
+			kprintf("\t%s\n", buff);
+		}
+		i++;
+	}
+}
+void shutdown()
+{
+	char *c = "Shutdown";
+	while (*c) { outb(0x8900, *c++); }
+}
 
+
+void task2()
+{
+	kprintf("B");
+}
+
+void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsigned int sptr) {
+	stack_ptr = sptr;
+	stack_size = ssize;
 	console_init();
 	serial_init();
 
@@ -32,7 +67,7 @@ void main(unsigned int magic, multiboot_header *mboot) {
 	kprintf("Kernel info:\n");
 	kprintf("\tcode start: 0x%X, start entry: 0x%X, data start: 0x%X\n", kinfo.code, kinfo.start, kinfo.data);
 	kprintf("\tbss start: 0x%X, end: 0x%X, total size: %i bytes\n", kinfo.bss, kinfo.end, kinfo.size);
-
+	kprintf("\tstack: %p, size: %p\n", kinfo.stack, kinfo.stack_size);
 	kprintf("Setup gdt entries\n");
 	gdt_init();
 
@@ -62,35 +97,34 @@ void main(unsigned int magic, multiboot_header *mboot) {
 	kprintf("Setup paging\n");
 	mem_init(mboot);
 
-	// call_test_sp(0xDEADC0DE);
 	// kprintf("Setup heap\n");
-	heap_init(mboot);
+	// heap_init(mboot);
 
-	kprintf("Initialise initrd\n");
+	extern task_t *current_task;
+	task_init();
+	int ret = fork();
+	cli();
+	kprintf("fork() returned %d pid: %d\n", ret, getpid());
+
+	if(ret == 0) {
+		kprintf("I am the child, with pid: %d\n", getpid());
+	} else {
+		kprintf("I am your father, with pid: %d\n", getpid());
+	}
+	sti();
+
+
+	cli();
+	kprintf("Initialise initrd: %d\n", getpid());
 	// Initialise the initial ramdisk, and set it as the filesystem root.
 
-	// kprintf("initrd %p - %p\n", initrd_location, initrd_end);
-	unsigned int i;
-	fs_node_t *fs_root = initrd_init(initrd_location);
-	// list the contents of //
-	i = 0;
-	struct dirent *node = 0;
-	while((node = readdir_fs(fs_root, i))) {
-		kprintf("Found file %s\n", node->name);
-		fs_node_t *fs_node = finddir_fs(fs_root, node->name);
-		if(fs_node->flags & FS_DIRECTORY) {
-			kprintf("\tDir %s\t\n", fs_node->name);
-		} else {
-			char buff[256];
-			unsigned int size;
-			size = read_fs(fs_node, 0, 256, buff);
-			buff[size] = 0;
-			kprintf("\t%s\n", buff);
-		}
-		i++;
-	}
+	kprintf("initrd %p - %p\n", initrd_location, initrd_end);
+	fs_root = initrd_init(initrd_location);
+	list_root(fs_root);
+	sti();
+	kprintf("OKI DOKI");
 
-	kprintf("Press esc to exit.\n");
+
 
 //	while(1) {
 //		timer_wait(1000);

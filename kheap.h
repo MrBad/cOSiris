@@ -31,5 +31,6 @@ void debug_dump_list(block_meta_t *);
 extern void heap_init();
 extern heap_t *heap;
 void *malloc(unsigned int nbytes);
-
+// Allocate a nbytes of memory, multiple of PAGE_SIZE, PAGE_SIZE aligned
+void *malloc_page_aligned(unsigned int nbytes);
 #endif
