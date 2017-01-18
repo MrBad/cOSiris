@@ -449,10 +449,9 @@ static int iter = 0;
 					if(table[tbl_idx] & P_PRESENT) {
 						frame = (phys_t *)frame_calloc();
 						from_addr = (virt_t *)(dir_idx * 1024 * PAGE_SIZE + tbl_idx * PAGE_SIZE);
-
-						kprintf("copy phys: %p->%p\n", from_addr, frame);
+						// kprintf("copy phys: %p->%p\n", from_addr, frame);
 						addr = temp_map(frame);
-						memcpy(addr, from_addr, PAGE_SIZE);
+						// memcpy(addr, from_addr, PAGE_SIZE);
 						int j;
 						for(j=0; j < 1024; j++) {
 							addr[j] = from_addr[j];
