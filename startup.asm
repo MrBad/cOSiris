@@ -455,7 +455,7 @@ irq_common:
 	pop es
 	pop ds
 	popa
-	add esp, 8
+	add esp, 2 * 4
 	iret
 
 ;; end irqs ;;
