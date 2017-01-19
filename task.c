@@ -12,8 +12,6 @@ extern unsigned int get_ebp();
 extern dir_t *kernel_dir;
 
 
-next_pid = 1;
-
 void task1()
 {
 	unsigned int i;
@@ -29,6 +27,7 @@ void task1()
 void task_init()
 {
 	asm volatile("cli");
+	next_pid = 1;
 	kprintf("TI\n");
 	// init first task (kernel task)
 	current_task = (task_t *) malloc(sizeof(task_t));

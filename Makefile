@@ -22,7 +22,7 @@ bzImage: all
 
 all: $(OBJS)
 	$(LD) $(LDFLAGS) -o kernel.bin $(OBJS)
-
+	make -C util
 lib/libc.a: lib/Makefile
 	make -C lib/ -f Makefile
 
@@ -31,7 +31,9 @@ startup.o: startup.asm
 
 
 clean:
-	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt parport.out System.map lib/libc.a debugger.out serial.out
+	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt parport.out System.map debugger.out serial.out 
+	make -C lib
+	make -C util clean
 
 distclean:
 	make clean

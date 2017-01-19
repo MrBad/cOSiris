@@ -14,6 +14,7 @@ typedef struct task {
 
 task_t *current_task;
 task_t *ready_queue;
+
 int next_pid;
 
 
