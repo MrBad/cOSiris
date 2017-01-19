@@ -32,7 +32,7 @@ startup.o: startup.asm
 
 clean:
 	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt parport.out System.map debugger.out serial.out 
-	make -C lib
+	make -C lib clean
 	make -C util clean
 
 distclean:
