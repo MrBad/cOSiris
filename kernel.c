@@ -94,27 +94,26 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	// kprintf("Setup heap\n");
 	// heap_init(mboot);
-	kprintf("FLAGS1: %08x\n", get_flags());
+	// kprintf("FLAGS1: %08x\n", get_flags());
 
-	extern task_t *current_task;
 	task_init();
 	int ret = fork();
 	kprintf("fork() returned %d pid: %d\n", ret, getpid());
 	if(ret == 0) {
-		//asm volatile("int $32");
 		kprintf("I am the child, with pid: %d\n", getpid());
 		malloc(20);
-		debug_dump_list(first_block);
-		kprintf("____\n");
+		fork();
 	} else {
-		//asm volatile("int $32");
 		kprintf("I am your father, with pid: %d\n", getpid());
 		malloc(100);
-		debug_dump_list(first_block);
-		kprintf("____\n");
 	}
 	kprintf("FLAGS2: %08x, pid:%d\n", get_flags(), getpid());
+	// ret = fork();
+	// if(ret == 0) {
 
+	// } else {
+
+	// }
 	// cli();
 	// kprintf("Initialise initrd: %d\n", getpid());
 	// // Initialise the initial ramdisk, and set it as the filesystem root.
@@ -125,7 +124,12 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	kprintf("OKI DOKI, pid: %d\n", getpid());
 
-
+	cli();
+	if(getpid() == 1) {
+		// debug_dump_list(first_block);
+		ps();
+	}
+	sti();
 
 //	while(1) {
 //		timer_wait(1000);

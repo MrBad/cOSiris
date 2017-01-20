@@ -6,11 +6,12 @@
 
 typedef struct task {
 	int pid;				// task + 0		process id
-	unsigned int esp;		// task + 4		esp
-	unsigned int ebp;		// task + 8		ebp
-	unsigned int eip;		// task + 12	last eip
-	dir_t *page_directory;	// task + 16	task page directory
-	struct task *next;		// task + 20	next task
+	int ppid;				// task + 4		parent pid
+	unsigned int esp;		// task + 8		esp
+	unsigned int ebp;		// task + 12	ebp
+	unsigned int eip;		// task + 16	last eip / instruction pointer
+	dir_t *page_directory;	// task + 20	task page directory
+	struct task *next;		// task + 24	next task
 } task_t;
 
 task_t *current_task;
@@ -23,6 +24,10 @@ void task_init();
 int getpid();
 void task_switch();		// sched.asm
 int fork();				// sched.asm
-
+void print_current_task();
+void ps();
+task_t *get_last_task();
+task_t *get_next_task();
+task_t *get_current_task();
 
 #endif

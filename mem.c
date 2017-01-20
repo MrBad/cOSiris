@@ -432,14 +432,19 @@ dir_t *clone_directory()
 	virt_t *table, *addr;
 	phys_t *frame;
 	virt_t *from_addr;
+	extern unsigned int stack_size;
+
+	cli();
 	for(dir_idx = 0; dir_idx < 1023; dir_idx++) {
 		if(curr_dir[dir_idx] & P_PRESENT) {
-			if(dir_idx < 1020) {
+			// from 0 to kernel stack, we link the pages
+			if(dir_idx < ((KERNEL_STACK_HI-stack_size)/1024/PAGE_SIZE)) {
 				addr = temp_map(new_dir);
 				addr[dir_idx] = curr_dir[dir_idx];
 				temp_unmap();
 				// kprintf("Link dir: %p\n", (dir_idx * 1024 * PAGE_SIZE));
 			}
+			// we clone the rest
 			else {
 				new_table = frame_calloc();
 				addr = temp_map(new_dir);
@@ -451,13 +456,9 @@ dir_t *clone_directory()
 					if(table[tbl_idx] & P_PRESENT) {
 						frame = (phys_t *)frame_calloc();
 						from_addr = (virt_t *)(dir_idx * 1024 * PAGE_SIZE + tbl_idx * PAGE_SIZE);
-						// kprintf("copy phys: %p->%p\n", from_addr, frame);
+						//kprintf("copy phys: %p->%p\n", from_addr, frame);
 						addr = temp_map(frame);
 						memcpy(addr, from_addr, PAGE_SIZE);
-						// int j;
-						// for(j=0; j < 1024; j++) {
-							// addr[j] = from_addr[j];
-						// }
 						temp_unmap();
 
 						addr = temp_map(new_table);
@@ -473,10 +474,13 @@ dir_t *clone_directory()
 	addr[1023] = (phys_t)new_dir | P_PRESENT | P_READ_WRITE;
 	temp_unmap();
 	iter++;
+	sti();
 	return new_dir;
 }
 
 
+// Moving stack up in memory (KERNEL_STACK_HI)
+// so clone_directory() will clone it instead of linking it
 void move_stack_up()
 {
 	KASSERT(pg_on);
@@ -509,6 +513,7 @@ void move_stack_up()
 	sti();
 }
 
+// inline me, so we don't modify esp, ebp //
 inline void switch_page_directory (dir_t *dir) __attribute__((always_inline));
 inline void switch_page_directory(dir_t *dir)
 {

@@ -23,7 +23,7 @@ extern int getpid();
 void debug_dump_list(block_meta_t *p) {
 //	block_meta_t *p;
 //	p = first_block;
-	cli();
+	// cli();
 	static int dplitr = 0;
 	while (p) {
 		KASSERT(p->magic_head == MAGIC_HEAD);
@@ -32,9 +32,9 @@ void debug_dump_list(block_meta_t *p) {
 		        p->size, p->free ? "free" : "used", p->next);
 		KASSERT(p != p->next);
 		p = p->next;
-		if(dplitr++ > 20) {panic("Too many iterations\n");}
+		if(dplitr++ > 50) {panic("Too many iterations\n");}
 	}
-	sti();
+	//sti();
 }
 
 void heap_dump()

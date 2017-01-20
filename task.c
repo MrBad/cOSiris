@@ -20,11 +20,11 @@ task_t *task_new() {
 }
 
 void task_init() {
-	//cli();
+	cli();
 	current_task = task_new();
 	current_task->page_directory = (dir_t *) virt_to_phys(PDIR_ADDR);
 	task_queue = current_task;
-	//sti();
+	sti();
 }
 
 void print_current_task(){
@@ -34,7 +34,7 @@ void print_current_task(){
 void ps() {
 	task_t *t = task_queue;
 	while(t) {
-		kprintf("pid: %d, eip: %08x, esp:%08x, ebp: %08x, pd: %08x\n", t->pid, t->eip, t->esp, t->ebp, t->page_directory);
+		kprintf("pid: %d, ppid: %d, eip: %08x, esp:%08x, ebp: %08x, pd: %08x\n", t->pid, t->ppid, t->eip, t->esp, t->ebp, t->page_directory);
 		t = t->next;
 	}
 }
@@ -56,12 +56,6 @@ task_t *get_next_task() {
 }
 task_t *get_current_task(){
 	return current_task;
-}
-
-task_t *fork_inner() {
-	task_t *t = task_new();
-	t->page_directory = clone_directory();
-	return t;
 }
 
 int getpid() {
