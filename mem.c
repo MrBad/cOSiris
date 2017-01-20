@@ -40,6 +40,7 @@ int page_fault(struct iregs *r)
 	}
 	kprintf("____\nFAULT: %s addr: %p, ", r->err_code & P_PRESENT ? "page violation" : "not present", fault_addr);
 	kprintf("stack: 0x%X\n", get_esp());
+
 	kprintf("eip: 0x%p\n", r->eip);
 	kprintf("vaddr: %p, dir_idx: %i, table_idx: %i\n", table_idx*1024*PAGE_SIZE+page_idx*PAGE_SIZE, table_idx, page_idx);
 	kprintf("%s, ", r->err_code & P_READ_WRITE ? "write" : "read", fault_addr);
@@ -361,16 +362,13 @@ void *sbrk(unsigned int increment) {
 // 	for(dir_idx = 0; dir_idx < 1023; dir_idx++) {
 // 		if(curr_dir[dir_idx] & P_PRESENT) {
 //
-//
 // 			if(dir_idx == 0) { // link kernel entries //
 // 				map(RESV_PAGE, (phys_t) new_dir, P_PRESENT | P_READ_WRITE);
 // 				((dir_t *)RESV_PAGE)[dir_idx] = curr_dir[dir_idx];
 // 				unmap(RESV_PAGE);
 // 				// new_dir[dir_idx] = curr_dir[dir_idx];
 // 			}
-//
 // 			else {
-//
 //
 // 				kprintf("{DIR:%d, %p\n", dir_idx, table);
 // 				new_table = frame_calloc();
@@ -407,6 +405,7 @@ void *sbrk(unsigned int increment) {
 // 			}
 // 		}
 // 	}
+// 	kprintf("OK\n");
 // 	sti();
 // 	return new_dir;
 // }
@@ -422,8 +421,10 @@ void temp_unmap()
 	unmap(RESV_PAGE);
 }
 
-dir_t *clone_directory() {
-static int iter = 0;
+
+dir_t *clone_directory()
+{
+	static int iter = 0;
 	int dir_idx, tbl_idx;
 	dir_t *curr_dir = (dir_t *)PDIR_ADDR;
 	dir_t *new_dir = (dir_t *)frame_calloc();
@@ -433,10 +434,11 @@ static int iter = 0;
 	virt_t *from_addr;
 	for(dir_idx = 0; dir_idx < 1023; dir_idx++) {
 		if(curr_dir[dir_idx] & P_PRESENT) {
-			if(dir_idx == 0) {
+			if(dir_idx < 1020) {
 				addr = temp_map(new_dir);
-				addr[0] = curr_dir[0];
+				addr[dir_idx] = curr_dir[dir_idx];
 				temp_unmap();
+				// kprintf("Link dir: %p\n", (dir_idx * 1024 * PAGE_SIZE));
 			}
 			else {
 				new_table = frame_calloc();
@@ -451,11 +453,11 @@ static int iter = 0;
 						from_addr = (virt_t *)(dir_idx * 1024 * PAGE_SIZE + tbl_idx * PAGE_SIZE);
 						// kprintf("copy phys: %p->%p\n", from_addr, frame);
 						addr = temp_map(frame);
-						// memcpy(addr, from_addr, PAGE_SIZE);
-						int j;
-						for(j=0; j < 1024; j++) {
-							addr[j] = from_addr[j];
-						}
+						memcpy(addr, from_addr, PAGE_SIZE);
+						// int j;
+						// for(j=0; j < 1024; j++) {
+							// addr[j] = from_addr[j];
+						// }
 						temp_unmap();
 
 						addr = temp_map(new_table);
@@ -473,6 +475,7 @@ static int iter = 0;
 	iter++;
 	return new_dir;
 }
+
 
 void move_stack_up()
 {
@@ -506,11 +509,14 @@ void move_stack_up()
 	sti();
 }
 
-
-void switch_page_directory(dir_t *dir)
+inline void switch_page_directory (dir_t *dir) __attribute__((always_inline));
+inline void switch_page_directory(dir_t *dir)
 {
-	// recursively_map_page_directory(dir);
-	switch_pd(dir);
+	asm volatile("mov %0, %%cr3":: "r"(dir));
+	unsigned int cr0;
+	asm volatile("mov %%cr0, %0": "=r"(cr0));
+	cr0 |= 0x80000000;
+	asm volatile("mov %0, %%cr0":: "r"(cr0));
 }
 
 void mem_init(multiboot_header *mb)
@@ -530,13 +536,10 @@ void mem_init(multiboot_header *mb)
 
 	// dump_dir();
 	// // kprintf("Curr dir at: %p, kdir: %p\n", virt_to_phys(PDIR_ADDR), kernel_dir);
-	// cli();
+
 	// dir_t *new_dir = clone_directory();
 	// kprintf("switching 2\n");
 	// switch_page_directory(new_dir);
-	// switch_pd(new_dir);
-	// asm volatile("movl %0, %%cr3" : : "r"(new_dir));
-	// sti();
 
 	// dump_dir();
 	kprintf("Curr dir at: %p, kdir: %p\n", virt_to_phys(PDIR_ADDR), kernel_dir);

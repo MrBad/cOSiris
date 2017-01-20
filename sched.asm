@@ -2,7 +2,7 @@ EXTERN task_new, clone_directory, get_last_task, print_int
 [GLOBAL fork]
 
 fork:
-	cli								; do not interrupt me
+	;cli								; do not interrupt me
 	call task_new					; get a new child (task_t)
 	mov [eax + 4], esp				; save child esp
 	mov [eax + 8], ebp				; save child ebp
@@ -20,20 +20,20 @@ fork:
 	mov [eax + 20], ebx				; link this new child to task_queue
 
 .parent:
-	call print_int					; blah
 	mov eax, [ebx]					; move the pid of child into eax
-	sti								; go interrupts
 	jmp .bye						; jump back with child pid
 
 .child:
 	xor eax, eax					; here first jumps the child when it's first scheduled by task_switch
 									; return 0 to it
 .bye:
+	;sti
 	ret
 
 EXTERN get_current_task, get_next_task, print_int, ps, print_current_task
 [GLOBAL task_switch]
 task_switch:
+
 	call get_current_task			; if current_task not inited, just return
 	cmp eax, 0
 	je .bye
@@ -45,11 +45,24 @@ task_switch:
 
 	call get_next_task				; get next task in queue
 
+	cli
+;	push eax
+;	call print_int
+;	pop eax
+
 	mov esp, [eax + 4]				; move it's saved esp to esp
 	mov ebp, [eax + 8]				; ebp
 	mov ebx, [eax + 16]				; it's cloned directory
 	mov cr3, ebx					; change page directory
+	sti
 	jmp [eax + 12]					; jump tp it's saved eip -> probably task_switch.bye or fork.child
 
 .bye:
+	ret
+
+
+GLOBAL get_flags
+get_flags:
+	pushfd
+	pop eax
 	ret

@@ -16,8 +16,6 @@
 #include "serial.h"
 #include "task.h"
 
-ulong_t get_esp(void);
-ulong_t get_ebp(void);
 fs_node_t *fs_root;
 unsigned int initrd_location, initrd_end;
 unsigned int stack_ptr, stack_size;
@@ -42,6 +40,7 @@ void list_root(fs_node_t *fs_root)
 		i++;
 	}
 }
+
 void shutdown()
 {
 	char *c = "Shutdown";
@@ -49,11 +48,7 @@ void shutdown()
 }
 
 
-void task2()
-{
-	kprintf("B");
-}
-
+extern int get_flags();
 void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsigned int sptr) {
 	stack_ptr = sptr;
 	stack_size = ssize;
@@ -99,24 +94,24 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	// kprintf("Setup heap\n");
 	// heap_init(mboot);
+	kprintf("FLAGS1: %08x\n", get_flags());
 
 	extern task_t *current_task;
 	task_init();
 	int ret = fork();
-	cli();
 	kprintf("fork() returned %d pid: %d\n", ret, getpid());
-
 	if(ret == 0) {
+		asm volatile("int $32");
 		kprintf("I am the child, with pid: %d\n", getpid());
 		malloc(20);
 		debug_dump_list(first_block);
 	} else {
+		asm volatile("int $32");
 		kprintf("I am your father, with pid: %d\n", getpid());
 		malloc(100);
 		debug_dump_list(first_block);
 	}
-
-
+	kprintf("FLAGS2: %08x, pid:%d\n", get_flags(), getpid());
 
 	// cli();
 	// kprintf("Initialise initrd: %d\n", getpid());
@@ -125,9 +120,9 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	// kprintf("initrd %p - %p\n", initrd_location, initrd_end);
 	// fs_root = initrd_init(initrd_location);
 	// list_root(fs_root);
-	// sti();
+
 	kprintf("OKI DOKI, pid: %d\n", getpid());
-	sti();
+
 
 
 //	while(1) {
@@ -137,5 +132,10 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 //	for(i=0;i<100;i++) {
 //		timer_wait(1000);
 //	}
+	sti();
+	for(;;) {
+		// kprintf(".");
+		// asm("sti");
+ 	}
 	return;
 }
