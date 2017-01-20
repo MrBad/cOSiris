@@ -98,33 +98,28 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	task_init();
 	int ret = fork();
+	cli();
 	kprintf("fork() returned %d pid: %d\n", ret, getpid());
 	if(ret == 0) {
 		kprintf("I am the child, with pid: %d\n", getpid());
 		malloc(20);
-		fork();
 	} else {
 		kprintf("I am your father, with pid: %d\n", getpid());
 		malloc(100);
 	}
 	kprintf("FLAGS2: %08x, pid:%d\n", get_flags(), getpid());
-	// ret = fork();
-	// if(ret == 0) {
 
-	// } else {
 
-	// }
-	// cli();
-	// kprintf("Initialise initrd: %d\n", getpid());
-	// // Initialise the initial ramdisk, and set it as the filesystem root.
-	//
-	// kprintf("initrd %p - %p\n", initrd_location, initrd_end);
-	// fs_root = initrd_init(initrd_location);
-	// list_root(fs_root);
+	kprintf("Initialise initrd: %d\n", getpid());
+	// Initialise the initial ramdisk, and set it as the filesystem root.
+
+	kprintf("initrd %p - %p\n", initrd_location, initrd_end);
+	fs_root = initrd_init(initrd_location);
+	list_root(fs_root);
+
 
 	kprintf("OKI DOKI, pid: %d\n", getpid());
 
-	cli();
 	if(getpid() == 1) {
 		// debug_dump_list(first_block);
 		ps();
@@ -139,6 +134,6 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 //		timer_wait(1000);
 //	}
 	// sti();
-	
+
 	return;
 }

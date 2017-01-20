@@ -1,4 +1,5 @@
 #include "include/string.h"
+#include "x86.h"
 #include "console.h"
 #include "kheap.h"
 #include "vfs.h"
@@ -75,6 +76,11 @@ struct fs_node *initrd_finddir(struct fs_node *node, char *name) {
 
 
 fs_node_t *initrd_init(unsigned int location) {
+	static bool initrd_inited = false;
+	if(initrd_inited) {
+		return initrd_root;
+	}
+	
 	kprintf("Initrd init\n");
 	// initialise the root node
 	initrd_root = (fs_node_t *) malloc(sizeof(fs_node_t));
@@ -116,6 +122,7 @@ fs_node_t *initrd_init(unsigned int location) {
 	unsigned int i;
 	for (i = 0; i < initrd_header->nfiles; i++) {
 		file_headers[i].offset += location;
+		// kprintf("^%i, %p, %p\n", i, file_headers[i].offset, location);
 		strcpy(root_nodes[i].name, file_headers[i].name);
 		root_nodes[i].mask = root_nodes[i].uid = root_nodes[i].gid = 0;
 		root_nodes[i].length = file_headers[i].length;
@@ -129,6 +136,7 @@ fs_node_t *initrd_init(unsigned int location) {
 		root_nodes[i].close = 0;
 		root_nodes[i].impl = 0;
 	}
+	initrd_inited = true;
 
 	return initrd_root;
 }

@@ -41,5 +41,3 @@ fs_node_t *finddir_fs(fs_node_t *node, char *name) {
 }
 
 //void initrd_open(fs_node_t *node, unsigned int flags) { }
-
-
