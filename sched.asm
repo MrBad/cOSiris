@@ -2,7 +2,7 @@ EXTERN task_new, clone_directory, get_last_task, print_int
 [GLOBAL fork]
 
 fork:
-	;cli								; do not interrupt me
+	;cli							; do not interrupt me
 	call task_new					; get a new child (task_t)
 	mov [eax + 4], esp				; save child esp
 	mov [eax + 8], ebp				; save child ebp
@@ -24,6 +24,7 @@ fork:
 	jmp .bye						; jump back with child pid
 
 .child:
+	int 32							; why i need to manual switch?
 	xor eax, eax					; here first jumps the child when it's first scheduled by task_switch
 									; return 0 to it
 .bye:
@@ -45,16 +46,14 @@ task_switch:
 
 	call get_next_task				; get next task in queue
 
-	cli
-;	push eax
+	;cli
 ;	call print_int
-;	pop eax
 
 	mov esp, [eax + 4]				; move it's saved esp to esp
 	mov ebp, [eax + 8]				; ebp
 	mov ebx, [eax + 16]				; it's cloned directory
 	mov cr3, ebx					; change page directory
-	sti
+	;sti
 	jmp [eax + 12]					; jump tp it's saved eip -> probably task_switch.bye or fork.child
 
 .bye:

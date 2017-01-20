@@ -101,12 +101,12 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	int ret = fork();
 	kprintf("fork() returned %d pid: %d\n", ret, getpid());
 	if(ret == 0) {
-		asm volatile("int $32");
+		//asm volatile("int $32");
 		kprintf("I am the child, with pid: %d\n", getpid());
 		malloc(20);
 		debug_dump_list(first_block);
 	} else {
-		asm volatile("int $32");
+		//asm volatile("int $32");
 		kprintf("I am your father, with pid: %d\n", getpid());
 		malloc(100);
 		debug_dump_list(first_block);
