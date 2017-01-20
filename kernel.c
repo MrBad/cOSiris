@@ -105,11 +105,13 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 		kprintf("I am the child, with pid: %d\n", getpid());
 		malloc(20);
 		debug_dump_list(first_block);
+		kprintf("____\n");
 	} else {
 		//asm volatile("int $32");
 		kprintf("I am your father, with pid: %d\n", getpid());
 		malloc(100);
 		debug_dump_list(first_block);
+		kprintf("____\n");
 	}
 	kprintf("FLAGS2: %08x, pid:%d\n", get_flags(), getpid());
 
@@ -132,7 +134,7 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 //	for(i=0;i<100;i++) {
 //		timer_wait(1000);
 //	}
-	sti();
+	// sti();
 	for(;;) {
 		// kprintf(".");
 		// asm("sti");

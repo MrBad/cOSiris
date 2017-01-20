@@ -1,3 +1,4 @@
+#include "x86.h"
 #include "console.h"
 #include "mem.h"
 #include "kheap.h"
@@ -14,6 +15,7 @@ extern bool heap_active;
 
 heap_t myheap = {0};
 heap_t *heap = &myheap;
+extern int getpid();
 // block_meta_t *first_block = 0;
 //unsigned int calls = 0;
 //extern page_directory_t *kernel_dir;
@@ -21,16 +23,18 @@ heap_t *heap = &myheap;
 void debug_dump_list(block_meta_t *p) {
 //	block_meta_t *p;
 //	p = first_block;
+	cli();
 	static int dplitr = 0;
 	while (p) {
 		KASSERT(p->magic_head == MAGIC_HEAD);
 		KASSERT(p->magic_end == MAGIC_END);
-		kprintf("node: 0x%X, ptr: %p, size: %8d, %s, next: 0x%X\n", p, p+1,
+		kprintf("pid:%d, node: 0x%X, ptr: %p, size: %8d, %s, next: 0x%X\n", getpid(), p, p+1,
 		        p->size, p->free ? "free" : "used", p->next);
 		KASSERT(p != p->next);
 		p = p->next;
 		if(dplitr++ > 20) {panic("Too many iterations\n");}
 	}
+	sti();
 }
 
 void heap_dump()

@@ -24,11 +24,11 @@ fork:
 	jmp .bye						; jump back with child pid
 
 .child:
-	int 32							; why i need to manual switch?
+	;int 32							; why i need to manual switch?
 	xor eax, eax					; here first jumps the child when it's first scheduled by task_switch
 									; return 0 to it
 .bye:
-	;sti
+	sti
 	ret
 
 EXTERN get_current_task, get_next_task, print_int, ps, print_current_task
