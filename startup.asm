@@ -34,7 +34,9 @@ start:
 	push ebx	; ptr struct multiboot_header
 	push eax	; magic
 	call main
-	jmp $
+.h:
+	hlt
+	jmp .h
 
 
 

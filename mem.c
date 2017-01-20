@@ -342,90 +342,25 @@ void *sbrk(unsigned int increment) {
 	return (void *) start;
 }
 
-
-// to be tested more //
-// so ugly code, but i preffered indirect temp mapping via RESV_PAGE instead using malloc_page_aligned
-// witch is not yet safe nor mature //
-// also - using direct frame assigning is more efficient
-// also i did not turn off paging...
-// dir_t *clone_directory()
-// {
-// 	cli();
-// 	dir_t *new_dir = frame_calloc();
-// 	// memset(new_dir, 0, PAGE_SIZE);
-// 	dir_t *curr_dir = (dir_t *)PDIR_ADDR;
-// 	virt_t *table;
-// 	phys_t *new_table;
-// 	int dir_idx=0, tbl_idx=0;
-// 	unsigned char *p, *k;
-//
-// 	for(dir_idx = 0; dir_idx < 1023; dir_idx++) {
-// 		if(curr_dir[dir_idx] & P_PRESENT) {
-//
-// 			if(dir_idx == 0) { // link kernel entries //
-// 				map(RESV_PAGE, (phys_t) new_dir, P_PRESENT | P_READ_WRITE);
-// 				((dir_t *)RESV_PAGE)[dir_idx] = curr_dir[dir_idx];
-// 				unmap(RESV_PAGE);
-// 				// new_dir[dir_idx] = curr_dir[dir_idx];
-// 			}
-// 			else {
-//
-// 				kprintf("{DIR:%d, %p\n", dir_idx, table);
-// 				new_table = frame_calloc();
-//
-// 				map(RESV_PAGE, (phys_t) new_dir, P_PRESENT | P_READ_WRITE);
-// 				((dir_t *)RESV_PAGE)[dir_idx] = (phys_t)new_table | P_PRESENT | P_READ_WRITE;
-// 				unmap(RESV_PAGE);
-//
-// 				// new_dir[dir_idx] = (phys_t)new_table | P_PRESENT | P_READ_WRITE | P_USER;
-// 				if(dir_idx == 1022) {
-// 					kprintf("---->----\n");
-// 					continue;
-// 				}
-// 				table = (virt_t *) (PTABLES_ADDR + dir_idx * PAGE_SIZE);
-// 				for(tbl_idx = 0; tbl_idx < 1024; tbl_idx++) {
-// 					if(table[tbl_idx] & P_PRESENT) {
-// 						p = (char *)(dir_idx*1024*PAGE_SIZE+tbl_idx*PAGE_SIZE);
-// 						k = (char *)RESV_PAGE;
-// 						kprintf("-[%p-\n", p);
-// 						void *page = frame_calloc();
-// 						map(RESV_PAGE, (phys_t) page, P_PRESENT | P_READ_WRITE);
-// 						// memcpy((void *)RESV_PAGE, (void *) (dir_idx*1024*PAGE_SIZE+tbl_idx*PAGE_SIZE), PAGE_SIZE);
-//
-// 						for(;(unsigned int)k < RESV_PAGE+PAGE_SIZE;p++,k++) {
-// 							*p = *k;
-// 						}
-// 						unmap(RESV_PAGE);
-//
-// 						map(RESV_PAGE, (phys_t) new_table, P_PRESENT | P_READ_WRITE);
-// 						((virt_t *) RESV_PAGE)[tbl_idx] = (phys_t) page | P_PRESENT | P_READ_WRITE;
-// 						unmap(RESV_PAGE);
-// 					}
-// 				}
-// 			}
-// 		}
-// 	}
-// 	kprintf("OK\n");
-// 	sti();
-// 	return new_dir;
-// }
-
+// temporary maps a physical frame to a known virtual address so we can change it
+// when paging is on
 virt_t *temp_map(phys_t *page)
 {
 	map(RESV_PAGE, (phys_t)page, P_PRESENT|P_READ_WRITE);
 	return (virt_t *)RESV_PAGE;
 }
 
+// unmaps known virtual addr //
 void temp_unmap()
 {
 	unmap(RESV_PAGE);
 }
 
-
+// clone current address space //
 dir_t *clone_directory()
 {
 	static int iter = 0;
-	int dir_idx, tbl_idx;
+	unsigned int dir_idx, tbl_idx;
 	dir_t *curr_dir = (dir_t *)PDIR_ADDR;
 	dir_t *new_dir = (dir_t *)frame_calloc();
 	phys_t *new_table;
@@ -469,10 +404,7 @@ dir_t *clone_directory()
 			}
 		}
 	}
-
-	addr = temp_map(new_dir);
-	addr[1023] = (phys_t)new_dir | P_PRESENT | P_READ_WRITE;
-	temp_unmap();
+	recursively_map_page_directory(new_dir);
 	iter++;
 	sti();
 	return new_dir;

@@ -139,9 +139,6 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 //		timer_wait(1000);
 //	}
 	// sti();
-	for(;;) {
-		// kprintf(".");
-		// asm("sti");
- 	}
+	
 	return;
 }

@@ -6,4 +6,5 @@ unsigned char inb(unsigned short _port);
 // pause interrupts
 #define cli() __asm__ ("cli"::)
 #define nop() __asm__ ("nop"::)
+#define hlt() __asm__ ("hlt"::)
 extern void bochs_break();
