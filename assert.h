@@ -1,5 +1,7 @@
 #include  "console.h"
+
 extern void halt();
+
 #define KASSERT(cond) do { \
 	if (!(cond)) { \
 		kprintf("Assertion: (%s) failed in %s(), at %s, line %d\n", \
@@ -7,4 +9,3 @@ extern void halt();
 		halt(); \
 	} \
 } while(0)
-

@@ -1,3 +1,6 @@
+#ifndef _GDT_H
+#define _GDT_H
+
 struct gdt_entry {
 	unsigned short limit_low;
 	unsigned short base_low;
@@ -14,3 +17,5 @@ struct gdt_ptr {
 } __attribute__((packed));
 
 extern void gdt_init(void);
+
+#endif

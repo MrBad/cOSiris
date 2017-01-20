@@ -8,6 +8,7 @@
 #include "isr.h"
 #include "irq.h"
 #include "timer.h"
+#include "delay.h"
 #include "kbd.h"
 #include "mem.h"
 #include "kheap.h"
@@ -80,6 +81,8 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	kprintf("Setup timer\n");
 	timer_install();
 
+	kprintf("Calibrating delay loop: %d loops/ms\n", calibrate_delay_loop());
+
 	kprintf("Setup keyboard\n");
 	kbd_install();
 
@@ -92,40 +95,13 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	kprintf("Setup paging\n");
 	mem_init(mboot);
 
-	// kprintf("Setup heap\n");
-	// heap_init(mboot);
-	// kprintf("FLAGS1: %08x\n", get_flags());
-
-	task_init();
-	int ret = fork();
-	cli();
-	kprintf("fork() returned %d pid: %d\n", ret, getpid());
-	if(ret == 0) {
-		kprintf("I am the child, with pid: %d\n", getpid());
-		malloc(20);
-	} else {
-		kprintf("I am your father, with pid: %d\n", getpid());
-		malloc(100);
-	}
-	kprintf("FLAGS2: %08x, pid:%d\n", get_flags(), getpid());
-
-
-	kprintf("Initialise initrd: %d\n", getpid());
-	// Initialise the initial ramdisk, and set it as the filesystem root.
-
 	kprintf("initrd %p - %p\n", initrd_location, initrd_end);
 	fs_root = initrd_init(initrd_location);
+
+	task_init();
+
+
 	list_root(fs_root);
-
-
-	kprintf("OKI DOKI, pid: %d\n", getpid());
-
-	if(getpid() == 1) {
-		// debug_dump_list(first_block);
-		ps();
-	}
-	sti();
-
 //	while(1) {
 //		timer_wait(1000);
 //		kprintf("+");

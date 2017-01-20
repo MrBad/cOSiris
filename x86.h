@@ -1,3 +1,6 @@
+#ifndef _X86_H
+#define _X86_H
+
 void outb(unsigned short _port, unsigned char _data);
 void outportw(unsigned _port, unsigned _data);
 unsigned char inb(unsigned short _port);
@@ -8,3 +11,6 @@ unsigned char inb(unsigned short _port);
 #define nop() __asm__ ("nop"::)
 #define hlt() __asm__ ("hlt"::)
 extern void bochs_break();
+
+
+#endif

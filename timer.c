@@ -3,6 +3,7 @@
 #include "irq.h"
 #include "console.h"
 #include "task.h"
+#include "timer.h"
 
 // programmable interval timer //
 // timer has clock @ 1193180Hz
@@ -19,8 +20,6 @@ void timer_phase (int hz) {
 	outb(pit_data1, divisor >> 8);	// high byte of divisor
 }
 
-unsigned int timer_ticks = 0;
-
 void timer_handler(struct iregs *r) {
 	timer_ticks++;
 	// if(timer_ticks % 1000 == 0) {
@@ -33,6 +32,7 @@ void timer_handler(struct iregs *r) {
 
 
 void timer_install(void) {
+	timer_ticks = 0;
 	timer_phase(100); // o intrerupere la a suta parte din secunda
 	irq_install_handler(0, timer_handler); // seteaza timerul pe intreruperea 0
 }

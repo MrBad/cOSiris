@@ -1,3 +1,6 @@
+#ifndef _IDT_H
+#define _IDT_H
+
 struct idt_entry {
 	unsigned short base_lo;
 	unsigned short sel;		// segment
@@ -13,3 +16,5 @@ struct idt_ptr {
 
 extern void idt_init();
 void idt_set_gate(unsigned char num, unsigned long base, unsigned short sel, unsigned char flags);
+
+#endif

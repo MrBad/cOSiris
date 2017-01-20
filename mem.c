@@ -1,11 +1,11 @@
 #include <types.h>		// types //
 #include "string.h"		// memset //
 #include "console.h"	// kprint, panic//
-#include "assert.h"		// KASSERT /
 #include "isr.h" 		// iregs //
 #include "multiboot.h"	// multiboot_header //
 #include "kernel.h" 	// kinfo_t //
 #include "kheap.h"		// HEAP defs //
+#include "assert.h"		// KASSERT /
 #include "mem.h"
 #include "x86.h"
 
@@ -17,6 +17,7 @@ dir_t	*kernel_dir = NULL;
 bool pg_on = false;
 
 extern void shutdown();
+extern void halt();
 
 bool paging_on()
 {

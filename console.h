@@ -1,3 +1,6 @@
+#ifndef _CONSOLE_H
+#define _CONSOLE_H
+
 #define VGA_FB_ADDR 0xB8000
 
 extern void console_init(void);
@@ -7,3 +10,6 @@ extern void clrscr(void);
 extern void kprintf(char *fmt, ...);
 extern void setxy(unsigned long r, unsigned long c);
 extern void panic(char *fmt, ...);
+
+
+#endif

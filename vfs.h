@@ -1,9 +1,9 @@
 //
 // Created by root on 27/01/16.
 //
+#ifndef _VFS_H
+#define _VFS_H
 
-//#ifndef COSIRIS_VFS_H
-//#define COSIRIS_VFS_H
 
 #define FS_FILE        0x01
 #define FS_DIRECTORY   0x02
@@ -69,4 +69,4 @@ struct dirent *readdir_fs(fs_node_t *node, unsigned int index);
 fs_node_t *finddir_fs(fs_node_t *node, char *name);
 
 
-//#endif //COSIRIS_VFS_H
+#endif

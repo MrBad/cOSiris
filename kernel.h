@@ -1,7 +1,10 @@
+#ifndef _KERNEL_H
+#define _KERNEL_H
+
 //#define assert(condition) do { if (!(condition)) { kprintf("assertion fail: " #condition); } } while(0)
 
 //
-//	Cateva informatii despre kernel, pasate de linker si extrase cu get_kernel_info din startup.asm
+//	Kernel infos passed by linked and get with get_kernel_info in asm
 //
 struct kinfo_t {
 	unsigned int code;	// adresa unde incepe kernelul - 1M
@@ -16,3 +19,5 @@ struct kinfo_t {
 
 struct kinfo_t kinfo;
 extern int get_kernel_info(struct kinfo_t *kinfo);		// definit in startup.asm
+
+#endif

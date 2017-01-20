@@ -80,7 +80,7 @@ fs_node_t *initrd_init(unsigned int location) {
 	if(initrd_inited) {
 		return initrd_root;
 	}
-	
+
 	kprintf("Initrd init\n");
 	// initialise the root node
 	initrd_root = (fs_node_t *) malloc(sizeof(fs_node_t));
@@ -136,7 +136,7 @@ fs_node_t *initrd_init(unsigned int location) {
 		root_nodes[i].close = 0;
 		root_nodes[i].impl = 0;
 	}
-	initrd_inited = true;
 
+	initrd_inited = true;
 	return initrd_root;
 }
