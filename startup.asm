@@ -309,7 +309,7 @@ isr31:
 isr128:
 	cli
 	push byte 0
-	push byte 128
+	push 128
 	jmp isr_common
 
 extern isr_handler

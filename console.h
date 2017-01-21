@@ -3,13 +3,13 @@
 
 #define VGA_FB_ADDR 0xB8000
 
-extern void console_init(void);
-extern void scroll_up();
-extern void scroll_down();
-extern void clrscr(void);
-extern void kprintf(char *fmt, ...);
-extern void setxy(unsigned long r, unsigned long c);
-extern void panic(char *fmt, ...);
-
+void console_init(void);
+void scroll_up();
+void scroll_down();
+void clrscr(void);
+void kprintf(char *fmt, ...);
+void setxy(unsigned long r, unsigned long c);
+void panic(char *fmt, ...);
+void console_write(char *str);
 
 #endif

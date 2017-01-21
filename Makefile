@@ -12,7 +12,7 @@ LDFLAGS	= -g -melf_i386 -T ldscript.ld #-Map System.map
 
 OBJS =	x86.o console.o kernel.o startup.o multiboot.o gdt.o idt.o isr.o irq.o \
 		timer.o kbd.o serial.o delay.o mem.o kheap.o vfs.o initrd.o \
-		task.o sched.o syscall.o lib/libc.a
+		task.o sched.o syscall.o sys.o lib/libc.a
 
 bzImage: all
 	objdump --source kernel.bin > kernel.lst
@@ -31,6 +31,10 @@ startup.o: startup.asm
 	$(ASM) $(ASMFLAGS) startup.asm
 sched.o: sched.asm
 	$(ASM) $(ASMFLAGS) sched.asm
+sys.o: sys.asm
+	$(ASM) $(ASMFLAGS) sys.asm
+
+	
 clean:
 	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt parport.out System.map debugger.out serial.out
 	make -C lib clean
