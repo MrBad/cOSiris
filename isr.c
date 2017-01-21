@@ -1,5 +1,6 @@
 #include "isr.h"
 #include "idt.h"
+#include <string.h>
 #include "console.h"
 
 
@@ -38,9 +39,13 @@ extern void isr28();
 extern void isr29();
 extern void isr30();
 extern void isr31();
+extern void isr128();
 
 
-void isr_init(void){
+
+void *isr_routines[256];
+
+void isr_init() {
 	idt_set_gate(0, (unsigned)isr0, 0x08, 0x8E);
 	idt_set_gate(1, (unsigned)isr1, 0x08, 0x8E);
 	idt_set_gate(2, (unsigned)isr2, 0x08, 0x8E);
@@ -73,6 +78,9 @@ void isr_init(void){
 	idt_set_gate(29, (unsigned)isr29, 0x08, 0x8E);
 	idt_set_gate(30, (unsigned)isr30, 0x08, 0x8E);
 	idt_set_gate(31, (unsigned)isr31, 0x08, 0x8E);
+	idt_set_gate(128, (unsigned)isr128, 0x08, 0x8E);
+
+	memset(isr_routines, 0, sizeof(isr_routines));
 
 }
 
@@ -128,5 +136,32 @@ void fault_handler(struct iregs *r) {
 		kprintf("  cs:  0x%-8X  eip: 0x%-8X  flgs: 0x%-8X  uesp: 0x%-8X\n", r->cs, r->eip, r->eflags, r->useresp);
 		kprintf("  ss:  0x%-8X  errcode: %-8X\n", r->ss, r->err_code);
 		halt();
+	}
+}
+
+
+void isr_install_handler(int isr, unsigned int (*handler)(struct iregs *r))
+{
+	isr_routines[isr] = handler;
+}
+
+void isr_uninstall_handler(int isr)
+{
+	isr_routines[isr] = 0;
+}
+
+
+unsigned int isr_handler(struct iregs *r)
+{
+	unsigned int int_no = 0xFF & r->int_no;
+	unsigned int (*handler) (struct iregs *r);
+
+	handler = isr_routines[int_no];
+	if(handler) {
+		return handler(r);
+	}
+	else {
+		fault_handler(r);
+		return 0;
 	}
 }

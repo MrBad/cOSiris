@@ -16,6 +16,7 @@
 #include "initrd.h"
 #include "serial.h"
 #include "task.h"
+#include "syscall.h"
 
 fs_node_t *fs_root;
 unsigned int initrd_location, initrd_end;
@@ -97,19 +98,29 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	kprintf("initrd %p - %p\n", initrd_location, initrd_end);
 	fs_root = initrd_init(initrd_location);
+	// list_root(fs_root);
 
 	task_init();
 
+	// unsigned int pid = fork();
+	// if(pid == 0) {
+	// 	kprintf("I am the child with pid: %d\n", getpid());
+	// } else {
+	// 	kprintf("I am the parent with pid: %d\n", getpid());
+	// }
 
-	list_root(fs_root);
-//	while(1) {
-//		timer_wait(1000);
-//		kprintf("+");
-//	}
-//	for(i=0;i<100;i++) {
-//		timer_wait(1000);
-//	}
-	// sti();
+
+	syscall_init();
+
+	switch_to_user_mode();
+
+	// syscall_console_write("Hello from user mode\n");
+	asm volatile("mov $0x1, %eax");
+	asm volatile("mov $0x2, %ebx");
+	asm volatile("mov $0x3, %ecx");
+	asm volatile("int $0x80");
+
+	kprintf("Press esc to exit\n");
 
 	return;
 }

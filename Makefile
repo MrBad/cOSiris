@@ -10,8 +10,9 @@ BOCHS=/usr/local/bochs-term/bin/bochs
 BOOTFLAGS = -f bin
 LDFLAGS	= -g -melf_i386 -T ldscript.ld #-Map System.map
 
-OBJS = x86.o console.o kernel.o startup.o multiboot.o gdt.o idt.o isr.o \
-		irq.o timer.o delay.o mem.o kheap.o vfs.o initrd.o task.o kbd.o serial.o sched.o lib/libc.a
+OBJS =	x86.o console.o kernel.o startup.o multiboot.o gdt.o idt.o isr.o irq.o \
+		timer.o kbd.o serial.o delay.o mem.o kheap.o vfs.o initrd.o \
+		task.o sched.o syscall.o lib/libc.a
 
 bzImage: all
 	objdump --source kernel.bin > kernel.lst

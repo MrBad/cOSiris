@@ -1,7 +1,7 @@
 #include <string.h>
 #include "idt.h"
 
-struct idt_entry idt[100];
+struct idt_entry idt[256];
 struct idt_ptr idt_p;
 
 extern void idt_load();

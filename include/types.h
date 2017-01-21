@@ -4,3 +4,6 @@ typedef unsigned long ulong_t;
 #define true 1
 typedef unsigned char bool;
 typedef unsigned int size_t;
+
+typedef unsigned int uint32_t;
+typedef unsigned short int uint16_t;

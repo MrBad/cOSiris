@@ -10,7 +10,9 @@ struct iregs
 };
 
 
-extern void isr_handler();
-extern void isr_init();
+// extern void isr_handler();
+void isr_init();
+void isr_install_handler(int isr, unsigned int (*handler)(struct iregs *r));
+void isr_uninstall_handler(int isr);
 
 #endif

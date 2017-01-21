@@ -24,7 +24,7 @@ extern void irq15(void);
 #define port_8259M 0x20	// programable interrupt controller (PIC) - Master port
 #define port_8259S 0xA0	// PIC - Slave port
 
-// pointer catre rutinile de tratare a intreruperilor //
+// pointer catre rutinele de tratare a intreruperilor //
 void *irq_routines[16] = {
 	0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0

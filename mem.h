@@ -20,8 +20,6 @@
 #define P_GLOBAL                        1<<8    // if set, prevents TLB from updating the cache if CR3 is reset
 
 
-typedef unsigned int uint32_t;
-typedef unsigned short int uint16_t;
 typedef uint32_t phys_t;
 typedef uint32_t virt_t;
 typedef uint32_t dir_t;
