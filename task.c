@@ -6,7 +6,7 @@
 #include "isr.h"
 #include "console.h"
 #include "gdt.h"
-#include "assert.h";
+#include "assert.h"
 
 
 void print_int(unsigned int x)
@@ -18,7 +18,7 @@ task_t *task_new()
 {
 	task_t *t = (task_t *) calloc(sizeof(task_t));
 	t->pid = next_pid++;
-	t->tss_esp_stack = malloc_page_aligned(PAGE_SIZE);
+	t->tss_kernel_stack = malloc_page_aligned(PAGE_SIZE);
 	return t;
 }
 
@@ -31,6 +31,7 @@ void task_init()
 	tss_flush();
 
 	current_task = task_new();
+	set_tss_kernel_stack(current_task->tss_kernel_stack);
 	current_task->page_directory = (dir_t *) virt_to_phys(PDIR_ADDR);
 	task_queue = current_task;
 	sti();
@@ -74,6 +75,7 @@ task_t *get_next_task()
 task_t *task_switch_inner()
 {
 	task_t *n = get_next_task();
+	set_tss_kernel_stack(n->tss_kernel_stack);
 	return n;
 }
 
@@ -87,11 +89,22 @@ int getpid()
 {
 	return current_task ? current_task->pid : -1;
 }
+void task_exit(int status)
+{
+	kprintf("exited %d\n", current_task->pid);
+	while(1) {
+		nop(); // nop for now //
+	}
+}
 
+void task_idle()
+{
+	while(1) {
+		nop();
+	}
+}
 extern void switch_to_user_mode_asm();
 void switch_to_user_mode()
 {
-	KASSERT(current_task);
-	set_kernel_stack((uint32_t) current_task->tss_esp_stack);
 	switch_to_user_mode_asm();
 }

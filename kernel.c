@@ -106,17 +106,19 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	task_init();
 
 	syscall_init();
-	switch_to_user_mode();
 
-	kprintf("Press esc to exit...\n");
-
-	// asm volatile("push %%eax; call print_int; pop %%eax;" :  : "a"(x));
+	pid_t pid = fork();
+	if(pid == 0) {
+		switch_to_user_mode();
+		task_exit (1);
+	} else {
+		task_idle();
+	}
+	kprintf("Should not get here\n");
 	return;
 }
 
-void test_user_mode(unsigned int a) {
-	unsigned int ret;
-	kprintf("%p\n", a);
+void test_user_mode() {
 	char *buf = "Testing\n";
 	kprintf("buf:%p\n", buf);
 	syscall_print(buf);

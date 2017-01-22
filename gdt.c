@@ -52,7 +52,7 @@ void write_tss(uint32_t num, uint32_t ss0, uint32_t esp0)
 	tss.ss = tss.ds = tss.es = tss.fs = tss.gs = 0x13;
 }
 
-void set_kernel_stack(uint32_t stack)
+void set_tss_kernel_stack(uint32_t *stack)
 {
-	tss.esp0 = stack;
+	tss.esp0 = (uint32_t)stack;
 }

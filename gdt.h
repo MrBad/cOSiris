@@ -54,13 +54,12 @@ typedef struct tss_entry_struct tss_entry_t;
 
 tss_entry_t tss;
 void write_tss(uint32_t num, uint32_t ss0, uint32_t esp0);
-void set_kernel_stack(uint32_t stack);
-
+void set_tss_kernel_stack(uint32_t *stack);
 
 // declared in startup.asm - reload register segments //
 extern void gdt_flush(void);
 extern void tss_flush(void);
 void gdt_init(void);
-void set_kernel_stack(uint32_t stack);
+
 
 #endif
