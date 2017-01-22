@@ -35,7 +35,7 @@ start:
 	push eax	; magic
 	call main
 .h:
-	hlt
+	;hlt
 	jmp .h
 
 

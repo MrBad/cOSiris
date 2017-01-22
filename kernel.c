@@ -103,13 +103,12 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	task_init();
 
 	syscall_init();
-
 	switch_to_user_mode();
+	syscall_print("Testing syscall...\n");
 
-	syscall_print("Testing...\n");
-	syscall_print2("Testing 2\n");
-
-	kprintf("Press esc to exit\n");
+	// syscall_print2("Testing 2\n");
+	// unsigned int i = 3; i = i/0;
+	// kprintf("Press esc to exit\n");
 
 	return;
 }

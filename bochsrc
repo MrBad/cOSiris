@@ -62,7 +62,6 @@ config_interface: textconfig
 #display_library: wx
 #display_library: x, options="hideIPS" # disable IPS output in status bar
 display_library: term
-
 #=======================================================================
 # ROMIMAGE:
 # The ROM BIOS controls what the PC does when it first powers on.

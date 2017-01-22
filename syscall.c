@@ -2,12 +2,9 @@
 #include "isr.h"
 #include "console.h"
 #include "syscall.h"
+#include "x86.h"
 
 
-void switch_to_user_mode()
-{
-
-}
 void console_write2(char *buf){
 	kprintf("Console Write 2: ");
 	console_write(buf);
@@ -21,6 +18,7 @@ static unsigned int num_syscalls;
 
 unsigned int syscall_handler(struct iregs *r)
 {
+	cli();
 	if(r->eax >= num_syscalls) {
 		kprintf("No such syscall: %p\n", r->eax);
 		return 0;
@@ -45,8 +43,11 @@ unsigned int syscall_handler(struct iregs *r)
 	:  "r"(r->edi), "r"(r->esi), "r"(r->edx), "r"(r->ecx), "r"(r->ebx), "r"(func));
 //	call_sys(func, r->ebx, r->ecx, r->edx, r->esi, r->edi);
 	r->eax = ret;
+	kprintf("syscall ok\n");
+	sti();
 	return ret;
 }
+
 
 void syscall_init()
 {

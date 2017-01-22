@@ -34,7 +34,7 @@ fork:
 	sti
 	ret
 
-EXTERN get_current_task, get_next_task, print_int, ps, print_current_task
+EXTERN get_current_task, get_next_task, print_int, ps, print_current_task, task_switch_inner
 [GLOBAL task_switch]
 task_switch:
 
@@ -47,10 +47,8 @@ task_switch:
 	mov [eax + 12], ebp				; save current_task ebp
 	mov [eax + 16], dword .bye		; next time, jump to .bye
 
-	call get_next_task				; get next task in queue
-
-	;cli
-;	call print_int
+	;call get_next_task				; get next task in queue
+	call task_switch_inner			; call inner so we have mode control in C
 
 	mov esp, [eax + 8]				; move it's saved esp to esp
 	mov ebp, [eax + 12]				; ebp

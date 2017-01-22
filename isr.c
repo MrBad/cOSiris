@@ -78,7 +78,8 @@ void isr_init() {
 	idt_set_gate(29, (unsigned)isr29, 0x08, 0x8E);
 	idt_set_gate(30, (unsigned)isr30, 0x08, 0x8E);
 	idt_set_gate(31, (unsigned)isr31, 0x08, 0x8E);
-	idt_set_gate(128, (unsigned)isr128, 0x08, 0x8E);
+
+	idt_set_gate(128, (unsigned)isr128, 0x08, 0xee); // EE - DPL3
 
 	memset(isr_routines, 0, sizeof(isr_routines));
 

@@ -54,7 +54,7 @@ int page_fault(struct iregs *r)
 	}
 	kprintf("\n%s", paging_on() ? "paging ON" : "paging OFF");
 	//	panic("\npanic\n____");
-	shutdown();
+	//shutdown();
 	return false;
 }
 
@@ -173,10 +173,10 @@ static void recursively_map_page_directory(dir_t *dir)
 {
 	if(paging_on()){
 		map(RESV_PAGE, (phys_t) dir, P_PRESENT | P_READ_WRITE);
-		((virt_t *) RESV_PAGE)[1023] = (phys_t)dir | P_PRESENT | P_READ_WRITE;
+		((virt_t *) RESV_PAGE)[1023] = (phys_t)dir | P_PRESENT | P_READ_WRITE | P_USER;
 		unmap(RESV_PAGE);
 	} else {
-		dir[1023] = (phys_t) dir | P_PRESENT | P_READ_WRITE;
+		dir[1023] = (phys_t) dir | P_PRESENT | P_READ_WRITE | P_USER;
 	}
 }
 
@@ -188,10 +188,10 @@ static void identity_map_page(dir_t *dir, phys_t addr)
 	dir_idx = (addr / PAGE_SIZE) / 1024;
 	tbl_idx = (addr / PAGE_SIZE) % 1024;
 	if(!(dir[dir_idx] & P_PRESENT)) {
-		dir[dir_idx] = (uint32_t) frame_calloc() | P_PRESENT | P_READ_WRITE;
+		dir[dir_idx] = (uint32_t) frame_calloc() | P_PRESENT | P_READ_WRITE | P_USER;
 	}
 	table = (phys_t *)(dir[dir_idx] & 0xFFFFF000);
-	table[tbl_idx] = addr | P_PRESENT | P_READ_WRITE;
+	table[tbl_idx] = addr | P_PRESENT | P_READ_WRITE | P_USER;
 }
 
 static void identity_map_kernel(dir_t *dir, multiboot_header *mb)
@@ -218,7 +218,7 @@ static void identity_map_kernel(dir_t *dir, multiboot_header *mb)
 	// create table for reserved_page //
 	int dir_idx;
 	dir_idx = (RESV_PAGE/PAGE_SIZE) / 1024;
-	dir[dir_idx] = (uint32_t)frame_calloc() | P_PRESENT | P_READ_WRITE;
+	dir[dir_idx] = (uint32_t)frame_calloc() | P_PRESENT | P_READ_WRITE | P_USER;
 }
 
 
@@ -347,7 +347,7 @@ void *sbrk(unsigned int increment) {
 // when paging is on
 virt_t *temp_map(phys_t *page)
 {
-	map(RESV_PAGE, (phys_t)page, P_PRESENT|P_READ_WRITE);
+	map(RESV_PAGE, (phys_t)page, P_PRESENT|P_READ_WRITE|P_USER);
 	return (virt_t *)RESV_PAGE;
 }
 
@@ -384,7 +384,7 @@ dir_t *clone_directory()
 			else {
 				new_table = frame_calloc();
 				addr = temp_map(new_dir);
-				addr[dir_idx] = (phys_t)new_table | P_PRESENT | P_READ_WRITE;
+				addr[dir_idx] = (phys_t)new_table | P_PRESENT | P_READ_WRITE | P_USER;
 				temp_unmap();
 
 				table = (virt_t *) (PTABLES_ADDR + dir_idx * PAGE_SIZE);
@@ -398,7 +398,7 @@ dir_t *clone_directory()
 						temp_unmap();
 
 						addr = temp_map(new_table);
-						addr[tbl_idx] = (phys_t)frame | P_PRESENT | P_READ_WRITE;
+						addr[tbl_idx] = (phys_t)frame | P_PRESENT | P_READ_WRITE | P_USER;
 						temp_unmap();
 					}
 				}
@@ -425,7 +425,7 @@ void move_stack_up()
 
 	for(i = stack_size / PAGE_SIZE; i; i--) {
 		frame = frame_calloc();
-		map(KERNEL_STACK_HI - PAGE_SIZE * i, (unsigned int)frame, P_PRESENT | P_READ_WRITE);
+		map(KERNEL_STACK_HI - PAGE_SIZE * i, (unsigned int)frame, P_PRESENT | P_READ_WRITE | P_USER);
 		for(p = (unsigned int *)(stack_ptr-PAGE_SIZE*i); (unsigned int)p < stack_ptr-PAGE_SIZE*(i-1); p++) {
 			k = (unsigned int*)((unsigned int)p+offset);
 			if(*p < stack_ptr && *p >= stack_ptr-stack_size) {
