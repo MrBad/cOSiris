@@ -110,8 +110,10 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	pid_t pid = fork();
 	if(pid == 0) {
 		switch_to_user_mode();
-		task_exit (1);
+		task_exit(1);
 	} else {
+		delay(20);
+		ps();
 		task_idle();
 	}
 	kprintf("Should not get here\n");
@@ -119,6 +121,7 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 }
 
 void test_user_mode() {
+	kprintf("I am task %d, in ring: %d\n", getpid(), getring());
 	char *buf = "Testing\n";
 	kprintf("buf:%p\n", buf);
 	syscall_print(buf);

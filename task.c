@@ -47,7 +47,7 @@ void ps()
 {
 	task_t *t = task_queue;
 	while(t) {
-		kprintf("pid: %d, ppid: %d, eip: %08x, esp:%08x, ebp: %08x, pd: %08x\n", t->pid, t->ppid, t->eip, t->esp, t->ebp, t->page_directory);
+		kprintf("pid: %d, ppid: %d, ring: %d, eip: %08x, esp:%08x, ebp: %08x, pd: %08x\n", t->pid, t->ppid, t->ring, t->eip, t->esp, t->ebp, t->page_directory);
 		t = t->next;
 	}
 }
@@ -89,6 +89,11 @@ int getpid()
 {
 	return current_task ? current_task->pid : -1;
 }
+int getring()
+{
+	return current_task ? current_task->ring : -1;
+}
+
 void task_exit(int status)
 {
 	kprintf("exited %d\n", current_task->pid);
@@ -106,5 +111,6 @@ void task_idle()
 extern void switch_to_user_mode_asm();
 void switch_to_user_mode()
 {
+	current_task->ring = 3;
 	switch_to_user_mode_asm();
 }

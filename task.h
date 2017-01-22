@@ -14,7 +14,7 @@ typedef struct task {
 	struct task *next;		// task + 24	next task
 
 	unsigned int *tss_kernel_stack; 	// f..k i386 tss thing
-
+	int ring;
 } task_t;
 
 task_t *current_task;
@@ -32,5 +32,6 @@ void ps();
 task_t *get_last_task();
 task_t *get_next_task();
 task_t *get_current_task();
-void exit(int status);
+void task_exit(int status);
+void task_idle();
 #endif
