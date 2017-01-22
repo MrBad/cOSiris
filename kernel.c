@@ -103,7 +103,9 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	task_init();
 
 	syscall_init();
+
 	switch_to_user_mode();
+
 	syscall_print("Testing syscall...\n");
 
 	// syscall_print2("Testing 2\n");
