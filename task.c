@@ -6,6 +6,7 @@
 #include "isr.h"
 #include "console.h"
 #include "gdt.h"
+#include "assert.h";
 
 
 void print_int(unsigned int x)
@@ -17,6 +18,7 @@ task_t *task_new()
 {
 	task_t *t = (task_t *) calloc(sizeof(task_t));
 	t->pid = next_pid++;
+	t->tss_esp_stack = malloc_page_aligned(PAGE_SIZE);
 	return t;
 }
 
@@ -89,6 +91,7 @@ int getpid()
 extern void switch_to_user_mode_asm();
 void switch_to_user_mode()
 {
-	set_kernel_stack(KERNEL_STACK_HI);
+	KASSERT(current_task);
+	set_kernel_stack((uint32_t) current_task->tss_esp_stack);
 	switch_to_user_mode_asm();
 }

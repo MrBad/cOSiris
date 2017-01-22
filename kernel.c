@@ -56,7 +56,7 @@ void test_user_mode();
 void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsigned int sptr) {
 	stack_ptr = sptr;
 	stack_size = ssize;
-	// unsigned int x, y;
+
 	console_init();
 	serial_init();
 
@@ -106,22 +106,21 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	task_init();
 
 	syscall_init();
-
 	switch_to_user_mode();
 
-	// kprintf("Never gets here...\n");
-	// x = 0xdeadc0de;
-	// y = 0xdeadbeef;
+	kprintf("Press esc to exit...\n");
+
 	// asm volatile("push %%eax; call print_int; pop %%eax;" :  : "a"(x));
 	return;
 }
 
-void test_user_mode() {
+void test_user_mode(unsigned int a) {
 	unsigned int ret;
+	kprintf("%p\n", a);
 	char *buf = "Testing\n";
+	kprintf("buf:%p\n", buf);
 	syscall_print(buf);
 	char *buf2 = "Another test\n";
 	syscall_print(buf2);
-
-	while(1);
+	//while(1);
 }

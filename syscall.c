@@ -57,6 +57,7 @@ void syscall_init()
 
 
 // syscalls //
+// extern void syscall_print(char *buf);
 void syscall_print(char *buf) {
 	unsigned int ret;
 	asm volatile("mov $0x0, %%eax; \

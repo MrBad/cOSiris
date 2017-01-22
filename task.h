@@ -12,6 +12,7 @@ typedef struct task {
 	unsigned int eip;		// task + 16	last eip / instruction pointer
 	dir_t *page_directory;	// task + 20	task page directory
 	struct task *next;		// task + 24	next task
+	unsigned int *tss_esp_stack; // f..k i386 tss thing
 } task_t;
 
 task_t *current_task;

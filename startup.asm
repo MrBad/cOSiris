@@ -312,6 +312,7 @@ isr128:
 	push 128
 	jmp isr_common
 
+global isr_common
 extern isr_handler
 isr_common:
 	pusha
