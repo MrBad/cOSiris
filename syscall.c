@@ -18,7 +18,7 @@ static unsigned int num_syscalls;
 
 unsigned int syscall_handler(struct iregs *r)
 {
-	cli();
+	// cli();
 	if(r->eax >= num_syscalls) {
 		kprintf("No such syscall: %p\n", r->eax);
 		return 0;
@@ -44,11 +44,10 @@ unsigned int syscall_handler(struct iregs *r)
 //	call_sys(func, r->ebx, r->ecx, r->edx, r->esi, r->edi);
 	r->eax = ret;
 	kprintf("syscall ok\n");
-	sti();
 	return ret;
 }
 
-
+unsigned int syscall_handler(struct iregs *r);
 void syscall_init()
 {
 	kprintf("Syscall Init\n");

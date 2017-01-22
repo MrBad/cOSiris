@@ -1,4 +1,5 @@
-GLOBAL switch_to_user_mode_asm
+extern test_user_mode, print_int
+global switch_to_user_mode_asm
 switch_to_user_mode_asm:
 	cli
 	mov ax, 0x23
@@ -7,16 +8,15 @@ switch_to_user_mode_asm:
 	mov fs, ax
 	mov gs, ax
 	mov eax, esp
-	push 0x23
-	push eax
-	pushf
-	pop eax
-	or eax, 0x200
-	push eax
-	push 0x1b
-	push .perf
+	push 0x23				; ring 3 ss
+	push eax				; ring 3 esp
+	pushf					; save flags
+	or dword [esp], 0x200	; enable interrupts after return
+	push 0x1b				; user mode code segment
+	push test_user_mode		; eip where to return
 	iret
 .perf
+	call print_int
 	ret
 
 
