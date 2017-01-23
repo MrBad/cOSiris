@@ -12,7 +12,6 @@
 // extern void halt(void);
 
 phys_t	last_free_page = 0;
-size_t	num_pages = 0;
 dir_t	*kernel_dir = NULL;
 bool pg_on = false;
 
@@ -460,6 +459,7 @@ inline void switch_page_directory(dir_t *dir)
 void mem_init(multiboot_header *mb)
 {
 	reserve_memory(mb);
+	total_pages = num_pages;
 	kprintf("Available memory: %d pages, %d MB\n", num_pages, num_pages * 4/1024);
 	kernel_dir = frame_calloc();
 	identity_map_kernel(kernel_dir, mb);

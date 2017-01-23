@@ -25,7 +25,13 @@ typedef uint32_t virt_t;
 typedef uint32_t dir_t;
 typedef uint16_t flags_t;
 
+size_t num_pages;
+size_t total_pages;
+
 dir_t *kernel_dir;
+
+
+
 
 // #define KERNEL_STACK_LOW	0xFFBED000ul	// 10000 stack
 // #define KERNEL_STACK_HI		0xFFBFD000ul
@@ -45,6 +51,8 @@ void *sbrk(unsigned int increment);
 // int is_mapped(unsigned int virtual_addr);
 void map(virt_t virtual_addr, phys_t physical_addr, flags_t flags);
 void unmap(virt_t virtual_addr);
+virt_t *temp_map(phys_t *page);
+void temp_unmap();
 void mem_init(multiboot_header *mb);
 phys_t virt_to_phys(virt_t addr);
 bool is_mapped(virt_t addr);

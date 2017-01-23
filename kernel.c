@@ -1,5 +1,6 @@
 #include "kernel.h"
 #include <types.h>
+#include <string.h>
 #include "x86.h"
 #include "console.h"
 #include "multiboot.h"
@@ -51,6 +52,7 @@ void shutdown()
 
 
 extern int get_flags();
+extern unsigned int get_esp();
 
 void test_user_mode();
 void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsigned int sptr) {
@@ -92,6 +94,7 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	// find location of initial ramdisk //
 	if (mboot->mods_count > 0) {
+		kprintf("Modules: %d\n", mboot->mods_count);
 		initrd_location = *((unsigned int *) mboot->mods_addr);
 		initrd_end = *(unsigned int *) (mboot->mods_addr + 4);
 	}
@@ -100,7 +103,12 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	mem_init(mboot);
 
 	kprintf("initrd %p - %p\n", initrd_location, initrd_end);
-	fs_root = initrd_init(initrd_location);
+	unsigned int *upage = frame_alloc();
+	map(0x10000000, (unsigned int)upage, P_PRESENT|P_READ_WRITE|P_USER);
+	// unsigned int *addr = temp_map(initrd_location);
+	memcpy((void *)0x10000000, (void *)initrd_location, PAGE_SIZE);
+	temp_unmap();
+	// fs_root = initrd_init(initrd_location);
 	// list_root(fs_root);
 
 	task_init();
@@ -108,24 +116,24 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	syscall_init();
 
 	pid_t pid = fork();
-	if(pid == 0) {
+	if(pid == 0) { // this will go to user mode
 		switch_to_user_mode();
 		task_exit(1);
-	} else {
-		delay(20);
+	} else {		// parent will stay in kernel mode
+		delay(20);	// short delay to let the child switch
 		ps();
+		kprintf("Used mem: %d kB\n", (total_pages-num_pages)*PAGE_SIZE /1024);
 		task_idle();
 	}
 	kprintf("Should not get here\n");
 	return;
 }
 
-void test_user_mode() {
-	kprintf("I am task %d, in ring: %d\n", getpid(), getring());
-	char *buf = "Testing\n";
-	kprintf("buf:%p\n", buf);
-	syscall_print(buf);
-	char *buf2 = "Another test\n";
-	syscall_print(buf2);
-	//while(1);
-}
+// void test_user_mode() {
+// 	kprintf("I am task %d, in ring: %d\n", getpid(), getring());
+// 	char *buf = "Testing\n";
+// 	kprintf("buf:%p\n", buf);
+// 	syscall_print(buf);
+// 	char *buf2 = "Another test\n";
+// 	syscall_print(buf2);
+// }

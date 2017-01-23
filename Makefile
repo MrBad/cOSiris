@@ -24,31 +24,33 @@ bzImage: all
 all: $(OBJS)
 	$(LD) $(LDFLAGS) -o kernel.bin $(OBJS)
 	make -C util
+	make -C bin
+
 lib/libc.a: lib/Makefile
-	make -C lib/ -f Makefile
+	make -C lib
 
-startup.o: startup.asm
-	$(ASM) $(ASMFLAGS) startup.asm
-sched.o: sched.asm
-	$(ASM) $(ASMFLAGS) sched.asm
-sys.o: sys.asm
-	$(ASM) $(ASMFLAGS) sys.asm
+%.o: %.c Makefile *.h
+	$(CC) $(CFLAGS) $(OFLAGS) -o $@ $<
 
-	
+%.o: %.asm
+	$(ASM) $(ASMFLAGS) -o $@ $<
+
+
 clean:
 	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt parport.out System.map debugger.out serial.out
-	make -C lib clean
-	make -C util clean
 
 distclean:
 	make clean
-	cd lib; make clean; cd ..;
+	make -C lib clean
+	make -C util clean
+	make -C bin clean
 
 fdimg: bzImage
 	cp grub.img fd.img
 	if [ ! -d mnt ]; then mkdir mnt; fi
 	sudo mount fd.img mnt -oloop -tmsdos
 	sudo cp kernel mnt
+	# if [ -f bin/testing ]; then sudo cp bin/testing mnt; fi
 	sudo umount mnt
 	sudo rm -rf mnt
 fd:

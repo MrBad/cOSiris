@@ -17,8 +17,8 @@ switch_to_user_mode_asm:
 	push .sjmp				; eip where to return
 	iret
 .sjmp
-
-	call test_user_mode
+	jmp 0x10000000
+	; call test_user_mode
 	ret
 
 GLOBAL tss_flush

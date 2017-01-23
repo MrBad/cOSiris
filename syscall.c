@@ -23,7 +23,7 @@ unsigned int syscall_handler(struct iregs *r)
 		kprintf("No such syscall: %p\n", r->eax);
 		return 0;
 	}
-	kprintf("eax: %p, ebx: %p\n", r->eax, r->ebx);
+	// kprintf("eax: %p, ebx: %p\n", r->eax, r->ebx);
 	void *func = syscalls[r->eax];
 	int ret;
 	asm volatile(" \
