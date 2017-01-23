@@ -14,7 +14,8 @@ switch_to_user_mode_asm:
 	pushf					; save flags
 	or dword [esp], 0x200	; enable interrupts after return
 	push 0x1b				; user mode code segment
-	push .sjmp				; eip where to return
+	;push .sjmp				; eip where to return
+	push 0x10000000
 	iret
 .sjmp
 	jmp 0x10000000 			; hardcoded user mode program

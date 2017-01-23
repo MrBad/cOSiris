@@ -172,10 +172,10 @@ static void recursively_map_page_directory(dir_t *dir)
 {
 	if(paging_on()){
 		map(RESV_PAGE, (phys_t) dir, P_PRESENT | P_READ_WRITE);
-		((virt_t *) RESV_PAGE)[1023] = (phys_t)dir | P_PRESENT | P_READ_WRITE | P_USER;
+		((virt_t *) RESV_PAGE)[1023] = (phys_t)dir | P_PRESENT | P_READ_WRITE;
 		unmap(RESV_PAGE);
 	} else {
-		dir[1023] = (phys_t) dir | P_PRESENT | P_READ_WRITE | P_USER;
+		dir[1023] = (phys_t) dir | P_PRESENT | P_READ_WRITE;
 	}
 }
 
@@ -187,10 +187,10 @@ static void identity_map_page(dir_t *dir, phys_t addr)
 	dir_idx = (addr / PAGE_SIZE) / 1024;
 	tbl_idx = (addr / PAGE_SIZE) % 1024;
 	if(!(dir[dir_idx] & P_PRESENT)) {
-		dir[dir_idx] = (uint32_t) frame_calloc() | P_PRESENT | P_READ_WRITE | P_USER;
+		dir[dir_idx] = (uint32_t) frame_calloc() | P_PRESENT | P_READ_WRITE;
 	}
 	table = (phys_t *)(dir[dir_idx] & 0xFFFFF000);
-	table[tbl_idx] = addr | P_PRESENT | P_READ_WRITE | P_USER;
+	table[tbl_idx] = addr | P_PRESENT | P_READ_WRITE;
 }
 
 static void identity_map_kernel(dir_t *dir, multiboot_header *mb)
@@ -217,7 +217,7 @@ static void identity_map_kernel(dir_t *dir, multiboot_header *mb)
 	// create table for reserved_page //
 	int dir_idx;
 	dir_idx = (RESV_PAGE/PAGE_SIZE) / 1024;
-	dir[dir_idx] = (uint32_t)frame_calloc() | P_PRESENT | P_READ_WRITE | P_USER;
+	dir[dir_idx] = (uint32_t)frame_calloc() | P_PRESENT | P_READ_WRITE;
 }
 
 
@@ -311,7 +311,7 @@ static void setup_heap()
 	heap->supervisor = true;
 	virt_t p;
 	for(p = heap->start_addr; p < heap->end_addr; p += PAGE_SIZE) {
-		map(p, (phys_t) frame_alloc(), P_PRESENT | P_READ_WRITE | P_USER);
+		map(p, (phys_t) frame_alloc(), P_PRESENT | P_READ_WRITE);
 	}
 }
 
@@ -346,7 +346,7 @@ void *sbrk(unsigned int increment) {
 // when paging is on
 virt_t *temp_map(phys_t *page)
 {
-	map(RESV_PAGE, (phys_t)page, P_PRESENT|P_READ_WRITE|P_USER);
+	map(RESV_PAGE, (phys_t)page, P_PRESENT|P_READ_WRITE);
 	return (virt_t *)RESV_PAGE;
 }
 
@@ -424,7 +424,7 @@ void move_stack_up()
 
 	for(i = stack_size / PAGE_SIZE; i; i--) {
 		frame = frame_calloc();
-		map(KERNEL_STACK_HI - PAGE_SIZE * i, (unsigned int)frame, P_PRESENT | P_READ_WRITE | P_USER);
+		map(KERNEL_STACK_HI - PAGE_SIZE * i, (unsigned int)frame, P_PRESENT | P_READ_WRITE);
 		for(p = (unsigned int *)(stack_ptr-PAGE_SIZE*i); (unsigned int)p < stack_ptr-PAGE_SIZE*(i-1); p++) {
 			k = (unsigned int*)((unsigned int)p+offset);
 			if(*p < stack_ptr && *p >= stack_ptr-stack_size) {

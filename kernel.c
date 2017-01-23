@@ -109,6 +109,7 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	// unsigned int *addr = temp_map(initrd_location);
 	memcpy((void *)0x10000000, (void *)initrd_location, PAGE_SIZE);
 	temp_unmap();
+
 	// fs_root = initrd_init(initrd_location);
 	// list_root(fs_root);
 
