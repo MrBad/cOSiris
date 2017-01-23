@@ -103,6 +103,7 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	mem_init(mboot);
 
 	kprintf("initrd %p - %p\n", initrd_location, initrd_end);
+	// hardcoded user program loaded by grub @initrd_location and linked to 0x10000000 //
 	unsigned int *upage = frame_alloc();
 	map(0x10000000, (unsigned int)upage, P_PRESENT|P_READ_WRITE|P_USER);
 	// unsigned int *addr = temp_map(initrd_location);
