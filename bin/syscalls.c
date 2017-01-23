@@ -25,6 +25,7 @@ uint32_t sum(uint32_t a, uint32_t b)
 {
 	return _syscall2(SYS_SUM, a, b);
 }
+
 void print_int(uint32_t n)
 {
 	_syscall1(SYS_PRINT_INT, n);

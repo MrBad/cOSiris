@@ -117,25 +117,17 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	syscall_init();
 
-	pid_t pid = fork();
-	if(pid == 0) { // this will go to user mode
-		switch_to_user_mode();
-		task_exit(1);
-	} else {		// parent will stay in kernel mode
-		//delay(20);	// short delay to let the child switch
-		//ps();
-		kprintf("Used mem: %d kB\n", (total_pages-num_pages)*PAGE_SIZE /1024);
-		task_idle();
-	}
+	switch_to_user_mode();
+
+	// pid_t pid = fork();
+	// if(pid == 0) { // this will go to user mode
+	// 	switch_to_user_mode();
+	// } else {		// parent will stay in kernel mode
+	// 	//delay(20);	// short delay to let the child switch
+	// 	//ps();
+	// 	kprintf("Used mem: %d kB\n", (total_pages-num_pages)*PAGE_SIZE /1024);
+	// 	task_idle();
+	// }
 	kprintf("Should not get here\n");
 	return;
 }
-
-// void test_user_mode() {
-// 	kprintf("I am task %d, in ring: %d\n", getpid(), getring());
-// 	char *buf = "Testing\n";
-// 	kprintf("buf:%p\n", buf);
-// 	syscall_print(buf);
-// 	char *buf2 = "Another test\n";
-// 	syscall_print(buf2);
-// }

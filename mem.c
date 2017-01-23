@@ -424,7 +424,7 @@ void move_stack_up()
 
 	for(i = stack_size / PAGE_SIZE; i; i--) {
 		frame = frame_calloc();
-		map(KERNEL_STACK_HI - PAGE_SIZE * i, (unsigned int)frame, P_PRESENT | P_READ_WRITE);
+		map(KERNEL_STACK_HI - PAGE_SIZE * i, (unsigned int)frame, P_PRESENT | P_READ_WRITE | P_USER);
 		for(p = (unsigned int *)(stack_ptr-PAGE_SIZE*i); (unsigned int)p < stack_ptr-PAGE_SIZE*(i-1); p++) {
 			k = (unsigned int*)((unsigned int)p+offset);
 			if(*p < stack_ptr && *p >= stack_ptr-stack_size) {
