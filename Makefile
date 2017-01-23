@@ -50,7 +50,7 @@ fdimg: bzImage
 	if [ ! -d mnt ]; then mkdir mnt; fi
 	sudo mount fd.img mnt -oloop -tmsdos
 	sudo cp kernel mnt
-	# if [ -f bin/testing ]; then sudo cp bin/testing mnt; fi
+	sudo cp bin/testing mnt
 	sudo umount mnt
 	sudo rm -rf mnt
 fd:
