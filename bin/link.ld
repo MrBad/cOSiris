@@ -6,7 +6,7 @@ SECTIONS
 
 	.text ALIGN(4):
 	{
-		start.o(.text)     /* include the .text section of start.o */
+		crt0.o(.text)     /* include the .text section of start.o */
 		*(.text)           /* include all other .text sections */
 	}
 

@@ -96,7 +96,9 @@ int getring()
 
 void task_exit(int status)
 {
-	kprintf("exited %d\n", current_task->pid);
+	// TODO - kill task and clean memory
+	kprintf("exited %d, with status: %d\n", current_task->pid, status);
+	sti();
 	while(1) {
 		nop(); // nop for now //
 	}

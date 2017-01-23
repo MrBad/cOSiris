@@ -11,10 +11,18 @@ void console_write2(char *buf){
 	console_write(buf);
 }
 
+unsigned int sum(unsigned int a, unsigned int b) {
+	return a + b;
+}
+extern void print_int(unsigned int x);
+
 static void *syscalls[] = {
 	&console_write,
 	&console_write2,
-	&ps
+	&ps,
+	&task_exit,
+	&sum,
+	&print_int
 };
 static unsigned int num_syscalls;
 
@@ -25,7 +33,7 @@ unsigned int syscall_handler(struct iregs *r)
 		kprintf("No such syscall: %p\n", r->eax);
 		return 0;
 	} else {
-		kprintf("kernel: syscall: %d\n", r->eax);
+		// kprintf("kernel: syscall: %d, %p\n", r->eax, r->ebx);
 	}
 	// kprintf("eax: %p, ebx: %p\n", r->eax, r->ebx);
 	void *func = syscalls[r->eax];

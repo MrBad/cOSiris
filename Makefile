@@ -35,9 +35,9 @@ lib/libc.a: lib/Makefile
 %.o: %.asm
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
-
 clean:
 	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt parport.out System.map debugger.out serial.out
+
 
 distclean:
 	make clean
@@ -45,12 +45,13 @@ distclean:
 	make -C util clean
 	make -C bin clean
 
+
 fdimg: bzImage
 	cp grub.img fd.img
 	if [ ! -d mnt ]; then mkdir mnt; fi
 	sudo mount fd.img mnt -oloop -tmsdos
 	sudo cp kernel mnt
-	sudo cp bin/testing mnt
+	sudo cp bin/init mnt
 	sudo umount mnt
 	sudo rm -rf mnt
 fd:
