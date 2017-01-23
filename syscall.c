@@ -2,6 +2,7 @@
 #include "isr.h"
 #include "console.h"
 #include "syscall.h"
+#include "task.h"
 #include "x86.h"
 
 
@@ -10,9 +11,10 @@ void console_write2(char *buf){
 	console_write(buf);
 }
 
-static void *syscalls[2] = {
+static void *syscalls[] = {
 	&console_write,
-	&console_write2
+	&console_write2,
+	&ps
 };
 static unsigned int num_syscalls;
 
@@ -22,6 +24,8 @@ unsigned int syscall_handler(struct iregs *r)
 	if(r->eax >= num_syscalls) {
 		kprintf("No such syscall: %p\n", r->eax);
 		return 0;
+	} else {
+		kprintf("kernel: syscall: %d\n", r->eax);
 	}
 	// kprintf("eax: %p, ebx: %p\n", r->eax, r->ebx);
 	void *func = syscalls[r->eax];
@@ -43,7 +47,7 @@ unsigned int syscall_handler(struct iregs *r)
 	:  "r"(r->edi), "r"(r->esi), "r"(r->edx), "r"(r->ecx), "r"(r->ebx), "r"(func));
 //	call_sys(func, r->ebx, r->ecx, r->edx, r->esi, r->edi);
 	r->eax = ret;
-	kprintf("syscall ok\n");
+	// kprintf("syscall ok\n");
 	return ret;
 }
 

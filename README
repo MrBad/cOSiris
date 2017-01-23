@@ -1,10 +1,11 @@
 cOSiris is a small kernel written in C (and some ASM) for i386, for fun.
+monolitic, multitasking, protected mode, ring 0,3 userland...
 
-Inspired by linux-0.01, osd, ics-os, geekos, osdev site.
+Inspired by linux-0.01, osd, ics-os, james molloy, geekos, osdev site
 
 
 - compile - make
-- run - make run 	- require bochs 
+- run - make run 	- require bochs
 					- for debian type # apt-get install bochs bochs-term bochsbios
 
 - make a floppy image - make fd

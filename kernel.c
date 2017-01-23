@@ -122,8 +122,8 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 		switch_to_user_mode();
 		task_exit(1);
 	} else {		// parent will stay in kernel mode
-		delay(20);	// short delay to let the child switch
-		ps();
+		//delay(20);	// short delay to let the child switch
+		//ps();
 		kprintf("Used mem: %d kB\n", (total_pages-num_pages)*PAGE_SIZE /1024);
 		task_idle();
 	}
