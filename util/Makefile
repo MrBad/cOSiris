@@ -8,14 +8,16 @@ OBJECTS=find_func.o
 
 TARGET=find_func
 
-all: $(TARGET)
+all: find_func mkinitrd
 
-$(TARGET): $(OBJECTS) Makefile
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJECTS) $(LIBS)
+find_func: find_func.o
+	$(CC) $(CFLAGS) -o find_func find_func.o
 
+mkinitrd: mkinitrd.o
+	$(CC) $(CFLAGS) -o mkinitrd mkinitrd.o
 
 %.o: %.c Makefile *.h
 	$(CC) $(CFLAGS) $(OFLAGS) -o $@ $<
 
 clean:
-	rm $(OBJECTS) $(TARGET)
+	rm *.o find_func mkinitrd

@@ -12,7 +12,7 @@
 	EXTERN main							; c main file
 	EXTERN code, bss, end, data			; pasate de linker, vezi lscript.txt
 	; functii scrise in asm, apelabile din c
-	STACKSIZE equ 0x10000				; 64k stack size
+	STACKSIZE equ 0x2000				; stack size
 
 
 [SECTION .text]

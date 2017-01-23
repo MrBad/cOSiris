@@ -34,15 +34,19 @@ void list_root(fs_node_t *fs_root)
 		if(fs_node->flags & FS_DIRECTORY) {
 			kprintf("\tDir %s\t\n", fs_node->name);
 		} else {
-			char buff[256];
-			unsigned int size;
-			size = read_fs(fs_node, 0, 256, buff);
-			buff[size] = 0;
-			kprintf("\t%s\n", buff);
+			// char buff[256];
+			// unsigned int size, offs = 0;
+			kprintf("name: %s, inode: %d, length: %d\n", fs_node->name, fs_node->inode, fs_node->length);
+			// do {
+			// 	size = read_fs(fs_node, offs, 256, buff);
+			// 	kprintf("%s", buff);
+			// 	offs+=size;
+			// } while(size > 0);
 		}
 		i++;
 	}
 }
+
 
 void shutdown()
 {
@@ -102,22 +106,23 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	kprintf("Setup paging\n");
 	mem_init(mboot);
 
-	kprintf("initrd %p - %p\n", initrd_location, initrd_end);
+	// kprintf("initrd %p - %p\n", initrd_location, initrd_end);
 	// hardcoded user program loaded by grub @initrd_location and linked to 0x10000000 //
-	unsigned int *upage = frame_alloc();
-	map(0x10000000, (unsigned int)upage, P_PRESENT|P_READ_WRITE|P_USER);
+	// unsigned int *upage = frame_alloc();
+	// map(0x10000000, (unsigned int)upage, P_PRESENT|P_READ_WRITE|P_USER);
 	// unsigned int *addr = temp_map(initrd_location);
-	memcpy((void *)0x10000000, (void *)initrd_location, PAGE_SIZE);
-	temp_unmap();
+	// memcpy((void *)0x10000000, (void *)initrd_location, PAGE_SIZE);
+	// temp_unmap();
 
-	// fs_root = initrd_init(initrd_location);
+	fs_root = initrd_init(initrd_location);
 	// list_root(fs_root);
 
 	task_init();
 
 	syscall_init();
 
-	switch_to_user_mode();
+	exec_init();
+	//switch_to_user_mode();
 
 	// pid_t pid = fork();
 	// if(pid == 0) { // this will go to user mode

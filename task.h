@@ -34,4 +34,5 @@ task_t *get_next_task();
 task_t *get_current_task();
 void task_exit(int status);
 void task_idle();
+void exec_init();
 #endif

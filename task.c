@@ -7,6 +7,7 @@
 #include "console.h"
 #include "gdt.h"
 #include "assert.h"
+#include "vfs.h"
 
 
 void print_int(unsigned int x)
@@ -115,4 +116,35 @@ void switch_to_user_mode()
 {
 	current_task->ring = 3;
 	switch_to_user_mode_asm();
+}
+
+//
+//	Loading "init" from initrd.img "filesystem"
+//		into memory @0x10000000 and jump to it in ring 3
+//
+void exec_init()
+{
+	extern fs_node_t *fs_root;
+	if(!fs_root) {
+		panic("File system not inited");
+	}
+	fs_node_t *fs_node = finddir_fs(fs_root, "init");
+	if(!fs_node) {
+		panic("Cannot find init\n");
+	} else {
+		kprintf("Loading /%s at address %p, length:%d\n", fs_node->name, USER_CODE_START_ADDR, fs_node->length);
+	}
+	unsigned int num_pages = (fs_node->length / PAGE_SIZE) + 1;
+	unsigned int i;
+	for(i = 0; i < num_pages; i++) {
+		map(USER_CODE_START_ADDR + (PAGE_SIZE*i), (unsigned int)frame_alloc(), P_PRESENT | P_READ_WRITE | P_USER);
+	}
+	unsigned int offset = 0, size = 0;
+	char *buff = (char *)USER_CODE_START_ADDR;
+	do {
+		size = read_fs(fs_node, offset, fs_node->length, buff);
+		offset += size;
+	} while(size > 0);
+	kprintf("Loaded: %d bytes\n", offset);
+	switch_to_user_mode();
 }

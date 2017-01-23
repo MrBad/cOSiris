@@ -44,14 +44,16 @@ distclean:
 	make -C lib clean
 	make -C util clean
 	make -C bin clean
-
+	rm initrd.img
 
 fdimg: bzImage
 	cp grub.img fd.img
 	if [ ! -d mnt ]; then mkdir mnt; fi
 	sudo mount fd.img mnt -oloop -tmsdos
 	sudo cp kernel mnt
-	sudo cp bin/init mnt
+	# sudo cp bin/init mnt
+	util/mkinitrd bin/init kernel.sym
+	sudo cp initrd.img mnt
 	sudo umount mnt
 	sudo rm -rf mnt
 fd:

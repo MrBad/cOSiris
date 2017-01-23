@@ -1,2 +1,4 @@
 *.o
 *.bin
+bin/init*
+util/find_func
