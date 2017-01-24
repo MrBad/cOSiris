@@ -12,7 +12,7 @@
 
 void print_int(unsigned int x)
 {
-	kprintf("0x8%x\n", x);
+	kprintf("0x%x\n", x);
 }
 
 task_t *task_new()
@@ -92,6 +92,8 @@ task_t *fork_inner()
 	task_t *t = task_new();
 	t->ppid = current_task->pid;
 	t->ring = current_task->ring;
+	t->page_directory = clone_directory();
+
 	return t;
 }
 

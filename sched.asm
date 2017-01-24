@@ -1,4 +1,4 @@
-EXTERN task_new, clone_directory, get_last_task, print_int, getpid, fork_inner
+EXTERN fork_inner, get_last_task
 [GLOBAL fork]
 
 fork:
@@ -8,12 +8,6 @@ fork:
 	mov [eax + 8], esp				; save child esp
 	mov [eax + 12], ebp				; save child ebp
 	mov [eax + 16], dword .child	; next jump to fork.child
-
-	push eax						; save current task_t
-	call clone_directory			; clone the current address space and get a new directory
-	mov ebx, eax					; save it to ebx
-	pop eax							; get back the child
-	mov [eax + 20], ebx				; save the cloned directory into the task_t->page_directory
 
 	push eax						; save child task_t
 	call get_last_task				; get last task in task_queue
