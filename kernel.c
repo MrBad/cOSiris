@@ -121,7 +121,7 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	task_init();
 
 	syscall_init();
-	fork();
+	// fork();
 	exec_init();
 
 	//switch_to_user_mode();

@@ -372,33 +372,36 @@ dir_t *clone_directory()
 	cli();
 	for(dir_idx = 0; dir_idx < 1023; dir_idx++) {
 		if(curr_dir[dir_idx] & P_PRESENT) {
-			// from 0 to kernel stack, we link the pages
-			// if(dir_idx < ((KERNEL_STACK_HI-stack_size)/1024/PAGE_SIZE)) {
-			if(dir_idx < ((KERNEL_STACK_HI-stack_size)/1024/PAGE_SIZE)) {
+			// link the pages - from 0 to user stack low, and the kernel heap
+			if((dir_idx < ((USER_STACK_LOW)/1024/PAGE_SIZE)) || (dir_idx >= (HEAP_START/1024/PAGE_SIZE) && dir_idx < (HEAP_END/1024/PAGE_SIZE))) {
 				addr = temp_map(new_dir);
 				addr[dir_idx] = curr_dir[dir_idx];
 				temp_unmap();
 				// kprintf("Link dir: %p\n", (dir_idx * 1024 * PAGE_SIZE));
 			}
-			// we clone the rest
+			// we clone the rest -> to do, P_USER only on USER stack, USER prog,
 			else {
+				int dir_flags = curr_dir[dir_idx] & 0xFFF;
 				new_table = frame_calloc();
 				addr = temp_map(new_dir);
-				addr[dir_idx] = (phys_t)new_table | P_PRESENT | P_READ_WRITE | P_USER;
+				addr[dir_idx] = (phys_t)new_table | dir_flags;
 				temp_unmap();
 
 				table = (virt_t *) (PTABLES_ADDR + dir_idx * PAGE_SIZE);
 				for(tbl_idx = 0; tbl_idx < 1024; tbl_idx++) {
 					if(table[tbl_idx] & P_PRESENT) {
+
+						int table_flags = table[tbl_idx] & 0xFFF;
+
 						frame = (phys_t *)frame_calloc();
 						from_addr = (virt_t *)(dir_idx * 1024 * PAGE_SIZE + tbl_idx * PAGE_SIZE);
-						//kprintf("copy phys: %p->%p\n", from_addr, frame);
+						//kprintf("copy phys: %p->%p, flags: 0x%3x\n", from_addr, frame, table_flags);
 						addr = temp_map(frame);
 						memcpy(addr, from_addr, PAGE_SIZE);
 						temp_unmap();
 
 						addr = temp_map(new_table);
-						addr[tbl_idx] = (phys_t)frame | P_PRESENT | P_READ_WRITE | P_USER;
+						addr[tbl_idx] = (phys_t)frame | table_flags;
 						temp_unmap();
 					}
 				}

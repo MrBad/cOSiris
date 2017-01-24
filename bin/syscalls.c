@@ -35,3 +35,8 @@ int fork()
 {
 	return _syscall0(SYS_FORK);
 }
+
+int getpid()
+{
+	return _syscall0(SYS_GETPID);
+}

@@ -19,7 +19,7 @@ task_t *task_new()
 {
 	task_t *t = (task_t *) calloc(sizeof(task_t));
 	t->pid = next_pid++;
-	t->tss_kernel_stack = KERNEL_STACK_HI;//malloc_page_aligned(PAGE_SIZE);
+	t->tss_kernel_stack = (unsigned int *)KERNEL_STACK_HI;//malloc_page_aligned(PAGE_SIZE);
 	return t;
 }
 

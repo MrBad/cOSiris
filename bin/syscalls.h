@@ -7,5 +7,6 @@ void ps();
 unsigned int sum(unsigned int a, unsigned int b);
 void print_int(unsigned int n);
 int fork();
+int getpid();
 
 #endif

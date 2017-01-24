@@ -23,7 +23,8 @@ static void *syscalls[] = {
 	&task_exit,
 	&sum,
 	&print_int,
-	&fork
+	&fork,
+	&getpid,
 };
 static unsigned int num_syscalls;
 
