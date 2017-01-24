@@ -12,7 +12,7 @@
 
 void print_int(unsigned int x)
 {
-	kprintf("print_int: %08x\n", x);
+	kprintf("0x8%x\n", x);
 }
 
 task_t *task_new()
@@ -48,7 +48,8 @@ void ps()
 {
 	task_t *t = task_queue;
 	while(t) {
-		kprintf("pid: %d, ppid: %d, ring: %d, eip: %08x, esp:%08x, ebp: %08x, pd: %08x\n", t->pid, t->ppid, t->ring, t->eip, t->esp, t->ebp, t->page_directory);
+		// no eip, esp - assumes we are already in kernel mode //
+		kprintf("pid: %d, ppid: %d, ring: %d, pd: %08x\n", t->pid, t->ppid, t->ring, t->page_directory);
 		t = t->next;
 	}
 }
@@ -76,7 +77,7 @@ task_t *get_next_task()
 task_t *task_switch_inner()
 {
 	task_t *n = get_next_task();
-	set_tss_kernel_stack(n->tss_kernel_stack);
+	//set_tss_kernel_stack(n->tss_kernel_stack);
 	return n;
 }
 
@@ -84,6 +85,14 @@ task_t *task_switch_inner()
 task_t *get_current_task()
 {
 	return current_task;
+}
+
+task_t *fork_inner()
+{
+	task_t *t = task_new();
+	t->ppid = current_task->pid;
+	t->ring = current_task->ring;
+	return t;
 }
 
 int getpid()
@@ -153,6 +162,6 @@ void exec_init()
 		size = read_fs(fs_node, offset, fs_node->length, buff);
 		offset += size;
 	} while(size > 0);
-	kprintf("Loaded: %d bytes\n", offset);
+	// kprintf("Loaded: %d bytes\n", offset);
 	switch_to_user_mode(USER_CODE_START_ADDR, USER_STACK_HI);
 }

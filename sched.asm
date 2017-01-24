@@ -1,13 +1,10 @@
-EXTERN task_new, clone_directory, get_last_task, print_int, getpid
+EXTERN task_new, clone_directory, get_last_task, print_int, getpid, fork_inner
 [GLOBAL fork]
 
 fork:
 	cli								; do not interrupt me
-	call getpid
-	push eax						; save current pid
-	call task_new					; get a new child (task_t)
-	pop ecx
-	mov [eax + 4], ecx				; save ppid
+	call fork_inner
+
 	mov [eax + 8], esp				; save child esp
 	mov [eax + 12], ebp				; save child ebp
 	mov [eax + 16], dword .child	; next jump to fork.child
