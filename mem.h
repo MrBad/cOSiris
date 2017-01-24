@@ -32,21 +32,18 @@ dir_t *kernel_dir;
 
 
 
-
-// #define KERNEL_STACK_LOW	0xFFBED000ul	// 10000 stack
-// #define KERNEL_STACK_HI		0xFFBFD000ul
 #define USER_CODE_START_ADDR 0x10000000
 #define USER_STACK_LOW		USER_STACK_HI - 10 * PAGE_SIZE
-#define USER_STACK_HI		USER_CODE_START_ADDR - PAGE_SIZE
+#define USER_STACK_HI		USER_CODE_START_ADDR - PAGE_SIZE  // leave a page blank to capture errors
 #define KERNEL_STACK_HI		0xFF118000ul
 #define RESV_PAGE			0xFFBFE000ul
 #define PTABLES_ADDR 		0xFFC00000ul
 #define PDIR_ADDR			0xFFFFF000ul
 
+
 extern void switch_pd(dir_t *dir);
 extern void flush_tlb();
 
-//extern void *kmalloc_ptr;
 
 void *sbrk(unsigned int increment);
 //extern void *kmalloc(unsigned int size, int align, unsigned *phys);

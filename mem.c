@@ -367,7 +367,7 @@ dir_t *clone_directory()
 	virt_t *table, *addr;
 	phys_t *frame;
 	virt_t *from_addr;
-	extern unsigned int stack_size;
+	// extern unsigned int stack_size;
 
 	cli();
 	for(dir_idx = 0; dir_idx < 1023; dir_idx++) {
@@ -484,6 +484,6 @@ void mem_init(multiboot_header *mb)
 	// switch_page_directory(new_dir);
 
 	// dump_dir();
-	kprintf("Curr dir at: %p, kdir: %p\n", virt_to_phys(PDIR_ADDR), kernel_dir);
+	kprintf("Curr dir at: %p\n", virt_to_phys(PDIR_ADDR));
 	// heap_dump();
 }

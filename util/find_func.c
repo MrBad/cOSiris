@@ -1,3 +1,5 @@
+// Prints the symbol located at hex addr using kernel.sym //
+// used for debugging purpose //
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

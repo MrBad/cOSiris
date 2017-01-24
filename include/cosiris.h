@@ -11,12 +11,5 @@ enum {
 	SYS_FORK,
 	SYS_GETPID,
 };
-// #define	SYS_PRINT 0
-// #define	SYS_PRINT2 1
-// #define	SYS_PS 2
-// #define SYS_EXIT 3
-// #define SYS_SUM 4
-// #define SYS_PRINT_INT 5
-
 
 #endif

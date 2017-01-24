@@ -1,4 +1,6 @@
+// this is the first program loaded and executed in ring3 
 #include "syscalls.h"
+
 int main()
 {
 	char buf[] = "We are in userland\n";
@@ -19,4 +21,5 @@ int main()
 		print("\n");
 	}
 	ps();
+	return 1;
 }
