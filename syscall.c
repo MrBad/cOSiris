@@ -22,7 +22,8 @@ static void *syscalls[] = {
 	&ps,
 	&task_exit,
 	&sum,
-	&print_int
+	&print_int,
+	&fork
 };
 static unsigned int num_syscalls;
 
@@ -65,28 +66,4 @@ void syscall_init()
 	kprintf("Syscall Init\n");
 	isr_install_handler(0x80, &syscall_handler);
 	num_syscalls = sizeof(syscalls) / sizeof(void *);
-}
-
-
-// syscalls //
-// extern void syscall_print(char *buf);
-void syscall_print(char *buf) {
-	unsigned int ret;
-	asm volatile("mov $0x0, %%eax; \
-		mov %1, %%ebx; \
-		int $0x80;"
-		:"=r"(ret)
-		:"r"(buf)
-		: "%eax", "%ebx"
-	);
-}
-void syscall_print2(char *buf) {
-	unsigned int ret;
-	asm volatile("mov $0x1, %%eax; \
-		mov %1, %%ebx; \
-		int $0x80;"
-		:"=r"(ret)
-		:"r"(buf)
-		: "%eax", "%ebx"
-	);
 }

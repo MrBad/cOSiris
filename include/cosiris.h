@@ -7,7 +7,8 @@ enum {
 	SYS_PS,
 	SYS_EXIT,
 	SYS_SUM,
-	SYS_PRINT_INT
+	SYS_PRINT_INT,
+	SYS_FORK
 };
 // #define	SYS_PRINT 0
 // #define	SYS_PRINT2 1

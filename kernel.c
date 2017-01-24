@@ -117,13 +117,15 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	fs_root = initrd_init(initrd_location);
 	// list_root(fs_root);
 
+
 	task_init();
 
 	syscall_init();
-
+	fork();
 	exec_init();
-	//switch_to_user_mode();
 
+	//switch_to_user_mode();
+	//
 	// pid_t pid = fork();
 	// if(pid == 0) { // this will go to user mode
 	// 	switch_to_user_mode();

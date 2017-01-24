@@ -373,6 +373,7 @@ dir_t *clone_directory()
 	for(dir_idx = 0; dir_idx < 1023; dir_idx++) {
 		if(curr_dir[dir_idx] & P_PRESENT) {
 			// from 0 to kernel stack, we link the pages
+			// if(dir_idx < ((KERNEL_STACK_HI-stack_size)/1024/PAGE_SIZE)) {
 			if(dir_idx < ((KERNEL_STACK_HI-stack_size)/1024/PAGE_SIZE)) {
 				addr = temp_map(new_dir);
 				addr[dir_idx] = curr_dir[dir_idx];
@@ -424,7 +425,7 @@ void move_stack_up()
 
 	for(i = stack_size / PAGE_SIZE; i; i--) {
 		frame = frame_calloc();
-		map(KERNEL_STACK_HI - PAGE_SIZE * i, (unsigned int)frame, P_PRESENT | P_READ_WRITE | P_USER);
+		map(KERNEL_STACK_HI - PAGE_SIZE * i, (unsigned int)frame, P_PRESENT | P_READ_WRITE);
 		for(p = (unsigned int *)(stack_ptr-PAGE_SIZE*i); (unsigned int)p < stack_ptr-PAGE_SIZE*(i-1); p++) {
 			k = (unsigned int*)((unsigned int)p+offset);
 			if(*p < stack_ptr && *p >= stack_ptr-stack_size) {

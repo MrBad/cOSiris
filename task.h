@@ -23,6 +23,8 @@ task_t *task_queue;
 int next_pid;
 
 
+extern void switch_to_user_mode_asm(unsigned int code_addr, unsigned int stack_hi_addr);
+
 void task_init();
 int getpid();
 void task_switch();		// sched.asm

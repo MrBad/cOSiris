@@ -19,7 +19,7 @@ task_t *task_new()
 {
 	task_t *t = (task_t *) calloc(sizeof(task_t));
 	t->pid = next_pid++;
-	t->tss_kernel_stack = malloc_page_aligned(PAGE_SIZE);
+	t->tss_kernel_stack = KERNEL_STACK_HI;//malloc_page_aligned(PAGE_SIZE);
 	return t;
 }
 
@@ -111,11 +111,11 @@ void task_idle()
 		nop();
 	}
 }
-extern void switch_to_user_mode_asm();
-void switch_to_user_mode()
+
+void switch_to_user_mode(uint32_t code_addr, uint32_t stack_hi_addr)
 {
 	current_task->ring = 3;
-	switch_to_user_mode_asm();
+	switch_to_user_mode_asm(code_addr, stack_hi_addr);
 }
 
 //
@@ -132,13 +132,21 @@ void exec_init()
 	if(!fs_node) {
 		panic("Cannot find init\n");
 	} else {
-		kprintf("Loading /%s at address %p, length:%d\n", fs_node->name, USER_CODE_START_ADDR, fs_node->length);
+		kprintf("Loading /%s at address %p, length:%d\n", fs_node->name,
+				USER_CODE_START_ADDR, fs_node->length);
 	}
 	unsigned int num_pages = (fs_node->length / PAGE_SIZE) + 1;
 	unsigned int i;
 	for(i = 0; i < num_pages; i++) {
-		map(USER_CODE_START_ADDR + (PAGE_SIZE*i), (unsigned int)frame_alloc(), P_PRESENT | P_READ_WRITE | P_USER);
+		map(USER_CODE_START_ADDR + (PAGE_SIZE*i), (unsigned int)frame_alloc(),
+				P_PRESENT | P_READ_WRITE | P_USER);
 	}
+	// reserve 2 page stack //
+	for(i = 2; i > 0; i--) {
+		map(USER_STACK_HI-(i * PAGE_SIZE), (unsigned int) frame_calloc(),
+			P_PRESENT | P_READ_WRITE | P_USER);
+	}
+
 	unsigned int offset = 0, size = 0;
 	char *buff = (char *)USER_CODE_START_ADDR;
 	do {
@@ -146,5 +154,5 @@ void exec_init()
 		offset += size;
 	} while(size > 0);
 	kprintf("Loaded: %d bytes\n", offset);
-	switch_to_user_mode();
+	switch_to_user_mode(USER_CODE_START_ADDR, USER_STACK_HI);
 }

@@ -30,3 +30,8 @@ void print_int(uint32_t n)
 {
 	_syscall1(SYS_PRINT_INT, n);
 }
+
+int fork()
+{
+	return _syscall0(SYS_FORK);
+}
