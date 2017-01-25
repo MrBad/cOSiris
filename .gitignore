@@ -1,4 +1,5 @@
 *.o
+*.gch
 *.bin
 bin/init*
 util/find_func
