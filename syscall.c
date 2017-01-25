@@ -6,25 +6,16 @@
 #include "x86.h"
 
 
-void console_write2(char *buf){
-	kprintf("Console Write 2: ");
-	console_write(buf);
-}
-
-unsigned int sum(unsigned int a, unsigned int b) {
-	return a + b;
-}
 extern void print_int(unsigned int x);
 
 static void *syscalls[] = {
 	&console_write,
-	&console_write2,
-	&ps,
-	&task_exit,
-	&sum,
 	&print_int,
 	&fork,
+	&task_wait,
+	&task_exit,
 	&getpid,
+	&ps,
 };
 static unsigned int num_syscalls;
 

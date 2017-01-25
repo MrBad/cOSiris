@@ -1,12 +1,26 @@
 #ifndef _TASK_H
 #define _TASK_H
 
-
 #include "mem.h"
 
+typedef enum {
+	TASK_CREATING,
+	TASK_READY,
+	TASK_SLEEPING,
+	TASK_EXITING,
+	TASK_EXITED,
+} task_states_t;
+
+typedef struct wait_queue {
+	pid_t pid;
+	int status;
+	struct wait_queue *next;
+} wait_queue_t;
+
+
 typedef struct task {
-	int pid;				// task + 0		process id
-	int ppid;				// task + 4		parent pid
+	pid_t pid;				// task + 0		process id
+	pid_t ppid;				// task + 4		parent pid
 	unsigned int esp;		// task + 8		esp
 	unsigned int ebp;		// task + 12	ebp
 	unsigned int eip;		// task + 16	last eip / instruction pointer
@@ -15,6 +29,9 @@ typedef struct task {
 
 	unsigned int *tss_kernel_stack; 	// f..k i386 tss thing
 	int ring;
+	task_states_t state;
+	int exit_status;
+	wait_queue_t *wait_queue;
 } task_t;
 
 task_t *current_task;
@@ -26,15 +43,17 @@ int next_pid;
 extern void switch_to_user_mode_asm(unsigned int code_addr, unsigned int stack_hi_addr);
 
 void task_init();
-int getpid();
+pid_t getpid();
 void task_switch();		// sched.asm
-pid_t fork();	// sched.asm
+pid_t fork();			// sched.asm
 void print_current_task();
-void ps();
 task_t *get_last_task();
 task_t *get_next_task();
 task_t *get_current_task();
 void task_exit(int status);
-void task_idle();
+pid_t task_wait(int *status);
+void ps();
 void exec_init();
+
+
 #endif

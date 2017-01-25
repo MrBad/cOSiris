@@ -61,6 +61,7 @@ phys_t *frame_alloc();
 phys_t *frame_calloc();
 void frame_free(phys_t addr);
 dir_t *clone_directory();
+void free_directory(dir_t *dir);
 void switch_page_directory(dir_t *dir);
 
 

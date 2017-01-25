@@ -7,6 +7,7 @@
 #include "kheap.h"		// HEAP defs //
 #include "assert.h"		// KASSERT /
 #include "mem.h"
+#include "task.h"
 #include "x86.h"
 
 // extern void halt(void);
@@ -29,6 +30,7 @@ int fault_counter = 0;
  */
 int page_fault(struct iregs *r)
 {
+	extern task_t *current_task;
 	unsigned int fault_addr;
 	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
 	unsigned short int table_idx = fault_addr >> 22;
@@ -40,6 +42,7 @@ int page_fault(struct iregs *r)
 	}
 	kprintf("____\nFAULT: %s addr: %p, ", r->err_code & P_PRESENT ? "page violation" : "not present", fault_addr);
 	kprintf("stack: 0x%X\n", get_esp());
+	kprintf("task: %d\n", current_task->pid);
 
 	kprintf("eip: 0x%p\n", r->eip);
 	kprintf("vaddr: %p, dir_idx: %i, table_idx: %i\n", table_idx*1024*PAGE_SIZE+page_idx*PAGE_SIZE, table_idx, page_idx);
@@ -412,6 +415,38 @@ dir_t *clone_directory()
 	iter++;
 	sti();
 	return new_dir;
+}
+
+void free_directory(dir_t *dir)
+{
+	cli();
+	kprintf("Free directory: %p, curr: %p\n", dir, virt_to_phys(PDIR_ADDR));
+	KASSERT((virt_to_phys(PDIR_ADDR) != (phys_t)dir)); // don't free current working directory (self freeing) //
+
+	unsigned int dir_idx, tbl_idx;
+	cli();
+	for(dir_idx = 0; dir_idx < 1023; dir_idx++) {
+		virt_t *addr = temp_map(dir);
+		phys_t pde = addr[dir_idx];
+		temp_unmap(dir);
+		if(pde & P_PRESENT) {
+			// link the pages - from 0 to user stack low, and the kernel heap
+			if((dir_idx < ((USER_STACK_LOW)/1024/PAGE_SIZE)) || (dir_idx >= (HEAP_START/1024/PAGE_SIZE) && dir_idx < (HEAP_END/1024/PAGE_SIZE))) {
+				continue;
+			}
+			for(tbl_idx = 0; tbl_idx < 1024; tbl_idx++) {
+				addr = temp_map((phys_t *)(pde & 0xFFFF000));
+				phys_t tbe = addr[tbl_idx];
+				temp_unmap();
+				if(tbe & P_PRESENT) {
+					frame_free(tbe & 0xFFFF000); // free assigned page
+				}
+			}
+			frame_free(pde & 0xFFFF000); // free table entry
+		}
+	}
+	frame_free((phys_t)dir); // free dir
+	sti();
 }
 
 

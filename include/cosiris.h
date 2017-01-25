@@ -3,13 +3,12 @@
 
 enum {
 	SYS_PRINT,
-	SYS_PRINT2,
-	SYS_PS,
-	SYS_EXIT,
-	SYS_SUM,
 	SYS_PRINT_INT,
 	SYS_FORK,
+	SYS_WAIT,
+	SYS_EXIT,
 	SYS_GETPID,
+	SYS_PS,
 };
 
 #endif

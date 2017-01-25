@@ -1,4 +1,5 @@
 #include <cosiris.h>
+#include <types.h>
 #include "sys.h"
 
 void print(char *str)
@@ -6,37 +7,32 @@ void print(char *str)
 	_syscall1(SYS_PRINT, (uint32_t)str);
 }
 
-void print2(char *str)
+void print_int(int n)
 {
-	_syscall1(SYS_PRINT2, (uint32_t) str);
+	_syscall1(SYS_PRINT_INT, (uint32_t) n);
+}
+
+pid_t fork()
+{
+	return _syscall0(SYS_FORK);
+}
+
+pid_t wait(int *status)
+{
+	return _syscall1(SYS_WAIT, (uint32_t)status);
+}
+
+void exit(int status)
+{
+	_syscall1(SYS_EXIT, (uint32_t) status);
+}
+
+pid_t getpid()
+{
+	return (pid_t) _syscall0(SYS_GETPID);
 }
 
 void ps()
 {
 	_syscall0(SYS_PS);
-}
-
-void exit(uint32_t status)
-{
-	_syscall1(SYS_EXIT, status);
-}
-
-uint32_t sum(uint32_t a, uint32_t b)
-{
-	return _syscall2(SYS_SUM, a, b);
-}
-
-void print_int(uint32_t n)
-{
-	_syscall1(SYS_PRINT_INT, n);
-}
-
-int fork()
-{
-	return _syscall0(SYS_FORK);
-}
-
-int getpid()
-{
-	return _syscall0(SYS_GETPID);
 }
