@@ -151,7 +151,7 @@ void task_free(task_t *task)
 		}
 	}
 	KASSERT(task->wait_queue == NULL);
-	kprintf("free %d\n", task->pid);
+	// kprintf("free %d\n", task->pid);
 	free_directory(task->page_directory);
 	free(task);
 	switch_locked = false;

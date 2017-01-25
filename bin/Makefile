@@ -25,4 +25,4 @@ all: $(OBJS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
 clean:
-	rm $(OBJS) $(TARGET) *.lst
+	rm $(OBJS) $(TARGET) *.lst *.gch

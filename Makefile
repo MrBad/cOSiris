@@ -36,7 +36,7 @@ lib/libc.a: lib/Makefile
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
 clean:
-	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt parport.out System.map debugger.out serial.out
+	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt parport.out System.map debugger.out serial.out *.gch
 
 
 distclean:

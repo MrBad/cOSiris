@@ -20,4 +20,4 @@ mkinitrd: mkinitrd.o
 	$(CC) $(CFLAGS) $(OFLAGS) -o $@ $<
 
 clean:
-	rm *.o find_func mkinitrd
+	rm *.o find_func mkinitrd *.gch

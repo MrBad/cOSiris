@@ -420,7 +420,7 @@ dir_t *clone_directory()
 void free_directory(dir_t *dir)
 {
 	cli();
-	kprintf("Free directory: %p, curr: %p\n", dir, virt_to_phys(PDIR_ADDR));
+	// kprintf("Free directory: %p, curr: %p\n", dir, virt_to_phys(PDIR_ADDR));
 	KASSERT((virt_to_phys(PDIR_ADDR) != (phys_t)dir)); // don't free current working directory (self freeing) //
 
 	unsigned int dir_idx, tbl_idx;

@@ -23,7 +23,7 @@ OBJS	=$(STRING) $(STDARG)
 all: libc.a
 
 clean:
-	rm -f libc.a $(OBJS)
+	rm -f libc.a $(OBJS) *.gch
 
 # implicit rules
 #.asm.o:
