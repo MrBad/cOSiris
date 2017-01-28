@@ -78,7 +78,7 @@ fs_node_t *create_zero_device()
 void zero_init()
 {
 	fs_node_t *dev = finddir_fs(fs_root, "dev");
-	kprintf("dev->inode:%d\n", dev->inode);
+	// kprintf("dev->inode:%d\n", dev->inode);
 	fs_node_t *n = create_null_device();
 	n->parent_inode = dev->inode;
 	fs_node_t *z = create_zero_device();
@@ -87,14 +87,17 @@ void zero_init()
 	initrd_add_node(z);
 	free(n); free(z);
 
-	fs_node_t *x = namei("/dev/zero");
-	if(x) {
-		kprintf("%s\n", x->name);
-		char buff[256];
-		strcpy(buff, "TESTING THIS");
-		unsigned int x = read_fs(z, 3, 2, buff);
-		kprintf("%d, %s\n", x, buff); // should be TES
-	}
-
-
+	// fs_node_t *x;
+	// x = namei("/dev/zero");
+	// if(x) {
+	// 	kprintf("%s\n", x->name);
+	// 	char buff[256];
+	// 	strcpy(buff, "TESTING THIS");
+	// 	unsigned int x = read_fs(z, 3, 2, buff);
+	// 	kprintf("%d, %s\n", x, buff); // should be TES
+	// }
+	// x = namei("/dev");
+	// if(x) {
+	// 	kprintf("%s-%i\n", x->name, x->inode);
+	// }
 }

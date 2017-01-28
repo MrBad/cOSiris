@@ -70,11 +70,12 @@ fs_node_t *namei(char *path)
 			// kprintf("%s\n", d);
 		}
 	}
-	node = finddir_fs(node, d);
+	// kprintf("%s\n", d);
+	node = finddir_fs(node ? node : fs_root, d);
 	if(!node) {
 		return NULL;
 	}
-	kprintf("node: %d", node->inode);
+	// kprintf("node: %d", node->inode);
 	free(d);
 	return node;
 }
