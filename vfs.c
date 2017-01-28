@@ -1,7 +1,8 @@
-#include "include/types.h"
 #include <string.h>
+#include "include/types.h"
 #include "console.h"
 #include "kheap.h"
+#include "assert.h"
 
 #include "vfs.h"
 
@@ -48,6 +49,9 @@ fs_node_t *finddir_fs(fs_node_t *node, char *name) {
 fs_node_t *namei(char *path)
 {
 	fs_node_t *node = NULL;
+	KASSERT(*path);
+	KASSERT(*path == '/');
+
 	char *p; int len = strlen(path);
 	char *str = strdup(path);
 	for(p = str; *p; p++) {
@@ -58,8 +62,10 @@ fs_node_t *namei(char *path)
 	p = str;
 	while(len > 0) {
 		if(*p) {
-			//kprintf("%s\n", p);
-			node = finddir_fs(node ? node : fs_root, p);
+			// kprintf("%s\n", p);
+			if(!(node = finddir_fs(node ? node : fs_root, p))) {
+				break;
+			}
 		}
 		len = len - strlen(p) - 1;
 		p = p + strlen(p) + 1;
