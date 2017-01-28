@@ -9,7 +9,7 @@ NASM	=nasm -f elf -i$(INCDIR)/
 CC	=gcc -m32 -g -Wall -W -O2 -nostdlib -fno-builtin -ffreestanding -I$(INCDIR)
 #STDIO	=stdio/doprintf.o
 
-STRING	=memcpy.o strcpy.o strlen.o strcmp.o memset.o
+STRING	=memcpy.o strcpy.o strlen.o strcmp.o memset.o strdup.o strcat.o strncat.o
 STDARG	=vsprintf.o
 #X86	=x86/inportb.o x86/outportb.o x86/disable.o x86/enable.o
 
@@ -38,7 +38,9 @@ strcpy.o:	strcpy.c		$(MAKEDEP)
 strcmp.o:	strcmp.c		$(MAKEDEP)
 vsprintf.o:	vsprintf.c		$(MAKEDEP)
 memset.o:	memset.c		$(MAKEDEP)
-
+strdup.o:	strdup.c		$(MAKEDEP)
+strcat.o:	strcat.c		$(MAKEDEP)
+strncat.o:	strncat.c		$(MAKEDEP)
 # explicit rules
 libc.a:	$(OBJS) $(MAKEDEP)
 	ar rcs libc.a $(OBJS)

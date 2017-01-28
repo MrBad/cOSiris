@@ -2,7 +2,7 @@ INCLUDE=../include
 LIBS=
 CC=gcc
 OFLAGS=-c
-CFLAGS=-g -Wall -Wextra -std=gnu99 -pedantic-errors -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -I$(INCLUDE)
+CFLAGS=-g -Wall -Wextra -std=gnu99 -pedantic-errors -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -I$(INCLUDE) 
 LDFLAGS=-T link.ld -melf_i386  # emulate 32 bits ELF, the binary output is specified in the linker script
 ASM = nasm
 ASMFLAGS = -g -f elf
@@ -25,4 +25,4 @@ all: $(OBJS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
 clean:
-	rm $(OBJS) $(TARGET) *.lst *.gch
+	rm *.o init *.lst *.gch

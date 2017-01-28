@@ -419,15 +419,18 @@ dir_t *clone_directory()
 
 void free_directory(dir_t *dir)
 {
-	cli();
+	// cli();
+	virt_t *addr;
+	phys_t pde, pte;
+
 	// kprintf("Free directory: %p, curr: %p\n", dir, virt_to_phys(PDIR_ADDR));
 	KASSERT((virt_to_phys(PDIR_ADDR) != (phys_t)dir)); // don't free current working directory (self freeing) //
 
 	unsigned int dir_idx, tbl_idx;
-	cli();
+
 	for(dir_idx = 0; dir_idx < 1023; dir_idx++) {
-		virt_t *addr = temp_map(dir);
-		phys_t pde = addr[dir_idx];
+		addr = temp_map(dir);
+		pde = addr[dir_idx];
 		temp_unmap(dir);
 		if(pde & P_PRESENT) {
 			// link the pages - from 0 to user stack low, and the kernel heap
@@ -436,17 +439,17 @@ void free_directory(dir_t *dir)
 			}
 			for(tbl_idx = 0; tbl_idx < 1024; tbl_idx++) {
 				addr = temp_map((phys_t *)(pde & 0xFFFF000));
-				phys_t tbe = addr[tbl_idx];
+				pte = addr[tbl_idx];
 				temp_unmap();
-				if(tbe & P_PRESENT) {
-					frame_free(tbe & 0xFFFF000); // free assigned page
+				if(pte & P_PRESENT) {
+					frame_free(pte & 0xFFFF000); // free assigned page
 				}
 			}
 			frame_free(pde & 0xFFFF000); // free table entry
 		}
 	}
 	frame_free((phys_t)dir); // free dir
-	sti();
+	// sti();
 }
 
 

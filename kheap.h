@@ -35,4 +35,5 @@ void *calloc(unsigned int nbytes);
 void free(void *ptr);
 // Allocate a nbytes of memory, multiple of PAGE_SIZE, PAGE_SIZE aligned
 void *malloc_page_aligned(unsigned int nbytes);
+void *realloc(void *ptr, size_t size);
 #endif

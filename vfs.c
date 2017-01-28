@@ -1,6 +1,8 @@
 #include "include/types.h"
+#include <string.h>
 #include "console.h"
 #include "kheap.h"
+
 #include "vfs.h"
 
 
@@ -40,4 +42,44 @@ fs_node_t *finddir_fs(fs_node_t *node, char *name) {
 		return false;
 }
 
-//void initrd_open(fs_node_t *node, unsigned int flags) { }
+// stdlib realpath,
+// libgen dirname, basename,
+// simple name to inode - needs rewrite, i don't like it
+fs_node_t *namei(char *path)
+{
+	fs_node_t *node = NULL;
+	char *p = path;
+	char *d; int i = 0;
+	// bool have_new = false;
+	d = (char *)malloc(strlen(path)+1);
+	while(*p) {
+		if(*p == '/') {
+			if(i > 0) {
+				// kprintf("%s\n", d);
+				node = finddir_fs(node ? node : fs_root, d);
+				if(!node) {
+					return NULL;
+				}
+			}
+			i = 0; p++;
+			continue;
+		}
+		d[i++] = *p++;
+		d[i] = 0;
+		if(*p == 0) {
+			// kprintf("%s\n", d);
+		}
+	}
+	node = finddir_fs(node, d);
+	if(!node) {
+		return NULL;
+	}
+	kprintf("node: %d", node->inode);
+	free(d);
+	return node;
+}
+
+void mount_fs(char *path, fs_node_t *root)
+{
+	kprintf("mount_fs: %s, %s\n", path, root->name);
+}

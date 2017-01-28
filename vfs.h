@@ -17,19 +17,15 @@
 struct fs_node;
 
 typedef unsigned int (*read_type_t)(struct fs_node *node, unsigned int offset, unsigned int size, char *buffer);
-
 typedef unsigned int (*write_type_t)(struct fs_node *node, unsigned int offset, unsigned int size, char *buffer);
-
 typedef void (*open_type_t)(struct fs_node *node, unsigned int flags);
-
 typedef void (*close_type_t)(struct fs_node *node);
-
 typedef struct dirent *(*readdir_type_t)(struct fs_node *node, unsigned int index);
-
 typedef struct fs_node *(*finddir_type_t)(struct fs_node *node, char *name);
 
+
 typedef struct fs_node {
-	char name[128];
+	char name[256];			// this info should go ouside inode in future
 	unsigned int mask;
 	unsigned int uid;
 	unsigned int gid;
@@ -37,6 +33,10 @@ typedef struct fs_node {
 	unsigned int inode;
 	unsigned int length;
 	unsigned int impl;      // ?! implementation defined number
+
+	unsigned int parent_inode;	// Who's my parent directory
+								// This info should go outside inode in future
+	struct fs_node *next;		// pointer to the next node in list
 
 	read_type_t read;
 	write_type_t write;
@@ -46,27 +46,27 @@ typedef struct fs_node {
 	finddir_type_t finddir;
 
 	struct fs_node *ptr; // Used in mountpoints and symlinks
+
 } fs_node_t;
 
 struct dirent {
-	char name[128];     // Filename
+	char name[256];     // Filename
 	unsigned int inode;
 };
 
+fs_node_t *fs_root;
+
 
 unsigned int read_fs(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer);
-
 unsigned int write_fs(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer);
-
 void open_fs(fs_node_t *node, unsigned int flags);
-
 void close_fs(fs_node_t *node);
-
 fs_node_t *finddir_fs(fs_node_t *node, char *name);
-
 struct dirent *readdir_fs(fs_node_t *node, unsigned int index);
-
 fs_node_t *finddir_fs(fs_node_t *node, char *name);
+fs_node_t *namei(char *path);
 
+
+// int mount_fs(char *path, fs_node_t *where);
 
 #endif

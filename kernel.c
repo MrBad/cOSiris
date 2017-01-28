@@ -18,8 +18,8 @@
 #include "serial.h"
 #include "task.h"
 #include "syscall.h"
+#include "zero.h"
 
-fs_node_t *fs_root;
 unsigned int initrd_location, initrd_end;
 unsigned int stack_ptr, stack_size;
 
@@ -106,35 +106,15 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	kprintf("Setup paging\n");
 	mem_init(mboot);
 
-	// kprintf("initrd %p - %p\n", initrd_location, initrd_end);
-	// hardcoded user program loaded by grub @initrd_location and linked to 0x10000000 //
-	// unsigned int *upage = frame_alloc();
-	// map(0x10000000, (unsigned int)upage, P_PRESENT|P_READ_WRITE|P_USER);
-	// unsigned int *addr = temp_map(initrd_location);
-	// memcpy((void *)0x10000000, (void *)initrd_location, PAGE_SIZE);
-	// temp_unmap();
-
 	fs_root = initrd_init(initrd_location);
-	// list_root(fs_root);
-
+	zero_init();
 
 	task_init();
 
 	syscall_init();
-	// fork();
+
 	exec_init();
 
-	//switch_to_user_mode();
-	//
-	// pid_t pid = fork();
-	// if(pid == 0) { // this will go to user mode
-	// 	switch_to_user_mode();
-	// } else {		// parent will stay in kernel mode
-	// 	//delay(20);	// short delay to let the child switch
-	// 	//ps();
-	// 	kprintf("Used mem: %d kB\n", (total_pages-num_pages)*PAGE_SIZE /1024);
-	// 	task_idle();
-	// }
 	kprintf("Should not get here\n");
 	return;
 }

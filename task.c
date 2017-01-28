@@ -248,8 +248,8 @@ void exec_init()
 	if(!fs_node) {
 		panic("Cannot find init\n");
 	} else {
-		kprintf("Loading /%s at address %p, length:%d\n", fs_node->name,
-				USER_CODE_START_ADDR, fs_node->length);
+		kprintf("Loading /%s, inode:%d, at address %p, length:%d\n", fs_node->name,
+				fs_node->inode, USER_CODE_START_ADDR, fs_node->length);
 	}
 	unsigned int num_pages = (fs_node->length / PAGE_SIZE) + 1;
 	unsigned int i;

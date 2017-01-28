@@ -16,9 +16,6 @@ extern bool heap_active;
 heap_t myheap = {0};
 heap_t *heap = &myheap;
 extern int getpid();
-// block_meta_t *first_block = 0;
-//unsigned int calls = 0;
-//extern page_directory_t *kernel_dir;
 
 void debug_dump_list(block_meta_t *p) {
 //	block_meta_t *p;
@@ -168,6 +165,26 @@ void *calloc(unsigned int nbytes) {
 	void *p = malloc(nbytes);
 	memset(p, 0, nbytes);
 	return p;
+}
+
+void *realloc(void *ptr, size_t size)
+{
+	void *n;
+	if(!ptr) {
+		return malloc(size);
+	}
+	if(!size) {
+		free(ptr);
+	}
+	block_meta_t *p = (block_meta_t *)ptr;
+	p--;
+	KASSERT(p->magic_head == MAGIC_HEAD);
+	KASSERT(p->magic_end == MAGIC_END);
+
+	n = malloc(size);
+	memcpy(n, ptr, size < p->size ? size : p->size);
+	free(ptr);
+	return n;
 }
 
 // Allocate a nbytes of memory, multiple of PAGE_SIZE, PAGE_SIZE aligned

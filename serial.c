@@ -19,7 +19,7 @@ int is_transmit_empty() {
 
 void serial_putc(char a) {
 	while (is_transmit_empty() == 0);
-	outb(PORT,a);
+	outb(PORT, a);
 }
 void serial_write(char *buf) {
 	for (;;) {
