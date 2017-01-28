@@ -87,7 +87,7 @@ void zero_init()
 	initrd_add_node(z);
 	free(n); free(z);
 
-	// fs_node_t *x;
+	//fs_node_t *x;
 	// x = namei("/dev/zero");
 	// if(x) {
 	// 	kprintf("%s\n", x->name);
@@ -96,8 +96,8 @@ void zero_init()
 	// 	unsigned int x = read_fs(z, 3, 2, buff);
 	// 	kprintf("%d, %s\n", x, buff); // should be TES
 	// }
-	// x = namei("/dev");
-	// if(x) {
-	// 	kprintf("%s-%i\n", x->name, x->inode);
-	// }
+	//x = namei("/dev/zero");
+	//if(x) {
+	//	kprintf("\t\tfound: %s-%i\n", x->name, x->inode);
+	//}
 }

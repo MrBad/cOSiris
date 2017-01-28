@@ -67,13 +67,24 @@ struct dirent *initrd_readdir(struct fs_node *parent_node, unsigned int index)
 }
 
 
-struct fs_node *initrd_finddir(struct fs_node *parent_node, char *name) {
+struct fs_node * initrd_finddir(struct fs_node *parent_node, char *name) {
 	unsigned int i;
-	for (i = 0; i < nroot_nodes; i++) {
-		if(!strcmp(name, root_nodes[i].name) && parent_node->inode == root_nodes[i].parent_inode) {
-			return &root_nodes[i];
+	// if(!strcmp(name, ".")) {
+		// return parent_node;
+	// }
+	// if(!strcmp(name, "..")) {
+	// 	for (i = 0; i < nroot_nodes; i++) {
+	// 		if(root_nodes[i].inode == parent_node->parent_inode) {
+	// 			return &root_nodes[i];
+	// 		}
+	// 	}
+	// } else {
+		for (i = 0; i < nroot_nodes; i++) {
+			if(!strcmp(name, root_nodes[i].name) && parent_node->inode == root_nodes[i].parent_inode) {
+				return &root_nodes[i];
+			}
 		}
-	}
+	// }
 	return 0;
 }
 
@@ -179,7 +190,6 @@ fs_node_t *initrd_init(unsigned int location)
 		root_nodes[i].impl = 0;
 	}
 
-
 	// initialise /dev node //
 	strcpy(root_nodes[i].name, "dev");
 	root_nodes[i].inode = i;
@@ -190,10 +200,6 @@ fs_node_t *initrd_init(unsigned int location)
 
 	nroot_nodes  = allocated_nodes = i;
 	initrd_inited = true;
-
-	// for(i=0; i<3;i++) {
-	// 	kprintf("--[ %d, %d, %s\n",i, root_nodes[i].inode, root_nodes[i].name);
-	// }
 
 	return initrd_root;
 }

@@ -1,0 +1,233 @@
+{
+  "exclude": [
+    "^(node_modules|bower_components|\\.imdone|target|build|dist|logs)[\\/\\\\]?|\\.(git|svn|hg|npmignore)|\\~$|\\.(jpg|png|gif|swp|ttf|otf)$"
+  ],
+  "watcher": true,
+  "keepEmptyPriority": false,
+  "code": {
+    "include_lists": [
+      "TODO",
+      "DOING",
+      "DONE",
+      "PLANNING",
+      "FIXME",
+      "ARCHIVE",
+      "HACK",
+      "CHANGED",
+      "XXX",
+      "IDEA",
+      "NOTE",
+      "REVIEW"
+    ]
+  },
+  "lists": [
+    {
+      "name": "config_interface",
+      "hidden": false
+    },
+    {
+      "name": "display_library",
+      "hidden": false
+    },
+    {
+      "name": "romimage",
+      "hidden": false
+    },
+    {
+      "name": "cpu",
+      "hidden": false
+    },
+    {
+      "name": "megs",
+      "hidden": false
+    },
+    {
+      "name": "optromimage1",
+      "hidden": false
+    },
+    {
+      "name": "optromimage2",
+      "hidden": false
+    },
+    {
+      "name": "optromimage3",
+      "hidden": false
+    },
+    {
+      "name": "optromimage4",
+      "hidden": false
+    },
+    {
+      "name": "optramimage1",
+      "hidden": false
+    },
+    {
+      "name": "optramimage2",
+      "hidden": false
+    },
+    {
+      "name": "optramimage3",
+      "hidden": false
+    },
+    {
+      "name": "optramimage4",
+      "hidden": false
+    },
+    {
+      "name": "vgaromimage",
+      "hidden": false
+    },
+    {
+      "name": "vga",
+      "hidden": false
+    },
+    {
+      "name": "floppya",
+      "hidden": false
+    },
+    {
+      "name": "floppyb",
+      "hidden": false
+    },
+    {
+      "name": "ata0",
+      "hidden": false
+    },
+    {
+      "name": "ata1",
+      "hidden": false
+    },
+    {
+      "name": "ata2",
+      "hidden": false
+    },
+    {
+      "name": "ata3",
+      "hidden": false
+    },
+    {
+      "name": "ata0-master",
+      "hidden": false
+    },
+    {
+      "name": "ta0-master",
+      "hidden": false
+    },
+    {
+      "name": "ata0-slave",
+      "hidden": false
+    },
+    {
+      "name": "boot",
+      "hidden": false
+    },
+    {
+      "name": "clock",
+      "hidden": false
+    },
+    {
+      "name": "log",
+      "hidden": false
+    },
+    {
+      "name": "logprefix",
+      "hidden": false
+    },
+    {
+      "name": "pass",
+      "hidden": false
+    },
+    {
+      "name": "debugger_log",
+      "hidden": false
+    },
+    {
+      "name": "com1",
+      "hidden": false
+    },
+    {
+      "name": "sb16",
+      "hidden": false
+    },
+    {
+      "name": "vga_update_interval",
+      "hidden": false
+    },
+    {
+      "name": "keyboard_serial_delay",
+      "hidden": false
+    },
+    {
+      "name": "keyboard_paste_delay",
+      "hidden": false
+    },
+    {
+      "name": "fullscreen",
+      "hidden": false
+    },
+    {
+      "name": "screenmode",
+      "hidden": false
+    },
+    {
+      "name": "keyboard_mapping",
+      "hidden": false
+    },
+    {
+      "name": "keyboard_type",
+      "hidden": false
+    },
+    {
+      "name": "user_shortcut",
+      "hidden": false
+    },
+    {
+      "name": "i440fxsupport",
+      "hidden": false
+    },
+    {
+      "name": "usb1",
+      "hidden": false
+    },
+    {
+      "name": "cmosimage",
+      "hidden": false
+    },
+    {
+      "name": "debug_symbols",
+      "hidden": false
+    },
+    {
+      "name": "load32bitOSImage",
+      "hidden": false
+    },
+    {
+      "name": "text_snapshot_check",
+      "hidden": false
+    },
+    {
+      "name": "print_timestamps",
+      "hidden": false
+    },
+    {
+      "name": "pcidev",
+      "hidden": false
+    },
+    {
+      "name": "gdbstub",
+      "hidden": false
+    },
+    {
+      "name": "TODO",
+      "hidden": false
+    }
+  ],
+  "marked": {
+    "gfm": true,
+    "tables": true,
+    "breaks": false,
+    "pedantic": false,
+    "smartLists": true,
+    "langPrefix": "language-"
+  }
+}

@@ -48,35 +48,23 @@ fs_node_t *finddir_fs(fs_node_t *node, char *name) {
 fs_node_t *namei(char *path)
 {
 	fs_node_t *node = NULL;
-	char *p = path;
-	char *d; int i = 0;
-	// bool have_new = false;
-	d = (char *)malloc(strlen(path)+1);
-	while(*p) {
+	char *p; int len = strlen(path);
+	char *str = strdup(path);
+	for(p = str; *p; p++) {
 		if(*p == '/') {
-			if(i > 0) {
-				// kprintf("%s\n", d);
-				node = finddir_fs(node ? node : fs_root, d);
-				if(!node) {
-					return NULL;
-				}
-			}
-			i = 0; p++;
-			continue;
-		}
-		d[i++] = *p++;
-		d[i] = 0;
-		if(*p == 0) {
-			// kprintf("%s\n", d);
+			*p = 0;
 		}
 	}
-	// kprintf("%s\n", d);
-	node = finddir_fs(node ? node : fs_root, d);
-	if(!node) {
-		return NULL;
+	p = str;
+	while(len > 0) {
+		if(*p) {
+			//kprintf("%s\n", p);
+			node = finddir_fs(node ? node : fs_root, p);
+		}
+		len = len - strlen(p) - 1;
+		p = p + strlen(p) + 1;
 	}
-	// kprintf("node: %d", node->inode);
-	free(d);
+	free(str);
 	return node;
 }
 

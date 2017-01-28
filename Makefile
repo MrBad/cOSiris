@@ -65,3 +65,5 @@ fd:
 
 run: fdimg
 	$(BOCHS) -f bochsrc -q
+runq: fdimg
+	qemu-system-i386 -kernel kernel.bin -curses -initrd initrd.img
