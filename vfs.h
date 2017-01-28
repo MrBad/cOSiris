@@ -65,8 +65,7 @@ fs_node_t *finddir_fs(fs_node_t *node, char *name);
 struct dirent *readdir_fs(fs_node_t *node, unsigned int index);
 fs_node_t *finddir_fs(fs_node_t *node, char *name);
 fs_node_t *namei(char *path);
+int mount_fs(char *path, fs_node_t *node);
 
-
-// int mount_fs(char *path, fs_node_t *where);
 
 #endif

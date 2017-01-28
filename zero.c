@@ -42,8 +42,9 @@ void close_zero(struct fs_node *node) {
 
 fs_node_t *create_null_device()
 {
-	fs_node_t * n = (fs_node_t *) calloc(sizeof(fs_node_t));
-	n->inode = 0;
+	// fs_node_t * n = (fs_node_t *) calloc(sizeof(fs_node_t));
+	// n->inode = 0;
+	fs_node_t *n = initrd_new_node();
 	strcpy(n->name, "null");
 	n->uid = n->gid = 0;
 	n->mask = 0666;
@@ -59,8 +60,9 @@ fs_node_t *create_null_device()
 
 fs_node_t *create_zero_device()
 {
-	fs_node_t * n = (fs_node_t *) calloc(sizeof(fs_node_t));
-	n->inode = 0;
+	// fs_node_t * n = (fs_node_t *) calloc(sizeof(fs_node_t));
+	// n->inode = 0;
+	fs_node_t * n = initrd_new_node();
 	strcpy(n->name, "zero");
 	n->uid = n->gid = 0;
 	n->mask = 0666;
@@ -74,7 +76,7 @@ fs_node_t *create_zero_device()
 	return n;
 }
 
-
+#if 0
 void zero_init()
 {
 	fs_node_t *dev = finddir_fs(fs_root, "dev");
@@ -83,8 +85,8 @@ void zero_init()
 	n->parent_inode = dev->inode;
 	fs_node_t *z = create_zero_device();
 	z->parent_inode = dev->inode;
-	initrd_add_node(n);
-	initrd_add_node(z);
+	initrd_add_node(n); //
+	initrd_add_node(z); //
 	free(n); free(z);
 
 	// fs_node_t *x;
@@ -100,4 +102,13 @@ void zero_init()
 	// if(x) {
 	// 	kprintf("\t\tfound: %s-%i\n", x->name, x->inode);
 	// }
+}
+#endif
+
+void zero_init()
+{
+	fs_node_t *n = create_null_device();
+	fs_node_t *z = create_zero_device();
+	mount_fs("/dev/null", n);
+	mount_fs("/dev/zero", z);
 }

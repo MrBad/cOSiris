@@ -4,5 +4,6 @@
 
 fs_node_t *initrd_init(unsigned int location);
 void initrd_add_node(struct fs_node *node);
+struct fs_node * initrd_new_node();
 void dump_fs();
 #endif

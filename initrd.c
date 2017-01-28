@@ -103,6 +103,19 @@ void lstree(fs_node_t *parent)
 	}
 }
 
+struct fs_node * initrd_new_node()
+{
+	fs_node_t *n;
+	if(allocated_nodes <= nroot_nodes) {
+		kprintf("Extend array\n");
+		root_nodes = (fs_node_t *) realloc(root_nodes, sizeof(fs_node_t) * (allocated_nodes * 2));
+	}
+	allocated_nodes *= 2;
+	n = &root_nodes[nroot_nodes];
+	n->inode = nroot_nodes++;
+	return n;
+}
+
 struct fs_node *initrd_add_node(struct fs_node *node) {
 	if(allocated_nodes <= nroot_nodes) {
 		kprintf("Extend array\n");
