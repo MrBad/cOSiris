@@ -2,6 +2,7 @@
 #define _TASK_H
 
 #include "mem.h"
+#include "list.h"
 
 typedef enum {
 	TASK_CREATING,
@@ -10,12 +11,6 @@ typedef enum {
 	TASK_EXITING,
 	TASK_EXITED,
 } task_states_t;
-
-typedef struct wait_queue {
-	pid_t pid;
-	int status;
-	struct wait_queue *next;
-} wait_queue_t;
 
 
 typedef struct task {
@@ -31,7 +26,7 @@ typedef struct task {
 	int ring;
 	task_states_t state;
 	int exit_status;
-	wait_queue_t *wait_queue;
+	list_t *wait_queue;
 } task_t;
 
 task_t *current_task;

@@ -33,6 +33,7 @@ task_t *task_new()
 	task_t *t = (task_t *) calloc(1, sizeof(task_t));
 	t->pid = next_pid++;
 	t->tss_kernel_stack = (unsigned int *)KERNEL_STACK_HI;//malloc_page_aligned(PAGE_SIZE);
+	t->wait_queue = list_open(NULL);
 	return t;
 }
 
@@ -86,7 +87,7 @@ task_t *task_switch_inner()
 
 	task_t *n = current_task->next;
 	unsigned int i;
-	for(i=0; i < 10000; i++) {
+	for(i = 0; i < 10000; i++) {
 		if(!n) {
 			n = task_queue;
 		}
@@ -154,9 +155,9 @@ void task_free(task_t *task)
 			p->next = task->next;
 		}
 	}
-	KASSERT(task->wait_queue == NULL);
-	// kprintf("free %d\n", task->pid);
+	KASSERT(task->wait_queue->num_items == 0);
 	free_directory(task->page_directory);
+	list_close(task->wait_queue);
 	free(task);
 	switch_locked = false;
 }
@@ -178,13 +179,13 @@ pid_t task_wait(int *status)
 	current_task->state = TASK_SLEEPING;
 	task_switch();
 
-	wait_queue_t *q = current_task->wait_queue;
-	if(q) {
-		current_task->wait_queue = q->next;
-		if(status) *status = q->status;
-		pid_t pid = q->pid;
-		free(q);
-		task_free(get_task_by_pid(pid));
+	node_t *n = current_task->wait_queue->head;
+	if(n) {
+		task_t *child = (task_t *) n->data;
+		if(status) *status = child->exit_status;
+		pid_t pid = child->pid;
+		task_free(child);
+		list_del(current_task->wait_queue, n);
 		return pid;
 	}
 	kprintf("task_wait(): Cannot find child who waked me up!\n");
@@ -193,45 +194,38 @@ pid_t task_wait(int *status)
 
 void task_exit(int status)
 {
-	wait_queue_t *q, *n;
+	// wait_queue_t *q, *n;
 	task_t *t, *parent;
 	// TODO - kill task and clean memory
 	parent = get_task_by_pid(current_task->ppid);
 	if(!parent) {
 		return;
 	}
-	// reparent children//
+	// reparent my children//
 	for(t = task_queue; t; t = t->next) {
 		if(t->ppid == current_task->pid) {
 			t->ppid = 1;
 		}
 	}
-	// clean waiting q //
-	for(q = current_task->wait_queue; q; q = q->next) {
-		current_task->wait_queue = q->next;
-		kprintf("Cleaning: %d", q->pid);
-		task_free(get_task_by_pid(q->pid));
-		free(q);
+	// clean my waiting q //
+	node_t *n;
+	for(n = current_task->wait_queue->head; n; n = n->next) {
+		task_free((task_t *) n->data);
+		list_del(current_task->wait_queue, n);
 	}
+
 	// add me to the parent waiting queue //
-	n = calloc(1, sizeof(wait_queue_t));
-	n->pid = current_task->pid;
-	n->status = status;
-	q = parent->wait_queue;
-	if(!q) {
-		parent->wait_queue = n;
-	} else {
-		while(q->next) q = q->next;
-		q->next = n;
-	}
+	list_add(parent->wait_queue, current_task);
+
 	cli();
-	// and wakeup parent //
+	// and wake my parent //
 	if(parent->state == TASK_SLEEPING) {
 		parent->state = TASK_READY;
 	}
 	current_task->exit_status = status;
 	current_task->state = TASK_EXITING;
 	sti();
+
 	task_switch();
 }
 
@@ -248,11 +242,7 @@ void switch_to_user_mode(uint32_t code_addr, uint32_t stack_hi_addr)
 //
 void exec_init()
 {
-	extern fs_node_t *fs_root;
-	if(!fs_root) {
-		panic("File system not inited");
-	}
-	fs_node_t *fs_node = finddir_fs(fs_root, "init");
+	fs_node_t *fs_node = namei("/init");
 	if(!fs_node) {
 		panic("Cannot find init\n");
 	} else {
@@ -277,6 +267,6 @@ void exec_init()
 		size = read_fs(fs_node, offset, fs_node->length, buff);
 		offset += size;
 	} while(size > 0);
-	// kprintf("Loaded: %d bytes\n", offset);
+
 	switch_to_user_mode(USER_CODE_START_ADDR, USER_STACK_HI);
 }
