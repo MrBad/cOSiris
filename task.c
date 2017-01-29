@@ -9,6 +9,10 @@
 #include "assert.h"
 #include "vfs.h"
 
+//
+// TODO - use list_t
+//
+
 bool switch_locked = false;
 char *task_states[] = {
 	"TASK_CREATING",
@@ -220,12 +224,15 @@ void task_exit(int status)
 		while(q->next) q = q->next;
 		q->next = n;
 	}
+	cli();
 	// and wakeup parent //
 	if(parent->state == TASK_SLEEPING) {
 		parent->state = TASK_READY;
 	}
 	current_task->exit_status = status;
 	current_task->state = TASK_EXITING;
+	sti();
+	task_switch();
 }
 
 

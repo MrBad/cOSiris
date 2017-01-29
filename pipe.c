@@ -70,16 +70,8 @@ unsigned int pipe_read(fs_node_t *node, unsigned int offset, unsigned int size, 
 		}
 		sti();
 
-		// cli();
 		awake_list(pipe);
-		// node_t *n;
-		// for(n = pipe->wait_queue->head; n; n = n->next) {
-		// 	task_t *t = (task_t *) n->data;
-		// 	t->state = TASK_READY;
-		// 	// free q //
-		// 	kprintf("waking up reading task:%d\n", t->pid);
-		// }
-		// sti();
+
 		if(bytes == 0) {
 			// add me to the waiting q //
 			list_add(pipe->wait_queue, current_task);
@@ -119,23 +111,17 @@ unsigned int pipe_write(fs_node_t *node, unsigned int offset, unsigned int size,
 		sti();
 
 		awake_list(pipe);
-		// cli();
-		// node_t *n;
-		// for(n = pipe->wait_queue->head; n; n = n->next) {
-		// 	task_t *t = (task_t *) n->data;
-		// 	t->state = TASK_READY;
-		// 	// free q //
-		// 	kprintf("waking up writing task:%d\n", t->pid);
-		// }
-		// sti();
+
 		if(bytes < size) {
 			// add me to the waiting q //
 			list_add(pipe->wait_queue, current_task);
 			// put me to sleep and switch task //
+
 			cli();
 			kprintf("sleeping: %d on write\n", current_task->pid);
 			current_task->state = TASK_SLEEPING;
 			sti();
+
 			task_switch();
 		}
 	}

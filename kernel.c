@@ -1,5 +1,5 @@
 #include "kernel.h"
-#include <types.h>
+#include "types.h"
 #include <string.h>
 #include "x86.h"
 #include "console.h"
@@ -126,16 +126,19 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 		r = read_fs(fds[0], 0, 256, buffer2);
 		kprintf("Child: Read %d bytes from pipe, [%s]\n", r, buffer2);
 		close_fs(fds[0]);
+		task_exit(0);
+//return;
 	}
 	else {
-		unsigned int i;
 		delay(20000);
 		strcpy(buffer1, "Testing Pipes on fork()");
 		w = write_fs(fds[1], 0, strlen(buffer1), buffer1);
 		kprintf("Parent: Wrote %d bytes to pipe\n", w);
 		close_fs(fds[1]);
+		task_wait(NULL);
 	}
-	return;
+	ps();
+	// return;
 
 	// halt();
 	//
