@@ -11,8 +11,20 @@
 // TODO - destroy pipe, spinlock
 // Need a clean way to schedule next, wait queue,
 // put process to sleep -> some clean interface ...
+// maibe a generic queue or something
 //////////////////////////////////////////////////
-
+static void awake_list(vfs_pipe_t *pipe)
+{
+	cli();
+	node_t *n;
+	for(n = pipe->wait_queue->head; n; n = n->next) {
+		task_t *t = (task_t *) n->data;
+		t->state = TASK_READY;
+		list_del(pipe->wait_queue, n);
+		kprintf("waking up writing task:%d\n", t->pid);
+	}
+	sti();
+}
 void pipe_open(fs_node_t *node, unsigned int flags) {
 	vfs_pipe_t *pipe = (vfs_pipe_t *) node->ptr;
 	if(flags == PIPE_READ) {
@@ -58,27 +70,19 @@ unsigned int pipe_read(fs_node_t *node, unsigned int offset, unsigned int size, 
 		}
 		sti();
 
-		cli();
-		wait_queue_t *q;
-		for(q = pipe->wait_queue; q; q = q->next) {
-			task_t *t = get_task_by_pid(q->pid);
-			t->state = TASK_READY;
-			// free q //
-			kprintf("waking up reading task:%d\n", t->pid);
-		}
-		sti();
+		// cli();
+		awake_list(pipe);
+		// node_t *n;
+		// for(n = pipe->wait_queue->head; n; n = n->next) {
+		// 	task_t *t = (task_t *) n->data;
+		// 	t->state = TASK_READY;
+		// 	// free q //
+		// 	kprintf("waking up reading task:%d\n", t->pid);
+		// }
+		// sti();
 		if(bytes == 0) {
 			// add me to the waiting q //
-			wait_queue_t *q, *n;
-			n = (wait_queue_t *) calloc(1, sizeof(wait_queue_t));
-			n->pid = current_task->pid;
-			q = pipe->wait_queue;
-			if(!q) {
-				pipe->wait_queue = n;
-			} else {
-				while(q->next) q = q->next;
-				q->next = n;
-			}
+			list_add(pipe->wait_queue, current_task);
 			// put me to sleep and switch task //
 
 			cli();
@@ -114,27 +118,19 @@ unsigned int pipe_write(fs_node_t *node, unsigned int offset, unsigned int size,
 		}
 		sti();
 
-		cli();
-		wait_queue_t *q;
-		for(q = pipe->wait_queue; q; q = q->next) {
-			task_t *t = get_task_by_pid(q->pid);
-			t->state = TASK_READY;
-			// free q //
-			kprintf("waking up writing task:%d\n", t->pid);
-		}
-		sti();
+		awake_list(pipe);
+		// cli();
+		// node_t *n;
+		// for(n = pipe->wait_queue->head; n; n = n->next) {
+		// 	task_t *t = (task_t *) n->data;
+		// 	t->state = TASK_READY;
+		// 	// free q //
+		// 	kprintf("waking up writing task:%d\n", t->pid);
+		// }
+		// sti();
 		if(bytes < size) {
 			// add me to the waiting q //
-			wait_queue_t *q, *n;
-			n = (wait_queue_t *) calloc(1, sizeof(wait_queue_t));
-			n->pid = current_task->pid;
-			q = pipe->wait_queue;
-			if(!q) {
-				pipe->wait_queue = n;
-			} else {
-				while(q->next) q = q->next;
-				q->next = n;
-			}
+			list_add(pipe->wait_queue, current_task);
 			// put me to sleep and switch task //
 			cli();
 			kprintf("sleeping: %d on write\n", current_task->pid);
@@ -153,6 +149,7 @@ int new_pipe(fs_node_t **nodes)
 	vfs_pipe_t *pipe = (vfs_pipe_t *) calloc(1, sizeof(vfs_pipe_t));
 	pipe->buffer = (char *) malloc(PIPE_BUFFER_SIZE);
 	pipe->size = PIPE_BUFFER_SIZE;
+	pipe->wait_queue = list_open(0);
 
 	nodes[0] = (fs_node_t *)calloc(1, sizeof(fs_node_t));
 	strcpy(nodes[0]->name, "[pipe:read]");
