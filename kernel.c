@@ -113,22 +113,51 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	task_init();
 
 	fs_node_t *fds[2];
-	kprintf("\nTesting pipes\n");
 	new_pipe(fds);
-	open_fs(fds[0], 1);
-	open_fs(fds[1], 2);
-	char buff[256];
-	char buff2[256];
+	open_fs(fds[0], PIPE_READ);
+	open_fs(fds[1], PIPE_WRITE);
+	char buffer1[256], buffer2[256];
 	unsigned int w,r;
-	strcpy(buff, "TESTING PIPES\n");
-	w = write_fs(fds[1], 0, strlen(buff), buff);
-	kprintf("write: %d bytes to pipe\n", w);
 
-	r = read_fs(fds[0], 0, 256, buff2);
-	kprintf("read: %d bytes from pipe: %s\n", r, buff2);
+	pid_t pid = fork();
 
-	close_fs(fds[0]);
-	close_fs(fds[1]);
+	if(pid == 0) {
+		// open_fs(fds[0], PIPE_READ);
+		close_fs(fds[1]);
+		r = read_fs(fds[0], 0, 256, buffer2);
+		kprintf("Read %d bytes from pipe, [%s]\n", r, buffer2);
+		close_fs(fds[0]);
+	}
+	else {
+		cli(); // damn, i need a spinlock /
+		// open_fs(fds[1], PIPE_WRITE);
+		close_fs(fds[0]);
+		strcpy(buffer1, "Testing Pipes on fork()");
+		w = write_fs(fds[1], 0, strlen(buffer1), buffer1);
+		kprintf("Wrote %d bytes to pipe\n", w);
+		close_fs(fds[1]);
+		sti();
+	}
+	return;
+	// halt();
+	//
+	// fs_node_t *fds[2];
+	// kprintf("\nTesting pipes\n");
+	// new_pipe(fds);
+	// open_fs(fds[0], 1);
+	// open_fs(fds[1], 2);
+	// char buff[256];
+	// char buff2[256];
+	// unsigned int w,r;
+	// strcpy(buff, "TESTING PIPES\n");
+	// w = write_fs(fds[1], 0, strlen(buff), buff);
+	// kprintf("write: %d bytes to pipe\n", w);
+	//
+	// r = read_fs(fds[0], 0, 256, buff2);
+	// kprintf("read: %d bytes from pipe: %s\n", r, buff2);
+	//
+	// close_fs(fds[0]);
+	// close_fs(fds[1]);
 
 	syscall_init();
 
