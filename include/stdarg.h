@@ -1,4 +1,4 @@
-#include <_va_list.h>
+typedef unsigned char *va_list;
 
 /* width of stack == width of int */
 #define	STACKITEM	int

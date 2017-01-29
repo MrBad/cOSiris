@@ -44,6 +44,7 @@ extern void switch_to_user_mode_asm(unsigned int code_addr, unsigned int stack_h
 
 void task_init();
 pid_t getpid();
+task_t *get_task_by_pid(pid_t pid);
 void task_switch();		// sched.asm
 pid_t fork();			// sched.asm
 void print_current_task();

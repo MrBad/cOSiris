@@ -17,7 +17,8 @@ heap_t myheap = {0};
 heap_t *heap = &myheap;
 extern int getpid();
 
-void debug_dump_list(block_meta_t *p) {
+void debug_dump_list(block_meta_t *p)
+{
 //	block_meta_t *p;
 //	p = first_block;
 	// cli();
@@ -51,7 +52,8 @@ void init_first_block()
 	first_block->next = NULL;
 }
 
-void *malloc(unsigned int nbytes) {
+void *malloc(unsigned int nbytes)
+{
 	block_meta_t *p, *n;
 	unsigned int next_size;
 	char *c;
@@ -130,7 +132,8 @@ static void heap_contract()
 	}
 }
 
-void free(void *ptr) {
+void free(void *ptr)
+{
 	block_meta_t *p, *prev = NULL;
 	p = first_block;
 	for (; ;) {
@@ -161,7 +164,9 @@ void free(void *ptr) {
 }
 
 
-void *calloc(unsigned int nbytes) {
+void *calloc(unsigned int nmemb, unsigned int size)
+{
+	unsigned int nbytes = nmemb * size;
 	void *p = malloc(nbytes);
 	memset(p, 0, nbytes);
 	return p;

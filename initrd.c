@@ -107,7 +107,7 @@ struct fs_node * initrd_new_node()
 {
 	fs_node_t *n;
 	if(allocated_nodes <= nroot_nodes) {
-		kprintf("Extend array\n");
+		// kprintf("Extend array\n");
 		root_nodes = (fs_node_t *) realloc(root_nodes, sizeof(fs_node_t) * (allocated_nodes * 2));
 	}
 	allocated_nodes *= 2;
@@ -163,7 +163,7 @@ fs_node_t *initrd_init(unsigned int location)
 
 	kprintf("Initrd init\n");
 	// initialise the root node
-	initrd_root = (fs_node_t *) calloc(sizeof(fs_node_t));
+	initrd_root = (fs_node_t *) calloc(1, sizeof(fs_node_t));
 	strcpy(initrd_root->name, "initrd");
 	initrd_root->mask = initrd_root->uid = initrd_root->gid = initrd_root->length = initrd_root->inode = 0;
 	initrd_root->flags = FS_DIRECTORY;
@@ -181,7 +181,7 @@ fs_node_t *initrd_init(unsigned int location)
 	// kprintf("fs_node_t: %d, numfiles: %d\n", sizeof(fs_node_t), initrd_header->nfiles);
 	// return NULL;
 
-	root_nodes = (fs_node_t *) calloc(sizeof(fs_node_t) * (1 + initrd_header->nfiles));
+	root_nodes = (fs_node_t *) calloc(1 + initrd_header->nfiles, sizeof(fs_node_t));
 	nroot_nodes = initrd_header->nfiles;
 
 	//for every file

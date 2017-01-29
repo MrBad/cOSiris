@@ -43,8 +43,9 @@ fs_node_t *finddir_fs(fs_node_t *node, char *name) {
 		return false;
 }
 
-
-// simple name to inode - needs rewrite, i don't like it
+//
+//	Simple name to inode find
+//
 fs_node_t *namei(char *path)
 {
 	fs_node_t *node = NULL;

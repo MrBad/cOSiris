@@ -1,4 +1,4 @@
-#include <types.h>
+#include "include/types.h"
 #include "x86.h"
 #include "task.h"
 #include "mem.h"
@@ -26,7 +26,7 @@ void print_int(int x)
 
 task_t *task_new()
 {
-	task_t *t = (task_t *) calloc(sizeof(task_t));
+	task_t *t = (task_t *) calloc(1, sizeof(task_t));
 	t->pid = next_pid++;
 	t->tss_kernel_stack = (unsigned int *)KERNEL_STACK_HI;//malloc_page_aligned(PAGE_SIZE);
 	return t;
@@ -128,7 +128,7 @@ int getring()
 	return current_task ? current_task->ring : -1;
 }
 
-static task_t *get_task_by_pid(pid_t pid)
+task_t *get_task_by_pid(pid_t pid)
 {
 	task_t *t;
 	for(t = task_queue; t; t = t->next) {
@@ -210,7 +210,7 @@ void task_exit(int status)
 		free(q);
 	}
 	// add me to the parent waiting queue //
-	n = calloc(sizeof(wait_queue_t));
+	n = calloc(1, sizeof(wait_queue_t));
 	n->pid = current_task->pid;
 	n->status = status;
 	q = parent->wait_queue;
@@ -220,6 +220,7 @@ void task_exit(int status)
 		while(q->next) q = q->next;
 		q->next = n;
 	}
+	// and wakeup parent //
 	if(parent->state == TASK_SLEEPING) {
 		parent->state = TASK_READY;
 	}

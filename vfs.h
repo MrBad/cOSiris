@@ -45,8 +45,8 @@ typedef struct fs_node {
 	readdir_type_t readdir;
 	finddir_type_t finddir;
 
-	struct fs_node *ptr; // Used in mountpoints and symlinks
-
+	//struct fs_node *ptr;		// Used in mountpoints, symlinks, pipes
+	void *ptr;
 } fs_node_t;
 
 struct dirent {
