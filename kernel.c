@@ -114,29 +114,26 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	fs_node_t *fds[2];
 	new_pipe(fds);
-	open_fs(fds[0], PIPE_READ);
-	open_fs(fds[1], PIPE_WRITE);
 	char buffer1[256], buffer2[256];
 	unsigned int w,r;
 
-	pid_t pid = fork();
+	open_fs(fds[0], PIPE_READ);
+	open_fs(fds[1], PIPE_WRITE);
 
+	pid_t pid = fork();
+	// fds are not dup, they are the same on both processes //
 	if(pid == 0) {
-		// open_fs(fds[0], PIPE_READ);
-		close_fs(fds[1]);
 		r = read_fs(fds[0], 0, 256, buffer2);
-		kprintf("Read %d bytes from pipe, [%s]\n", r, buffer2);
+		kprintf("Child: Read %d bytes from pipe, [%s]\n", r, buffer2);
 		close_fs(fds[0]);
 	}
 	else {
-		cli(); // damn, i need a spinlock /
-		// open_fs(fds[1], PIPE_WRITE);
-		close_fs(fds[0]);
+		unsigned int i;
+		delay(20000);
 		strcpy(buffer1, "Testing Pipes on fork()");
 		w = write_fs(fds[1], 0, strlen(buffer1), buffer1);
-		kprintf("Wrote %d bytes to pipe\n", w);
+		kprintf("Parent: Wrote %d bytes to pipe\n", w);
 		close_fs(fds[1]);
-		sti();
 	}
 	return;
 	// halt();

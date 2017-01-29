@@ -4,7 +4,7 @@
 #include "kheap.h"
 #include "task.h"
 #include "console.h"
-
+#include "x86.h"
 
 
 //////////////////////////////////////////////////
@@ -21,6 +21,7 @@ void pipe_open(fs_node_t *node, unsigned int flags) {
 	if(flags == PIPE_WRITE) {
 		pipe->writers++;
 	}
+	// kprintf("r:%d, w:%d\n", pipe->readers, pipe->writers);
 }
 
 void pipe_close(fs_node_t *node)
@@ -44,15 +45,18 @@ unsigned int pipe_read(fs_node_t *node, unsigned int offset, unsigned int size, 
 	vfs_pipe_t *pipe = (vfs_pipe_t *) node->ptr;
 	unsigned int bytes = 0;
 	while(bytes == 0) {
+		cli();
 		if(!pipe->writers) {
+			kprintf("No writers on pipe\n");
 			buffer[bytes++] = 0;
+			sti();
 			return bytes;
 		}
 		while(pipe->write_pos > pipe->read_pos && bytes < size) {
 			buffer[bytes] = pipe->buffer[pipe->read_pos % pipe->size];
 			bytes++; pipe->read_pos++;
 		}
-
+		sti();
 		wait_queue_t *q;
 		for(q = pipe->wait_queue; q; q = q->next) {
 			task_t *t = get_task_by_pid(q->pid);
@@ -71,7 +75,12 @@ unsigned int pipe_read(fs_node_t *node, unsigned int offset, unsigned int size, 
 				q->next = n;
 			}
 			// put me to sleep and switch task //
+
+			cli();
+			kprintf("sleeping: %d on read\n", current_task->pid);
 			current_task->state = TASK_SLEEPING;
+			sti();
+
 			task_switch();
 		}
 	}
@@ -81,9 +90,12 @@ unsigned int pipe_read(fs_node_t *node, unsigned int offset, unsigned int size, 
 unsigned int pipe_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
 {
 	vfs_pipe_t *pipe = (vfs_pipe_t *) node->ptr;
+	// kprintf("pipewrite r:%d, w:%d\n", pipe->readers, pipe->writers);
 	unsigned int bytes = 0;
 	while(bytes < size) {
+		cli();
 		if(!pipe->readers) {
+			kprintf("No readers on pipe\n");
 			while (bytes < size) {
 				pipe->buffer[pipe->write_pos % pipe->size] = buffer[bytes];
 				bytes++; pipe->write_pos++;
@@ -95,13 +107,16 @@ unsigned int pipe_write(fs_node_t *node, unsigned int offset, unsigned int size,
         		pipe->write_pos++;
       		}
 		}
+		sti();
 
+		cli();
 		wait_queue_t *q;
 		for(q = pipe->wait_queue; q; q = q->next) {
 			task_t *t = get_task_by_pid(q->pid);
 			t->state = TASK_READY;
+			kprintf("waking up task:%d\n", t->pid);
 		}
-
+		sti();
 		if(bytes < size) {
 			// add me to the waiting q //
 			wait_queue_t *q, *n;
@@ -115,7 +130,10 @@ unsigned int pipe_write(fs_node_t *node, unsigned int offset, unsigned int size,
 				q->next = n;
 			}
 			// put me to sleep and switch task //
+			cli();
+			kprintf("sleeping: %d on write\n", current_task->pid);
 			current_task->state = TASK_SLEEPING;
+			sti();
 			task_switch();
 		}
 	}
@@ -125,6 +143,7 @@ unsigned int pipe_write(fs_node_t *node, unsigned int offset, unsigned int size,
 
 int new_pipe(fs_node_t **nodes)
 {
+
 	vfs_pipe_t *pipe = (vfs_pipe_t *) calloc(1, sizeof(vfs_pipe_t));
 	pipe->buffer = (char *) malloc(PIPE_BUFFER_SIZE);
 	pipe->size = PIPE_BUFFER_SIZE;
