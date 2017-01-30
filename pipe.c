@@ -15,7 +15,7 @@
 //////////////////////////////////////////////////
 static void awake_list(vfs_pipe_t *pipe)
 {
-	cli();
+	spin_lock(&pipe->lock);
 	node_t *n;
 	for(n = pipe->wait_queue->head; n; n = n->next) {
 		task_t *t = (task_t *) n->data;
@@ -23,7 +23,7 @@ static void awake_list(vfs_pipe_t *pipe)
 		list_del(pipe->wait_queue, n);
 		kprintf("waking up writing task:%d\n", t->pid);
 	}
-	sti();
+	spin_unlock(&pipe->lock);
 }
 void pipe_open(fs_node_t *node, unsigned int flags) {
 	vfs_pipe_t *pipe = (vfs_pipe_t *) node->ptr;
@@ -57,18 +57,18 @@ unsigned int pipe_read(fs_node_t *node, unsigned int offset, unsigned int size, 
 	vfs_pipe_t *pipe = (vfs_pipe_t *) node->ptr;
 	unsigned int bytes = 0;
 	while(bytes == 0) {
-		cli();
+		spin_lock(&pipe->lock);
 		if(!pipe->writers) {
 			kprintf("No writers on pipe\n");
 			buffer[bytes++] = 0;
-			sti();
+			spin_unlock(&pipe->lock);
 			return bytes;
 		}
 		while(pipe->write_pos > pipe->read_pos && bytes < size) {
 			buffer[bytes] = pipe->buffer[pipe->read_pos % pipe->size];
 			bytes++; pipe->read_pos++;
 		}
-		sti();
+		spin_unlock(&pipe->lock);
 
 		awake_list(pipe);
 
@@ -77,10 +77,10 @@ unsigned int pipe_read(fs_node_t *node, unsigned int offset, unsigned int size, 
 			list_add(pipe->wait_queue, current_task);
 			// put me to sleep and switch task //
 
-			cli();
+			spin_lock(&pipe->lock);
 			kprintf("sleeping: %d on read\n", current_task->pid);
 			current_task->state = TASK_SLEEPING;
-			sti();
+			spin_unlock(&pipe->lock);
 
 			task_switch();
 		}
@@ -94,7 +94,7 @@ unsigned int pipe_write(fs_node_t *node, unsigned int offset, unsigned int size,
 	// kprintf("pipewrite r:%d, w:%d\n", pipe->readers, pipe->writers);
 	unsigned int bytes = 0;
 	while(bytes < size) {
-		cli();
+		spin_lock(&pipe->lock);
 		if(!pipe->readers) {
 			kprintf("No readers on pipe\n");
 			while (bytes < size) {
@@ -108,19 +108,19 @@ unsigned int pipe_write(fs_node_t *node, unsigned int offset, unsigned int size,
         		pipe->write_pos++;
       		}
 		}
-		sti();
+		spin_unlock(&pipe->lock);
 
 		awake_list(pipe);
 
 		if(bytes < size) {
+			spin_lock(&pipe->lock);
 			// add me to the waiting q //
 			list_add(pipe->wait_queue, current_task);
 			// put me to sleep and switch task //
 
-			cli();
 			kprintf("sleeping: %d on write\n", current_task->pid);
 			current_task->state = TASK_SLEEPING;
-			sti();
+			spin_unlock(&pipe->lock);
 
 			task_switch();
 		}

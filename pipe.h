@@ -1,6 +1,7 @@
 #ifndef _PIPE_H
 #define _PIPE_H
 
+#include "x86.h"	// spinlock
 #include "vfs.h"
 #include "task.h"
 #include "list.h"
@@ -15,6 +16,7 @@ typedef struct vfs_pipe {
 	unsigned int read_pos;
 	unsigned int write_pos;
 	list_t * wait_queue; // pipe waiting queue
+	spin_lock_t lock;
 } vfs_pipe_t;
 
 #define PIPE_READ 1

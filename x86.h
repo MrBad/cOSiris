@@ -12,5 +12,8 @@ unsigned char inb(unsigned short _port);
 #define hlt() __asm__ ("hlt"::)
 extern void bochs_break();
 
-
+typedef unsigned int spin_lock_t;
+extern int spin_lock(spin_lock_t *lock);
+extern void spin_unlock(spin_lock_t *lock);
+extern void halt();
 #endif

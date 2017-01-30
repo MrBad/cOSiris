@@ -518,6 +518,27 @@ flush_tlb:
 ;	pop ebp
 ;	ret
 
+global spin_lock
+spin_lock:
+	mov eax, [esp + 4]
+.spin_lock1:
+	lock bts dword [eax], 0
+	jc .spin_wait
+	ret
+.spin_wait:
+	pause
+	test dword [eax], 1
+	jnz .spin_wait
+	jmp .spin_lock1
+
+global spin_unlock
+spin_unlock:
+	mov eax, [esp + 4]
+	mov [eax], dword 0
+	ret
+
+
+
 [SECTION .bss]
 align 4096
 stack:
