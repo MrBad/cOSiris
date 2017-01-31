@@ -52,7 +52,7 @@ task_t *get_current_task();
 void task_exit(int status);
 pid_t task_wait(int *status);
 void ps();
-void exec_init();
-void exec(char * path);
+// void exec_init();
+void task_exec(char * path);
 
 #endif

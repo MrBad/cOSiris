@@ -14,6 +14,7 @@ extern void bochs_break();
 
 typedef unsigned int spin_lock_t;
 extern int spin_lock(spin_lock_t *lock);
-extern void spin_unlock(spin_lock_t *lock);
+// extern void spin_unlock(spin_lock_t *lock);
+#define spin_unlock(addr) (*(addr)=0);
 extern void halt();
 #endif

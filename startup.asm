@@ -88,8 +88,10 @@ get_kernel_info:
 
 GLOBAL halt
 halt:
-	cli;
-	hlt;
+	;cli;
+	sti
+	hlt
+	jmp halt;
 
 
 GLOBAL gdt_flush
@@ -307,7 +309,7 @@ isr31:
 	jmp isr_common
 
 isr128:
-	cli
+	;cli
 	push byte 0
 	push 128
 	jmp isr_common
@@ -349,13 +351,13 @@ GLOBAL irq0, irq1, irq2, irq3, irq4, irq5, irq6, irq7
 GLOBAL irq8, irq9, irq10, irq11, irq12, irq13, irq14, irq15
 
 irq0:
-	cli
+	;cli
 	push byte 0
 	push byte 32
 	jmp irq_common
 
 irq1:
-	cli
+	;cli
 	push byte 0
 	push byte 33
 	jmp irq_common
@@ -520,23 +522,13 @@ flush_tlb:
 
 global spin_lock
 spin_lock:
-	mov eax, [esp + 4]
-.spin_lock1:
-	lock bts dword [eax], 0
-	jc .spin_wait
+	mov edx, [esp + 4]
+	mov ecx, 1
+.retry:
+	xor eax, eax
+	lock cmpxchg [edx], cl
+	jnz .retry
 	ret
-.spin_wait:
-	pause
-	test dword [eax], 1
-	jnz .spin_wait
-	jmp .spin_lock1
-
-global spin_unlock
-spin_unlock:
-	mov eax, [esp + 4]
-	mov [eax], dword 0
-	ret
-
 
 
 [SECTION .bss]

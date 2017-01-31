@@ -282,11 +282,11 @@ void switch_to_user_mode(uint32_t code_addr, uint32_t stack_hi_addr)
 //	Loading "init" from initrd.img "filesystem"
 //		into memory @0x10000000 and jump to it in ring 3
 //
-void exec_init()
+void task_exec(char *path)
 {
-	fs_node_t *fs_node = namei("/init");
+	fs_node_t *fs_node = namei(path);
 	if(!fs_node) {
-		panic("Cannot find init\n");
+		panic("Cannot find init %s\n", path);
 	} else {
 		kprintf("Loading /%s, inode:%d, at address %p, length:%d\n", fs_node->name,
 				fs_node->inode, USER_CODE_START_ADDR, fs_node->length);

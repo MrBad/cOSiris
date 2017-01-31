@@ -7,13 +7,13 @@ LDFLAGS=-T link.ld -melf_i386  # emulate 32 bits ELF, the binary output is speci
 ASM = nasm
 ASMFLAGS = -g -f elf
 
-OBJS=init.o crt0.o sys.o syscalls.o ../lib/libc.a
+OBJS=crt0.o sys.o syscalls.o
 
-TARGET=init
 
-all: $(OBJS)
-	$(LD) $(LDFLAGS) -o $(TARGET) $(OBJS)
-	objdump -b binary -m i386 -D $(TARGET) > $(TARGET).lst
+all: $(OBJS) init.o test_fork.o
+	$(LD) $(LDFLAGS) -o init init.o $(OBJS)
+	$(LD) $(LDFLAGS) -o test_fork test_fork.o $(OBJS)
+	# objdump -b binary -m i386 -D $(TARGET) > $(TARGET).lst
 
 ../lib/libc.a: ../lib/Makefile
 	make -C ../lib

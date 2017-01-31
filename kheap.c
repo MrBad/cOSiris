@@ -1,5 +1,6 @@
 #include "x86.h"
 #include "console.h"
+#include "serial.h"
 #include "mem.h"
 #include "kheap.h"
 #include "assert.h"
@@ -10,7 +11,6 @@
 #define MAGIC_END 0xDEADBABA
 
 spin_lock_t kheap_lock;
-extern bool switch_locked;
 extern bool heap_active;
 
 heap_t myheap = {0};
@@ -19,20 +19,23 @@ extern int getpid();
 
 void debug_dump_list(block_meta_t *p)
 {
-//	block_meta_t *p;
-//	p = first_block;
-	// cli();
+
 	static int dplitr = 0;
 	while (p) {
 		KASSERT(p->magic_head == MAGIC_HEAD);
 		KASSERT(p->magic_end == MAGIC_END);
-		kprintf("pid:%d, node: 0x%X, ptr: %p, size: %8d, %s, next: 0x%X\n", getpid(), p, p+1,
+		if(dplitr++ < 10) {
+			kprintf("pid:%d, node: 0x%X, ptr: %p, size: %8d, %s, next: 0x%X\n", getpid(), p, p+1,
 		        p->size, p->free ? "free" : "used", p->next);
+		} else {
+			serial_debug("pid:%d, node: 0x%X, ptr: %p, size: %8d, %s, next: 0x%X\n", getpid(), p, p+1,
+						p->size, p->free ? "free" : "used", p->next);
+		}
 		KASSERT(p != p->next);
 		p = p->next;
-		if(dplitr++ > 10) {panic("Too many iterations\n");}
+		// if(dplitr++ > 10) {panic("Too many iterations\n");}
 	}
-	//sti();
+	halt();
 }
 
 void heap_dump()
@@ -55,7 +58,6 @@ void init_first_block()
 void *malloc(unsigned int nbytes)
 {
 	spin_lock(&kheap_lock);
-	switch_locked = true;
 	block_meta_t *p, *n;
 	unsigned int next_size;
 	char *c;
@@ -66,28 +68,36 @@ void *malloc(unsigned int nbytes)
 	KASSERT(first_block->magic_head == MAGIC_HEAD);
 	KASSERT(first_block->magic_end == MAGIC_END);
 	p = first_block;
-
 	while (p) {
 			// kprintf(".");
 		if (!p->free) {
 			p = p->next;
 			continue;
 		}
-		if ((p->size < nbytes + sizeof(block_meta_t)) && p->next == NULL) {
+		// if last node, and we don't have required size,
+		if (p->next == NULL && (p->size < nbytes + sizeof(block_meta_t))) {
 			// kprintf("+");
 			sbrk(PAGE_SIZE);
 			p->size += PAGE_SIZE;
 			continue;
 		}
-		else if(p->size >= nbytes) {
+		// if not last node and we have the size
+ 		else if(p->size >= nbytes + sizeof(block_meta_t)) {
 			// kprintf("SPLIT; p: 0x%X orig_size: %i, nbytes: %i, meta: %i\n",p+1, p->size, nbytes, sizeof(block_meta_t));
 			c = (char *) p;
+			KASSERT(p->size >= nbytes + sizeof(block_meta_t));
 			next_size = p->size - nbytes - sizeof(block_meta_t);
 			n = p->next;
 			p->size = nbytes;
 			p->free = false;
 			p->next = (block_meta_t *) (c + sizeof(block_meta_t) + nbytes);
-			KASSERT((unsigned int)p->next < heap->end_addr);
+			// if((unsigned int)p->next >= heap->end_addr){
+				// debug_dump_list(n);
+				// kprintf("xxxxx p->size: %0X, nbytes: %X, next_size: %X\n", p->size, nbytes, next_size);
+				// debug_dump_list(p);
+				// halt();
+			// }
+			KASSERT((unsigned int)(p+1) < heap->end_addr);
 			// if((unsigned int)p->next >= heap->end_addr) { // happens on last and large blocks
 			// 	sbrk(PAGE_SIZE * 2);
 			// 	kprintf(".");
@@ -100,7 +110,6 @@ void *malloc(unsigned int nbytes)
 			p->next->magic_end = MAGIC_END;
 			p->next->next = n;
 			spin_unlock(&kheap_lock);
-			switch_locked = false;
 			return p + 1;
 		}
 		p = p->next;
@@ -116,7 +125,6 @@ void *malloc(unsigned int nbytes)
 static void heap_contract()
 {
 	spin_lock(&kheap_lock);
-	switch_locked = true;
 	block_meta_t *p = first_block;
 	virt_t addr;
 	virt_t new_end;
@@ -136,7 +144,6 @@ static void heap_contract()
 		}
 		heap->end_addr = new_end;
 	}
-	switch_locked = false;
 	spin_unlock(&kheap_lock);
 }
 
@@ -144,7 +151,6 @@ void free(void *ptr)
 {
 	block_meta_t *p, *prev = NULL;
 	spin_lock(&kheap_lock);
-	switch_locked = true;
 	p = first_block;
 	for (; ;) {
 		if (p + 1 == ptr) {
@@ -170,9 +176,8 @@ void free(void *ptr)
 		prev = p;
 		p = p->next;
 	}
-	switch_locked = false;
 	spin_unlock(&kheap_lock);
-	// heap_contract();
+	heap_contract();
 }
 
 
@@ -193,6 +198,7 @@ void *realloc(void *ptr, size_t size)
 	if(!size) {
 		free(ptr);
 	}
+
 	block_meta_t *p = (block_meta_t *)ptr;
 	p--;
 	KASSERT(p->magic_head == MAGIC_HEAD);
@@ -208,6 +214,7 @@ void *realloc(void *ptr, size_t size)
 // to be tested more!!!
 void *malloc_page_aligned(unsigned int nbytes)
 {
+
 	block_meta_t *p, *n;
 	void *m;
 	KASSERT(nbytes); // > 0
@@ -215,6 +222,7 @@ void *malloc_page_aligned(unsigned int nbytes)
 	unsigned int p_size = nbytes + PAGE_SIZE + sizeof(block_meta_t);
 	m = malloc(p_size);
 	// kprintf("Alloc at: %p, p_size: %d\n", m, p_size);
+	spin_lock(&kheap_lock);
 	if(!((unsigned int)m & 0xFFF)) {
 		//kprintf("ALIGNED?\n");
 		return m;
@@ -240,6 +248,7 @@ void *malloc_page_aligned(unsigned int nbytes)
 	n->size = (unsigned int)m+p_size - (unsigned int)(n+1);
 	p->size = (unsigned int)n-(unsigned int)m;
 	p->next = n;
+	spin_unlock(&kheap_lock);
 	free(m);
 	return n+1;
 }
@@ -315,14 +324,14 @@ void heap_init() {
 	// kprintf("test_mem_1 %s\n", test_mem_1() ? "passed":"FAILED");
 	// kprintf("test_mem_2 %s\n", test_mem_2() ? "passed":"FAILED");
 	// kprintf("test_mem_3 %s\n", test_mem_3() ? "passed":"FAILED");
-	// // debug_dump_list(first_block);
-	// // heap_dump();
+	// // // debug_dump_list(first_block);
+	// // // heap_dump();
 	// malloc(12); malloc(10000);
 	// heap_contract();
 	// kprintf("test_mem_1 %s\n", test_mem_1() ? "passed":"FAILED");
 	// kprintf("test_mem_2 %s\n", test_mem_2() ? "passed":"FAILED");
 	// kprintf("test_mem_3 %s\n", test_mem_3() ? "passed":"FAILED");
-	// heap_dump();
+	// // heap_dump();
 	// heap_contract();
 	// heap_dump();
 	return;

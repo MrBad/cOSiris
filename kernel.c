@@ -114,32 +114,7 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	syscall_init();
 
-	exec_init();
-	// #define N 1000
-	// pid_t pid; int i;
-	// for(i = 0; i < N; i++) {
-	// 	pid = fork();
-	// 	if(pid < 0) {
-	// 		kprintf("fork returned -1\n");
-	// 		break;
-	// 	} else {
-	// 		task_exit(0);
-	// 	}
-	// }
-	// for(; i > 0; i--) {
-	// 	if((pid = task_wait(NULL)) < 0) {
-	// 		kprintf("Wait exit early\n");
-	// 		task_exit(0);
-	// 	}
-	// 	//kprintf("%d exited\n", pid);
-	// }
-	// if(task_wait(NULL) != -1) {
-	// 	kprintf("Wait got too many\n");
-	// 	task_exit(0);
-	// }
-	//
-	// kprintf("Fork test OK\n");
-	// ps();
+	task_exec("/test_fork");
 
 	kprintf("Should not get here\n");
 	return;
