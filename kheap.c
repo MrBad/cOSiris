@@ -68,6 +68,7 @@ void *malloc(unsigned int nbytes)
 	KASSERT(first_block->magic_head == MAGIC_HEAD);
 	KASSERT(first_block->magic_end == MAGIC_END);
 	p = first_block;
+	unsigned int search_size = nbytes + sizeof(block_meta_t);
 	while (p) {
 			// kprintf(".");
 		if (!p->free) {
@@ -75,35 +76,23 @@ void *malloc(unsigned int nbytes)
 			continue;
 		}
 		// if last node, and we don't have required size,
-		if (p->next == NULL && (p->size < nbytes + sizeof(block_meta_t))) {
-			// kprintf("+");
+		if (p->next == NULL && p->size < search_size) {
+			kprintf("+");
 			sbrk(PAGE_SIZE);
 			p->size += PAGE_SIZE;
 			continue;
 		}
 		// if not last node and we have the size
- 		else if(p->size >= nbytes + sizeof(block_meta_t)) {
+ 		else if(p->size >= search_size) {
 			// kprintf("SPLIT; p: 0x%X orig_size: %i, nbytes: %i, meta: %i\n",p+1, p->size, nbytes, sizeof(block_meta_t));
-			c = (char *) p;
 			KASSERT(p->size >= nbytes + sizeof(block_meta_t));
+			KASSERT((unsigned int)(p+1) < heap->end_addr);
+			c = (char *) p;
 			next_size = p->size - nbytes - sizeof(block_meta_t);
 			n = p->next;
 			p->size = nbytes;
 			p->free = false;
 			p->next = (block_meta_t *) (c + sizeof(block_meta_t) + nbytes);
-			// if((unsigned int)p->next >= heap->end_addr){
-				// debug_dump_list(n);
-				// kprintf("xxxxx p->size: %0X, nbytes: %X, next_size: %X\n", p->size, nbytes, next_size);
-				// debug_dump_list(p);
-				// halt();
-			// }
-			KASSERT((unsigned int)(p+1) < heap->end_addr);
-			// if((unsigned int)p->next >= heap->end_addr) { // happens on last and large blocks
-			// 	sbrk(PAGE_SIZE * 2);
-			// 	kprintf(".");
-			// 	KASSERT(p->next->next == NULL);
-			// 	p->next->size += PAGE_SIZE * 2;
-			// }
 			p->next->free = true;
 			p->next->size = next_size;
 			p->next->magic_head = MAGIC_HEAD;
@@ -324,14 +313,14 @@ void heap_init() {
 	// kprintf("test_mem_1 %s\n", test_mem_1() ? "passed":"FAILED");
 	// kprintf("test_mem_2 %s\n", test_mem_2() ? "passed":"FAILED");
 	// kprintf("test_mem_3 %s\n", test_mem_3() ? "passed":"FAILED");
-	// // // debug_dump_list(first_block);
-	// // // heap_dump();
+	// // debug_dump_list(first_block);
+	// // heap_dump();
 	// malloc(12); malloc(10000);
 	// heap_contract();
 	// kprintf("test_mem_1 %s\n", test_mem_1() ? "passed":"FAILED");
 	// kprintf("test_mem_2 %s\n", test_mem_2() ? "passed":"FAILED");
 	// kprintf("test_mem_3 %s\n", test_mem_3() ? "passed":"FAILED");
-	// // heap_dump();
+	// heap_dump();
 	// heap_contract();
 	// heap_dump();
 	return;

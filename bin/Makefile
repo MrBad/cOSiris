@@ -25,4 +25,4 @@ all: $(OBJS) init.o test_fork.o
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
 clean:
-	rm *.o init *.lst *.gch
+	rm *.o init test_fork *.lst *.gch
