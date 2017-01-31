@@ -3,6 +3,7 @@
 
 #include "mem.h"
 #include "list.h"
+#include "x86.h"
 
 typedef enum {
 	TASK_CREATING,
@@ -21,16 +22,18 @@ typedef struct task {
 	unsigned int eip;		// task + 16	last eip / instruction pointer
 	dir_t *page_directory;	// task + 20	task page directory
 	struct task *next;		// task + 24	next task
-
-	unsigned int *tss_kernel_stack; 	// f..k i386 tss thing
+	struct task *parent;	// parent task
+	unsigned int *tss_kernel_stack;
 	int ring;
 	task_states_t state;
 	int exit_status;
 	list_t *wait_queue;
+
 } task_t;
 
 task_t *current_task;
 task_t *task_queue;
+spin_lock_t task_lock;
 
 int next_pid;
 
@@ -50,6 +53,6 @@ void task_exit(int status);
 pid_t task_wait(int *status);
 void ps();
 void exec_init();
-
+void exec(char * path);
 
 #endif

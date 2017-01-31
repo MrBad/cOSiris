@@ -9,8 +9,8 @@
 #define MAGIC_HEAD 0xDEADC0DE
 #define MAGIC_END 0xDEADBABA
 
-extern void halt();
-
+spin_lock_t kheap_lock;
+extern bool switch_locked;
 extern bool heap_active;
 
 heap_t myheap = {0};
@@ -30,7 +30,7 @@ void debug_dump_list(block_meta_t *p)
 		        p->size, p->free ? "free" : "used", p->next);
 		KASSERT(p != p->next);
 		p = p->next;
-		if(dplitr++ > 50) {panic("Too many iterations\n");}
+		if(dplitr++ > 10) {panic("Too many iterations\n");}
 	}
 	//sti();
 }
@@ -54,6 +54,8 @@ void init_first_block()
 
 void *malloc(unsigned int nbytes)
 {
+	spin_lock(&kheap_lock);
+	switch_locked = true;
 	block_meta_t *p, *n;
 	unsigned int next_size;
 	char *c;
@@ -97,6 +99,8 @@ void *malloc(unsigned int nbytes)
 			p->next->magic_head = MAGIC_HEAD;
 			p->next->magic_end = MAGIC_END;
 			p->next->next = n;
+			spin_unlock(&kheap_lock);
+			switch_locked = false;
 			return p + 1;
 		}
 		p = p->next;
@@ -111,6 +115,8 @@ void *malloc(unsigned int nbytes)
 
 static void heap_contract()
 {
+	spin_lock(&kheap_lock);
+	switch_locked = true;
 	block_meta_t *p = first_block;
 	virt_t addr;
 	virt_t new_end;
@@ -130,11 +136,15 @@ static void heap_contract()
 		}
 		heap->end_addr = new_end;
 	}
+	switch_locked = false;
+	spin_unlock(&kheap_lock);
 }
 
 void free(void *ptr)
 {
 	block_meta_t *p, *prev = NULL;
+	spin_lock(&kheap_lock);
+	switch_locked = true;
 	p = first_block;
 	for (; ;) {
 		if (p + 1 == ptr) {
@@ -160,7 +170,9 @@ void free(void *ptr)
 		prev = p;
 		p = p->next;
 	}
-	heap_contract();
+	switch_locked = false;
+	spin_unlock(&kheap_lock);
+	// heap_contract();
 }
 
 

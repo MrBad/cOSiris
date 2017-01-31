@@ -9,10 +9,6 @@
 #include "assert.h"
 #include "vfs.h"
 
-//
-// TODO - use list_t
-//
-
 bool switch_locked = false;
 char *task_states[] = {
 	"TASK_CREATING",
@@ -32,7 +28,7 @@ task_t *task_new()
 {
 	task_t *t = (task_t *) calloc(1, sizeof(task_t));
 	t->pid = next_pid++;
-	t->tss_kernel_stack = (unsigned int *)KERNEL_STACK_HI;//malloc_page_aligned(PAGE_SIZE);
+	// t->tss_kernel_stack = (unsigned int *)KERNEL_STACK_HI;//malloc_page_aligned(PAGE_SIZE);
 	t->wait_queue = list_open(NULL);
 	return t;
 }
@@ -46,7 +42,6 @@ void task_init()
 	tss_flush();
 
 	current_task = task_new();
-	set_tss_kernel_stack(current_task->tss_kernel_stack);
 	current_task->page_directory = (dir_t *) virt_to_phys(PDIR_ADDR);
 	current_task->state = TASK_READY;
 	task_queue = current_task;
@@ -71,10 +66,12 @@ void ps()
 // gets the last task in task_queue
 task_t *get_last_task()
 {
+	switch_locked = true;
 	task_t *t = task_queue;
 	while(t->next) {
 		t = t->next;
 	}
+	switch_locked = false;
 	return t;
 }
 
@@ -99,9 +96,11 @@ task_t *task_switch_inner()
 	if(i == 10000) {
 		panic("All threads sleeping?\n");
 	}
+
 	current_task = n;
 	// set_tss_kernel_stack(n->tss_kernel_stack);
 	// kprintf("switch to task %d\n", n->pid);
+	// spin_unlock(&task_lock);
 	return n;
 }
 
@@ -146,7 +145,6 @@ task_t *get_task_by_pid(pid_t pid)
 
 void task_free(task_t *task)
 {
-	switch_locked = true;
 
 	KASSERT(task);
 	task_t *p;
@@ -159,24 +157,28 @@ void task_free(task_t *task)
 	free_directory(task->page_directory);
 	list_close(task->wait_queue);
 	free(task);
-	switch_locked = false;
 }
 
+#if 0
 pid_t task_wait(int *status)
 {
-
 	// do we have any child who can wake me up? //
+	spin_lock(&task_lock);
 	task_t *t; bool found = false;
 	for(t = task_queue; t; t = t->next) {
-		if(t->ppid == current_task->pid && t->state < TASK_EXITING) {
+		if(t->ppid == current_task->pid) {
 			found = true; break;
+			kprintf("found task %d, in state: %s\n", t->pid, task_states[t->state]);
 		}
 	}
 	if(!found) {
+		spin_unlock(&task_lock);
 		return -1; // no child left to wake me up //
 	}
 	// kprintf("task %d put to sleep\n", current_task->pid);
 	current_task->state = TASK_SLEEPING;
+	spin_unlock(&task_lock);
+
 	task_switch();
 
 	node_t *n = current_task->wait_queue->head;
@@ -190,6 +192,46 @@ pid_t task_wait(int *status)
 	}
 	kprintf("task_wait(): Cannot find child who waked me up!\n");
 	return -1;
+}
+#endif
+
+pid_t task_wait(int *status)
+{
+	task_t *t;
+	if(!current_task->wait_queue->num_items) {
+		switch_locked = true;
+		// check if they are not exiting childs; //
+		bool found = false;
+		for(t = task_queue; t; t = t->next) {
+			if(t->ppid == current_task->pid) {
+				found = true; break;
+				kprintf("found task %d, in state: %s\n", t->pid, task_states[t->state]);
+			}
+		}
+		if(! found) {
+			switch_locked = false;
+			kprintf("no childs\n");
+			return -1;
+		}
+		current_task->state = TASK_SLEEPING;
+		kprintf("Going to sleep\n");
+		switch_locked = false;
+
+		task_switch();
+
+		kprintf("Wakeup\n");
+	}
+
+	switch_locked = true;
+	// kprintf("Waiting for...%d items\n", current_task->wait_queue->num_items);
+	node_t *n = current_task->wait_queue->head;
+	t = (task_t *) n->data;
+	pid_t pid = t->pid;
+	if(status) *status = t->exit_status;
+	task_free(t);
+	list_del(current_task->wait_queue, n);
+	switch_locked = false;
+	return pid;
 }
 
 void task_exit(int status)
@@ -209,6 +251,7 @@ void task_exit(int status)
 	}
 	// clean my waiting q //
 	node_t *n;
+	switch_locked = true;
 	for(n = current_task->wait_queue->head; n; n = n->next) {
 		task_free((task_t *) n->data);
 		list_del(current_task->wait_queue, n);
@@ -217,14 +260,13 @@ void task_exit(int status)
 	// add me to the parent waiting queue //
 	list_add(parent->wait_queue, current_task);
 
-	cli();
 	// and wake my parent //
 	if(parent->state == TASK_SLEEPING) {
 		parent->state = TASK_READY;
 	}
 	current_task->exit_status = status;
 	current_task->state = TASK_EXITING;
-	sti();
+	switch_locked = false;
 
 	task_switch();
 }

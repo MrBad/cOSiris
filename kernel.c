@@ -112,57 +112,34 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	task_init();
 
-	fs_node_t *fds[2];
-	new_pipe(fds);
-	char buffer1[256], buffer2[256];
-	unsigned int w,r;
-
-	open_fs(fds[0], PIPE_READ);
-	open_fs(fds[1], PIPE_WRITE);
-
-	pid_t pid = fork();
-	// fds are not dup, they are the same on both processes //
-	if(pid == 0) {
-		r = read_fs(fds[0], 0, 256, buffer2);
-		kprintf("Child: Read %d bytes from pipe, [%s]\n", r, buffer2);
-		close_fs(fds[0]);
-		task_exit(0);
-//return;
-	}
-	else {
-		delay(20000);
-		strcpy(buffer1, "Testing Pipes on fork()");
-		w = write_fs(fds[1], 0, strlen(buffer1), buffer1);
-		kprintf("Parent: Wrote %d bytes to pipe\n", w);
-		close_fs(fds[1]);
-		task_wait(NULL);
-	}
-	ps();
-	// return;
-
-	// halt();
-	//
-	// fs_node_t *fds[2];
-	// kprintf("\nTesting pipes\n");
-	// new_pipe(fds);
-	// open_fs(fds[0], 1);
-	// open_fs(fds[1], 2);
-	// char buff[256];
-	// char buff2[256];
-	// unsigned int w,r;
-	// strcpy(buff, "TESTING PIPES\n");
-	// w = write_fs(fds[1], 0, strlen(buff), buff);
-	// kprintf("write: %d bytes to pipe\n", w);
-	//
-	// r = read_fs(fds[0], 0, 256, buff2);
-	// kprintf("read: %d bytes from pipe: %s\n", r, buff2);
-	//
-	// close_fs(fds[0]);
-	// close_fs(fds[1]);
-
 	syscall_init();
 
 	exec_init();
+	// #define N 1000
+	// pid_t pid; int i;
+	// for(i = 0; i < N; i++) {
+	// 	pid = fork();
+	// 	if(pid < 0) {
+	// 		kprintf("fork returned -1\n");
+	// 		break;
+	// 	} else {
+	// 		task_exit(0);
+	// 	}
+	// }
+	// for(; i > 0; i--) {
+	// 	if((pid = task_wait(NULL)) < 0) {
+	// 		kprintf("Wait exit early\n");
+	// 		task_exit(0);
+	// 	}
+	// 	//kprintf("%d exited\n", pid);
+	// }
+	// if(task_wait(NULL) != -1) {
+	// 	kprintf("Wait got too many\n");
+	// 	task_exit(0);
+	// }
+	//
+	// kprintf("Fork test OK\n");
+	// ps();
 
 	kprintf("Should not get here\n");
 	return;

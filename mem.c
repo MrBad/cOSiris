@@ -17,7 +17,6 @@ dir_t	*kernel_dir = NULL;
 bool pg_on = false;
 
 extern void shutdown();
-extern void halt();
 
 bool paging_on()
 {
@@ -43,7 +42,12 @@ int page_fault(struct iregs *r)
 	kprintf("____\nFAULT: %s addr: %p, ", r->err_code & P_PRESENT ? "page violation" : "not present", fault_addr);
 	kprintf("stack: 0x%X\n", get_esp());
 	kprintf("task: %d\n", current_task->pid);
-
+	if(fault_addr < USER_CODE_START_ADDR && fault_addr > USER_STACK_HI) {
+		kprintf("User stack overflowed!\n");
+	}
+	if(fault_addr > USER_STACK_LOW && fault_addr < USER_STACK_HI) {
+		kprintf("User wants more stack?!\n");
+	}
 	kprintf("eip: 0x%p\n", r->eip);
 	kprintf("vaddr: %p, dir_idx: %i, table_idx: %i\n", table_idx*1024*PAGE_SIZE+page_idx*PAGE_SIZE, table_idx, page_idx);
 	kprintf("%s, ", r->err_code & P_READ_WRITE ? "write" : "read", fault_addr);
