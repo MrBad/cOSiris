@@ -4,6 +4,7 @@
 #include "syscall.h"
 #include "task.h"
 #include "x86.h"
+#include "mem.h"
 
 
 extern void print_int(unsigned int x);
@@ -16,6 +17,7 @@ static void *syscalls[] = {
 	&task_exit,
 	&getpid,
 	&ps,
+	&sys_sbrk,
 };
 static unsigned int num_syscalls;
 

@@ -9,4 +9,7 @@ void exit(int status);
 pid_t getpid();
 void ps();
 
+void * sbrk(int increment);
+
+
 #endif

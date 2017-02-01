@@ -46,6 +46,8 @@ extern void flush_tlb();
 
 
 void *sbrk(unsigned int increment);
+void * sys_sbrk(int increment);
+
 //extern void *kmalloc(unsigned int size, int align, unsigned *phys);
 // void map(unsigned int virt_addr, unsigned int phys_addr, unsigned short int flags);
 // int is_mapped(unsigned int virtual_addr);

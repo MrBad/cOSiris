@@ -9,6 +9,8 @@ enum {
 	SYS_EXIT,
 	SYS_GETPID,
 	SYS_PS,
+	//
+	SYS_SBRK,
 };
 
 #endif

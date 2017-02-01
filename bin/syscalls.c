@@ -36,3 +36,8 @@ void ps()
 {
 	_syscall0(SYS_PS);
 }
+
+void * sbrk(int increment)
+{
+	return (void *) _syscall1(SYS_SBRK, increment);
+}

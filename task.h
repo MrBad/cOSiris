@@ -2,6 +2,7 @@
 #define _TASK_H
 
 #include "mem.h"
+#include "kheap.h"
 #include "list.h"
 #include "x86.h"
 
@@ -28,8 +29,9 @@ typedef struct task {
 	task_states_t state;
 	int exit_status;
 	list_t *wait_queue;
-
+	heap_t * heap; 			// user heap
 } task_t;
+
 
 task_t *current_task;
 task_t *task_queue;

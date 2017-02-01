@@ -7,17 +7,16 @@ INCDIR	=../include
 NASM	=nasm -f elf -i$(INCDIR)/
 #CC	=gcc -g -Wall -W -O2 -nostdinc -fno-builtin -I$(INCDIR)
 CC	=gcc -m32 -g -Wall -W -O2 -nostdlib -fno-builtin -ffreestanding -I$(INCDIR)
-#STDIO	=stdio/doprintf.o
 
 STRING	=memcpy.o strcpy.o strlen.o strcmp.o memset.o strdup.o strcat.o strncat.o
 STDARG	=vsprintf.o
+STDIO	=printf.o
+STDLIB 	=malloc.o
 #X86	=x86/inportb.o x86/outportb.o x86/disable.o x86/enable.o
-
 #CTYPE	=ctype/ctype.o
-
 #SETJMP	=setjmp/setjmp.o setjmp/longjmp.o
 
-OBJS	=$(STRING) $(STDARG)
+OBJS	=$(STRING) $(STDARG) $(STDIO) $(STDLIB)
 
 # targets
 all: libc.a
@@ -41,6 +40,7 @@ memset.o:	memset.c		$(MAKEDEP)
 strdup.o:	strdup.c		$(MAKEDEP)
 strcat.o:	strcat.c		$(MAKEDEP)
 strncat.o:	strncat.c		$(MAKEDEP)
+malloc.o:	malloc.c	malloc.h	$(MAKEDEP)
 # explicit rules
 libc.a:	$(OBJS) $(MAKEDEP)
 	ar rcs libc.a $(OBJS)

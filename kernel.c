@@ -114,7 +114,7 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	syscall_init();
 
-	task_exec("/test_fork");
+	task_exec("/init");
 
 	kprintf("Should not get here\n");
 	return;

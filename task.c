@@ -21,7 +21,7 @@ char *task_states[] = {
 
 void print_int(int x)
 {
-	kprintf("%d", x);
+	kprintf("%08x", x);
 }
 
 task_t *task_new()
@@ -30,6 +30,11 @@ task_t *task_new()
 	t->pid = next_pid++;
 	// t->tss_kernel_stack = (unsigned int *)KERNEL_STACK_HI;//malloc_page_aligned(PAGE_SIZE);
 	t->wait_queue = list_open(NULL);
+	heap_t *h  = calloc(1, sizeof(heap_t));
+	h->start_addr = h->end_addr = UHEAP_START;
+	h->max_addr = UHEAP_END;
+	h->readonly = h->supervisor = false;
+	t->heap = h;
 	return t;
 }
 
@@ -117,6 +122,8 @@ task_t *fork_inner()
 	t->ppid = current_task->pid;
 	t->ring = current_task->ring;
 	t->page_directory = clone_directory();
+	// child has end addr as parent //
+	t->heap->end_addr = current_task->heap->end_addr;
 	t->state = TASK_READY;
 	switch_locked = false;
 	return t;
@@ -156,44 +163,10 @@ void task_free(task_t *task)
 	KASSERT(task->wait_queue->num_items == 0);
 	free_directory(task->page_directory);
 	list_close(task->wait_queue);
+	free(task->heap);
 	free(task);
 }
 
-#if 0
-pid_t task_wait(int *status)
-{
-	// do we have any child who can wake me up? //
-	spin_lock(&task_lock);
-	task_t *t; bool found = false;
-	for(t = task_queue; t; t = t->next) {
-		if(t->ppid == current_task->pid) {
-			found = true; break;
-			kprintf("found task %d, in state: %s\n", t->pid, task_states[t->state]);
-		}
-	}
-	if(!found) {
-		spin_unlock(&task_lock);
-		return -1; // no child left to wake me up //
-	}
-	// kprintf("task %d put to sleep\n", current_task->pid);
-	current_task->state = TASK_SLEEPING;
-	spin_unlock(&task_lock);
-
-	task_switch();
-
-	node_t *n = current_task->wait_queue->head;
-	if(n) {
-		task_t *child = (task_t *) n->data;
-		if(status) *status = child->exit_status;
-		pid_t pid = child->pid;
-		task_free(child);
-		list_del(current_task->wait_queue, n);
-		return pid;
-	}
-	kprintf("task_wait(): Cannot find child who waked me up!\n");
-	return -1;
-}
-#endif
 
 pid_t task_wait(int *status)
 {
@@ -241,6 +214,7 @@ void task_exit(int status)
 	// TODO - kill task and clean memory
 	parent = get_task_by_pid(current_task->ppid);
 	if(!parent) {
+		// halt();
 		return;
 	}
 	// reparent my children//
@@ -266,6 +240,7 @@ void task_exit(int status)
 	}
 	current_task->exit_status = status;
 	current_task->state = TASK_EXITING;
+
 	switch_locked = false;
 
 	task_switch();

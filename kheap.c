@@ -77,7 +77,7 @@ void *malloc(unsigned int nbytes)
 		}
 		// if last node, and we don't have required size,
 		if (p->next == NULL && p->size < search_size) {
-			kprintf("+");
+			// kprintf("+");
 			sbrk(PAGE_SIZE);
 			p->size += PAGE_SIZE;
 			continue;

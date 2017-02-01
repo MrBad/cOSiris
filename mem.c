@@ -322,32 +322,6 @@ static void setup_heap()
 	}
 }
 
-void *sbrk(unsigned int increment) {
-	unsigned int start = heap->end_addr;
-	unsigned int frame, i;
-	unsigned int iterations;
-	KASSERT(heap);
-	KASSERT(!(increment & 0xFFF));
-	if(increment == 0) {
-		return (void *)heap->end_addr;
-	}
-	iterations = increment / PAGE_SIZE;
-	if (iterations < 1) {
-		iterations++;
-	}
-	for (i = 0; i < iterations; ++i) {
-		frame = (phys_t) frame_alloc();
-		KASSERT(!(heap->end_addr & 0xFFF));
-		KASSERT(frame);
-		map(heap->end_addr, frame, P_PRESENT);
-		heap->end_addr += PAGE_SIZE;
-		if (heap->end_addr >= heap->max_addr) {
-			panic("Out of memory in sbrk: heap end addr: 0x%X08, size: %iM\n", heap->end_addr,
-					(heap->end_addr - heap->start_addr) / 1024 / 1024);
-		}
-	}
-	return (void *) start;
-}
 
 // temporary maps a physical frame to a known virtual address so we can change it
 // when paging is on
@@ -500,6 +474,85 @@ inline void switch_page_directory(dir_t *dir)
 	asm volatile("mov %%cr0, %0": "=r"(cr0));
 	cr0 |= 0x80000000;
 	asm volatile("mov %0, %%cr0":: "r"(cr0));
+}
+
+void *sbrk(unsigned int increment)
+{
+	unsigned int start = heap->end_addr;
+	unsigned int frame, i;
+	unsigned int iterations;
+	KASSERT(heap);
+	KASSERT(!(increment & 0xFFF));
+	if(increment == 0) {
+		return (void *)heap->end_addr;
+	}
+	iterations = increment / PAGE_SIZE;
+	if (iterations < 1) {
+		iterations++;
+	}
+	for (i = 0; i < iterations; ++i) {
+		frame = (phys_t) frame_alloc();
+		KASSERT(!(heap->end_addr & 0xFFF));
+		KASSERT(frame);
+		map(heap->end_addr, frame, P_PRESENT);
+		heap->end_addr += PAGE_SIZE;
+		if (heap->end_addr >= heap->max_addr) {
+			panic("Out of memory in sbrk: heap end addr: 0x%X08, size: %iM\n", heap->end_addr,
+					(heap->end_addr - heap->start_addr) / 1024 / 1024);
+		}
+	}
+	return (void *) start;
+}
+
+//Calling sbrk(0) gives the current address of program break.
+//Calling sbrk(x) with a positive value increments brk by x bytes, as a result allocating memory.
+//Calling sbrk(-x) with a negative value decrements brk by x bytes, as a result releasing memory.
+//On failure, sbrk() returns (void*) -1.
+
+void * sys_sbrk(int increment)
+{
+	uint32_t ret, iterations, i, frame;
+	ret = current_task->heap->end_addr; // save current end_addr //
+
+	if(increment == 0) {
+		ret = current_task->heap->end_addr;
+		goto clean;
+	}
+	if(increment > 0) {
+		iterations = (increment / PAGE_SIZE);
+		if(increment % PAGE_SIZE) iterations++; // round up;
+
+		for(i = 0; i < iterations; i++) {
+			if(!(frame = (uint32_t) frame_alloc())) {
+				ret = -1;
+				goto clean;
+			}
+			map(current_task->heap->end_addr, frame, P_PRESENT | P_READ_WRITE | P_USER);
+			current_task->heap->end_addr += PAGE_SIZE;
+			if(current_task->heap->end_addr >= current_task->heap->max_addr) {
+				ret = -1;
+				goto clean;
+			}
+		}
+	}
+	else {
+		increment = -increment;
+		iterations = (increment / PAGE_SIZE);
+		if(increment % PAGE_SIZE) iterations++; // round up
+
+		for(i = 0; i < iterations; i++) {
+			current_task->heap->end_addr -= PAGE_SIZE;
+			if(current_task->heap->end_addr < current_task->heap->start_addr) {
+				ret = -1;
+				goto clean;
+			}
+			frame_free(virt_to_phys(current_task->heap->end_addr));
+			unmap(current_task->heap->end_addr);
+		}
+	}
+
+clean:
+	return (void *) ret;
 }
 
 void mem_init(multiboot_header *mb)

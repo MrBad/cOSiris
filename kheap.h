@@ -6,6 +6,8 @@
 #define HEAP_INITIAL_SIZE   0x00010000
 #define HEAP_END            0xE0000000
 
+#define UHEAP_START			0x20000000
+#define UHEAP_END			0x30000000
 
 typedef struct block_meta {
 	unsigned int magic_head;
