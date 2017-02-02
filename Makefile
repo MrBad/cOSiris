@@ -12,7 +12,9 @@ LDFLAGS	= -g -melf_i386 -T ldscript.ld #-Map System.map
 
 OBJS =	x86.o console.o kernel.o startup.o multiboot.o gdt.o idt.o isr.o irq.o \
 		timer.o kbd.o serial.o delay.o mem.o kheap.o vfs.o initrd.o \
-		task.o sched.o syscall.o sys.o zero.o pipe.o list.o lib/libc.a
+		task.o sched.o syscall.o sys.o zero.o pipe.o list.o \
+		sysfile.o \
+		lib/libc.a
 
 bzImage: all
 	objdump --source kernel.bin > kernel.lst
@@ -56,7 +58,7 @@ fdimg: bzImage
 	sudo cp initrd.img mnt
 	sudo umount mnt
 	sudo rm -rf mnt
-	
+
 fd:
 	mkdir mnt
 	mount /dev/fd0 mnt

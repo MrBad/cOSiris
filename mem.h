@@ -1,8 +1,8 @@
 #ifndef _MEM_H
 #define _MEM_H
 
+#include <sys/types.h>
 #include "multiboot.h"
-#include "include/types.h"
 
 //#include "multiboot.h"
 #define PAGE_SIZE 4096

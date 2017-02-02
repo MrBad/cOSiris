@@ -1,9 +1,8 @@
-#include "include/types.h"
+#include <sys/types.h>
+#include <stdlib.h>
 #include "x86.h"
 #include "task.h"
 #include "mem.h"
-//#include "kheap.h"
-#include <stdlib.h>
 #include "isr.h"
 #include "console.h"
 #include "gdt.h"
@@ -289,6 +288,6 @@ void task_exec(char *path)
 		size = fs_read(fs_node, offset, fs_node->length, buff);
 		offset += size;
 	} while(size > 0);
-	
+
 	switch_to_user_mode(USER_CODE_START_ADDR, USER_STACK_HI);
 }

@@ -1,5 +1,5 @@
-#include <types.h>		// types //
-#include "string.h"		// memset //
+#include <sys/types.h>	// types //
+#include <string.h>		// memset //
 #include "console.h"	// kprint, panic//
 #include "isr.h" 		// iregs //
 #include "multiboot.h"	// multiboot_header //

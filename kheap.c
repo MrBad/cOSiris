@@ -1,11 +1,11 @@
+#include <sys/types.h>
+#include <string.h>
 #include "x86.h"
 #include "console.h"
 #include "serial.h"
 #include "mem.h"
 #include "kheap.h"
 #include "assert.h"
-#include "include/types.h"
-#include "include/string.h"
 
 #define MAGIC_HEAD 0xDEADC0DE
 #define MAGIC_END 0xDEADBABA

@@ -1,11 +1,10 @@
 #include <string.h>
 #include <stdlib.h>	// malloc
-#include "include/types.h"
+#include <sys/types.h>
 #include "console.h"
-//#include "kheap.h"
 #include "assert.h"
-
 #include "vfs.h"
+
 
 
 unsigned int fs_read(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
@@ -25,7 +24,8 @@ void fs_open(fs_node_t *node, unsigned int flags)
 	}
 }
 
-void fs_close(fs_node_t *node) {
+void fs_close(fs_node_t *node)
+{
 	if (node->close != NULL) {
 		return node->close(node);
 	}
@@ -40,7 +40,8 @@ struct dirent *fs_readdir(fs_node_t *node, unsigned int index)
 	}
 }
 
-fs_node_t *fs_finddir(fs_node_t *node, char *name) {
+fs_node_t *fs_finddir(fs_node_t *node, char *name)
+{
 	// Is the node a directory, and does it have a callback?
 	if ((node->flags & FS_DIRECTORY) && node->finddir != 0)
 		return node->finddir(node, name);

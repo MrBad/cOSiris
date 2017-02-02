@@ -1,5 +1,5 @@
 #include "kernel.h"
-#include "types.h"
+#include <sys/types.h>
 #include <string.h>
 #include "x86.h"
 #include "console.h"
