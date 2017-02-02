@@ -1,5 +1,5 @@
 #include <cosiris.h>
-#include <types.h>
+#include <sys/types.h>
 #include "sys.h"
 
 void print(char *str)

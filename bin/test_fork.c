@@ -1,4 +1,4 @@
-#include <types.h>
+#include <sys/types.h>
 #include "syscalls.h"
 
 #define N 1000

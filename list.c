@@ -82,6 +82,8 @@ void list_close(list_t *list)
 	}
 	free(list);
 }
+#define foreach(list, item) \
+	for(item = list->head; item; item = item->next)
 
 node_t *list_for_each(list_t *list, iterator_function_t iterator)
 {

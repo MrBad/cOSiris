@@ -1,7 +1,7 @@
 #ifndef _SYS_H
 #define _SYS_H
 
-#include <types.h>
+#include <sys/types.h>
 
 extern uint32_t _syscall0(uint32_t sys_num);
 extern uint32_t _syscall1(uint32_t sys_num, uint32_t arg1);
