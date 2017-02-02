@@ -13,8 +13,8 @@ typedef int int32_t;
 typedef unsigned short int uint16_t;
 typedef short int int16_t;
 typedef int pid_t;
-
-
+typedef unsigned int off_t;
+typedef unsigned int time_t;
 typedef unsigned short uid_t;
 typedef unsigned char gid_t;
 typedef unsigned short dev_t;

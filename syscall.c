@@ -5,6 +5,7 @@
 #include "task.h"
 #include "x86.h"
 #include "mem.h"
+#include "sysfile.h"
 
 
 extern void print_int(unsigned int x);
@@ -17,12 +18,26 @@ void print(char *buf){
 static void *syscalls[] = {
 	&console_write,
 	&print_int,
+
 	&fork,
 	&task_wait,
 	&task_exit,
 	&getpid,
 	&ps,
+
 	&sys_sbrk,
+
+	&sys_open,
+	&sys_close,
+	&sys_stat,
+	&sys_fstat,
+	&sys_read,
+	&sys_write,
+	&sys_chdir,
+	&sys_chroot,
+	&sys_chmod,
+	&sys_chown,
+	&sys_mkdir,
 };
 static unsigned int num_syscalls;
 
@@ -31,7 +46,8 @@ unsigned int syscall_handler(struct iregs *r)
 	// cli();
 	if(r->eax >= num_syscalls) {
 		kprintf("No such syscall: %p\n", r->eax);
-		return 0;
+		r->eax = 0;
+		return r->eax;
 	} else {
 		// kprintf("kernel: syscall: %d, %p\n", r->eax, r->ebx);
 	}

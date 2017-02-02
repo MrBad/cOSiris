@@ -4,13 +4,26 @@
 enum {
 	SYS_PRINT,
 	SYS_PRINT_INT,
+	// process
 	SYS_FORK,
 	SYS_WAIT,
 	SYS_EXIT,
 	SYS_GETPID,
 	SYS_PS,
-	//
+	// mem //
 	SYS_SBRK,
+	// files //
+	SYS_OPEN,
+	SYS_CLOSE,
+	SYS_STAT,
+	SYS_FSTAT,
+	SYS_READ,
+	SYS_WRITE,
+	SYS_CHDIR,
+	SYS_CHROOT,
+	SYS_CHMOD,
+	SYS_CHOWN,
+	SYS_MKDIR,
 };
 
 #endif

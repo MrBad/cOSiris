@@ -5,6 +5,7 @@
 #include "kheap.h"
 #include "list.h"
 #include "x86.h"
+#include "sysfile.h"
 
 typedef enum {
 	TASK_CREATING,
@@ -14,6 +15,7 @@ typedef enum {
 	TASK_EXITED,
 } task_states_t;
 
+#define TASK_INITIAL_NUM_FILES 3
 
 typedef struct task {
 	pid_t pid;				// task + 0		process id
@@ -24,12 +26,14 @@ typedef struct task {
 	dir_t *page_directory;	// task + 20	task page directory
 	struct task *next;		// task + 24	next task
 	struct task *parent;	// parent task
-	unsigned int *tss_kernel_stack;
+	uint32_t *tss_kernel_stack;
 	int ring;
 	task_states_t state;
 	int exit_status;
 	list_t *wait_queue;
 	heap_t * heap; 			// user heap
+	struct file **files;	// 
+	int num_files;
 } task_t;
 
 

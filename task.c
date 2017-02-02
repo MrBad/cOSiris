@@ -30,11 +30,21 @@ task_t *task_new()
 	t->pid = next_pid++;
 	// t->tss_kernel_stack = (unsigned int *)KERNEL_STACK_HI;//malloc_page_aligned(PAGE_SIZE);
 	t->wait_queue = list_open(NULL);
+	// heap //
 	heap_t *h  = calloc(1, sizeof(heap_t));
 	h->start_addr = h->end_addr = UHEAP_START;
 	h->max_addr = UHEAP_END;
 	h->readonly = h->supervisor = false;
 	t->heap = h;
+	// files //
+	t->files = (struct file **) calloc(TASK_INITIAL_NUM_FILES, sizeof(struct file *));
+	t->num_files = TASK_INITIAL_NUM_FILES;
+	// t->files[0] = malloc(sizeof(struct file));
+	// t->files[0]->fs_node = STDIN;
+	// t->files[1] = malloc(sizeof(struct file));
+	// t->files[1]->fs_node = STDOUT;
+	// t->files[2] = malloc(sizeof(struct file));
+
 	return t;
 }
 
@@ -117,13 +127,28 @@ task_t *get_current_task()
 
 task_t *fork_inner()
 {
+
 	switch_locked = true;
 	task_t *t = task_new();
 	t->ppid = current_task->pid;
 	t->ring = current_task->ring;
 	t->page_directory = clone_directory();
-	// child has end addr as parent //
+
+	// child has end addr as parent, clonned by clone directory //
 	t->heap->end_addr = current_task->heap->end_addr;
+
+	// clone files //
+	t->files = (struct file **) calloc(current_task->num_files, sizeof(struct file *));
+	int fd;
+	for(fd = 0; fd < current_task->num_files; fd++) {
+		if(!current_task->files[fd]) {
+			continue;
+		}
+		t->files[fd] = calloc(1, sizeof(struct file));
+		t->files[fd]->fs_node = current_task->files[fd]->fs_node;
+		t->files[fd]->offs = current_task->files[fd]->offs;
+		current_task->files[fd]->fs_node->ref_count++;
+	}
 	t->state = TASK_READY;
 	switch_locked = false;
 	return t;
@@ -152,9 +177,8 @@ task_t *get_task_by_pid(pid_t pid)
 
 void task_free(task_t *task)
 {
-
 	KASSERT(task);
-	task_t *p;
+	task_t *p; int fd;
 	for(p = task_queue; p; p=p->next) {
 		if(p->next == task) {
 			p->next = task->next;
@@ -162,7 +186,19 @@ void task_free(task_t *task)
 	}
 	KASSERT(task->wait_queue->num_items == 0);
 	free_directory(task->page_directory);
+	// closing wait queue //
 	list_close(task->wait_queue);
+	// closing it's files //
+	for(fd = 0; fd < task->num_files; fd++) {
+		if(task->files[fd]) {
+			task->files[fd]->fs_node->ref_count--;
+			if(task->files[fd]->fs_node->ref_count == 0){
+				fs_close(task->files[fd]->fs_node);
+			};
+			free(task->files[fd]);
+		}
+	}
+	free(task->files);
 	free(task->heap);
 	free(task);
 }

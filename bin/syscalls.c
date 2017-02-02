@@ -1,5 +1,6 @@
 #include <cosiris.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include "sys.h"
 
 void print(char *str)
@@ -46,9 +47,36 @@ void * sbrk(int increment)
 
 
 // files
-// pipe
-//
-// int open(char *filename, int flags, ...) {}
-// //mkdir
-// //mknod
-// //chdir
+int open(char *filename, int flag, int mode) {
+	return _syscall3(SYS_OPEN, (uint32_t)filename, flag, mode);
+}
+int close(unsigned int fd) {
+	return _syscall1(SYS_CLOSE, fd);
+}
+int stat(const char *pathname, struct stat *buf) {
+	return _syscall2(SYS_STAT, (uint32_t)pathname, (uint32_t)buf);
+}
+int fstat(int fd, struct stat *buf) {
+	return _syscall2(SYS_FSTAT, fd, (uint32_t)buf);
+}
+int read(int fd, void *buf, unsigned int count) {
+	return _syscall3(SYS_READ, fd, (uint32_t)buf, count);
+}
+int write(int fd, void *buf, unsigned int count) {
+	return _syscall3(SYS_WRITE, fd, (uint32_t)buf, count);
+}
+int chdir(char *filename) {
+	return _syscall1(SYS_CHDIR, (uint32_t)filename);
+}
+int chroot(char *filename) {
+	return _syscall1(SYS_CHROOT, (uint32_t)filename);
+}
+int chmod(char *filename, int uid, int gid) {
+	return _syscall3(SYS_CHMOD, (uint32_t)filename, uid, gid);
+}
+int chown(char *filename, int mode) {
+	return _syscall2(SYS_CHOWN, (uint32_t)filename, mode);
+}
+int mkdir(const char *pathname, int mode) {
+	return _syscall2(SYS_MKDIR, (uint32_t)pathname, mode);
+}
