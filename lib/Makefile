@@ -29,7 +29,7 @@ clean:
 #	$(NASM) -o$@ $<
 
 .c.o:
-	$(CC) -c -o$@ $<
+	$(CC) -c -o $@ $<
 
 # dependencies
 memcpy.o:	memcpy.c		$(MAKEDEP)
@@ -40,7 +40,7 @@ memset.o:	memset.c		$(MAKEDEP)
 strdup.o:	strdup.c		$(MAKEDEP)
 strcat.o:	strcat.c		$(MAKEDEP)
 strncat.o:	strncat.c		$(MAKEDEP)
-malloc.o:	malloc.c	malloc.h	$(MAKEDEP)
+malloc.o:	malloc.c		$(MAKEDEP)
 # explicit rules
 libc.a:	$(OBJS) $(MAKEDEP)
 	ar rcs libc.a $(OBJS)

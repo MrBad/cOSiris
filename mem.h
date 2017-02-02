@@ -45,7 +45,7 @@ extern void switch_pd(dir_t *dir);
 extern void flush_tlb();
 
 
-void *sbrk(unsigned int increment);
+void *sbrk(int increment);
 void * sys_sbrk(int increment);
 
 //extern void *kmalloc(unsigned int size, int align, unsigned *phys);

@@ -2,7 +2,8 @@
 #include "x86.h"
 #include "task.h"
 #include "mem.h"
-#include "kheap.h"
+//#include "kheap.h"
+#include <stdlib.h>
 #include "isr.h"
 #include "console.h"
 #include "gdt.h"
@@ -245,6 +246,9 @@ void task_exit(int status)
 
 	task_switch();
 }
+// void exit(int status) {
+// 	task_exit(status);
+// }
 
 
 void switch_to_user_mode(uint32_t code_addr, uint32_t stack_hi_addr)

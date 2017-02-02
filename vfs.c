@@ -1,7 +1,8 @@
 #include <string.h>
 #include "include/types.h"
 #include "console.h"
-#include "kheap.h"
+//#include "kheap.h"
+#include <stdlib.h> // malloc
 #include "assert.h"
 
 #include "vfs.h"

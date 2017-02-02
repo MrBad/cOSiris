@@ -2,7 +2,6 @@
 #include <unistd.h> // sbrk
 #include <assert.h>
 #include <string.h>	// memset
-#include "malloc.h"
 
 #define MAGIC_HEAD 0xDEADC0DE
 #define MAGIC_END 0xDEADBABA
@@ -23,9 +22,10 @@ static void * start_addr;
 
 static block_meta_t *init_first_block() {
 	start_addr = sbrk(PAGE_SIZE);
-	if(start_addr < 0) {
+	if(start_addr == (void *) -1) {
 		return NULL;
 	}
+	// printf("Installing heap @%p, %08X\n", start_addr, PAGE_SIZE);
 	first_block = (block_meta_t *) start_addr;
 	first_block->free = true;
 	first_block->magic_head = MAGIC_HEAD;
@@ -37,18 +37,19 @@ static block_meta_t *init_first_block() {
 
 void *malloc(size_t size)
 {
+
 	//spin_lock(&kheap_lock);
 	block_meta_t *p, *n;
 	unsigned int next_size;
 	char *c;
 	if(size % 4 != 0)
 		size = (size / 4 + 1) * 4; // align to 4 bytes
-
 	if(first_block == NULL) {
 		init_first_block();
 	}
+
 	assert(first_block->magic_head == MAGIC_HEAD);
-	assert(first_block->magic_end == MAGIC_END);
+	// assert(first_block->magic_end == MAGIC_END);
 	p = first_block;
 	unsigned int search_size = size + sizeof(block_meta_t);
 	while (p) {

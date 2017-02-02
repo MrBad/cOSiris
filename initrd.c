@@ -1,7 +1,8 @@
 #include "include/string.h"
 #include "x86.h"
 #include "console.h"
-#include "kheap.h"
+//#include "kheap.h"
+#include <stdlib.h>
 #include "vfs.h"
 
 

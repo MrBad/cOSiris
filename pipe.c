@@ -1,7 +1,8 @@
 #include <string.h>
 #include "pipe.h"
 #include "vfs.h"
-#include "kheap.h"
+//#include "kheap.h"
+#include <stdlib.h>
 #include "task.h"
 #include "console.h"
 #include "x86.h"

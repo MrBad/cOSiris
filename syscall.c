@@ -8,7 +8,12 @@
 
 
 extern void print_int(unsigned int x);
-
+void exit(int status) {
+	task_exit(status);
+}
+void print(char *buf){
+	console_write(buf);
+}
 static void *syscalls[] = {
 	&console_write,
 	&print_int,

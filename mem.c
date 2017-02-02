@@ -56,7 +56,7 @@ int page_fault(struct iregs *r)
 	if (HEAP_START < fault_addr && fault_addr < HEAP_END) {
 		kprintf(", in heap\n");
 		heap_dump();
-		debug_dump_list(first_block);
+		// debug_dump_list(first_block);
 	}
 	kprintf("\n%s", paging_on() ? "paging ON" : "paging OFF");
 	//	panic("\npanic\n____");
@@ -311,15 +311,15 @@ void map(virt_t virtual_addr, phys_t physical_addr, flags_t flags)
 
 static void setup_heap()
 {
-	heap->start_addr = HEAP_START;
-	heap->end_addr = HEAP_START + HEAP_INITIAL_SIZE;
-	heap->max_addr = HEAP_END;
-	heap->readonly = false;
-	heap->supervisor = true;
-	virt_t p;
-	for(p = heap->start_addr; p < heap->end_addr; p += PAGE_SIZE) {
-		map(p, (phys_t) frame_alloc(), P_PRESENT | P_READ_WRITE);
-	}
+	kernel_heap->start_addr = HEAP_START;
+	kernel_heap->end_addr = HEAP_START;//HEAP_START + HEAP_INITIAL_SIZE;
+	kernel_heap->max_addr = HEAP_END;
+	kernel_heap->readonly = false;
+	kernel_heap->supervisor = true;
+	// virt_t p;
+	// for(p = kernel_heap->start_addr; p < kernel_heap->end_addr; p += PAGE_SIZE) {
+		// map(p, (phys_t) frame_alloc(), P_PRESENT | P_READ_WRITE);
+	// }
 }
 
 
@@ -476,49 +476,50 @@ inline void switch_page_directory(dir_t *dir)
 	asm volatile("mov %0, %%cr0":: "r"(cr0));
 }
 
-void *sbrk(unsigned int increment)
-{
-	unsigned int start = heap->end_addr;
-	unsigned int frame, i;
-	unsigned int iterations;
-	KASSERT(heap);
-	KASSERT(!(increment & 0xFFF));
-	if(increment == 0) {
-		return (void *)heap->end_addr;
-	}
-	iterations = increment / PAGE_SIZE;
-	if (iterations < 1) {
-		iterations++;
-	}
-	for (i = 0; i < iterations; ++i) {
-		frame = (phys_t) frame_alloc();
-		KASSERT(!(heap->end_addr & 0xFFF));
-		KASSERT(frame);
-		map(heap->end_addr, frame, P_PRESENT);
-		heap->end_addr += PAGE_SIZE;
-		if (heap->end_addr >= heap->max_addr) {
-			panic("Out of memory in sbrk: heap end addr: 0x%X08, size: %iM\n", heap->end_addr,
-					(heap->end_addr - heap->start_addr) / 1024 / 1024);
-		}
-	}
-	return (void *) start;
-}
+// void *sbrk(unsigned int increment)
+// {
+// 	unsigned int start = heap->end_addr;
+// 	unsigned int frame, i;
+// 	unsigned int iterations;
+// 	KASSERT(heap);
+// 	KASSERT(!(increment & 0xFFF));
+// 	if(increment == 0) {
+// 		return (void *)heap->end_addr;
+// 	}
+// 	iterations = increment / PAGE_SIZE;
+// 	if (iterations < 1) {
+// 		iterations++;
+// 	}
+// 	for (i = 0; i < iterations; ++i) {
+// 		frame = (phys_t) frame_alloc();
+// 		KASSERT(!(heap->end_addr & 0xFFF));
+// 		KASSERT(frame);
+// 		map(heap->end_addr, frame, P_PRESENT);
+// 		heap->end_addr += PAGE_SIZE;
+// 		if (heap->end_addr >= heap->max_addr) {
+// 			panic("Out of memory in sbrk: heap end addr: 0x%X08, size: %iM\n", heap->end_addr,
+// 					(heap->end_addr - heap->start_addr) / 1024 / 1024);
+// 		}
+// 	}
+// 	return (void *) start;
+// }
 
 //Calling sbrk(0) gives the current address of program break.
 //Calling sbrk(x) with a positive value increments brk by x bytes, as a result allocating memory.
 //Calling sbrk(-x) with a negative value decrements brk by x bytes, as a result releasing memory.
 //On failure, sbrk() returns (void*) -1.
 
-void * sys_sbrk(int increment)
+void * _sbrk(heap_t *heap, int increment)
 {
 	uint32_t ret, iterations, i, frame;
-	ret = current_task->heap->end_addr; // save current end_addr //
+	ret = heap->end_addr; // save current end_addr //
 
 	if(increment == 0) {
-		ret = current_task->heap->end_addr;
+		ret = heap->end_addr;
 		goto clean;
 	}
 	if(increment > 0) {
+
 		iterations = (increment / PAGE_SIZE);
 		if(increment % PAGE_SIZE) iterations++; // round up;
 
@@ -527,9 +528,9 @@ void * sys_sbrk(int increment)
 				ret = -1;
 				goto clean;
 			}
-			map(current_task->heap->end_addr, frame, P_PRESENT | P_READ_WRITE | P_USER);
-			current_task->heap->end_addr += PAGE_SIZE;
-			if(current_task->heap->end_addr >= current_task->heap->max_addr) {
+			map(heap->end_addr, frame, P_PRESENT | P_READ_WRITE | (heap->supervisor ? 0 : P_USER));
+			heap->end_addr += PAGE_SIZE;
+			if(heap->end_addr >= heap->max_addr) {
 				ret = -1;
 				goto clean;
 			}
@@ -541,18 +542,33 @@ void * sys_sbrk(int increment)
 		if(increment % PAGE_SIZE) iterations++; // round up
 
 		for(i = 0; i < iterations; i++) {
-			current_task->heap->end_addr -= PAGE_SIZE;
-			if(current_task->heap->end_addr < current_task->heap->start_addr) {
+			heap->end_addr -= PAGE_SIZE;
+			if(heap->end_addr < heap->start_addr) {
 				ret = -1;
 				goto clean;
 			}
-			frame_free(virt_to_phys(current_task->heap->end_addr));
-			unmap(current_task->heap->end_addr);
+			frame_free(virt_to_phys(heap->end_addr));
+			unmap(heap->end_addr);
 		}
 	}
 
 clean:
 	return (void *) ret;
+}
+
+//
+// Ok, trick is that sbrk will be called directly when compiling libc in kernel mode
+//	but in usermode, sys_sbrk will be called instead
+//	Based on that, we switch the heap where we want to sbrk and can use same malloc
+//	in bouth places
+//
+void * sbrk(int increment)
+{
+	return _sbrk(kernel_heap, increment);
+}
+void * sys_sbrk(int increment)
+{
+	return _sbrk(current_task->heap, increment);
 }
 
 void mem_init(multiboot_header *mb)
@@ -569,7 +585,8 @@ void mem_init(multiboot_header *mb)
 	move_stack_up();
 
 	setup_heap();
-	heap_init(mb);
+
+	// heap_init(mb);
 
 	// dump_dir();
 	// // kprintf("Curr dir at: %p, kdir: %p\n", virt_to_phys(PDIR_ADDR), kernel_dir);
