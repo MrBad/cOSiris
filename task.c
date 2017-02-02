@@ -263,13 +263,14 @@ void switch_to_user_mode(uint32_t code_addr, uint32_t stack_hi_addr)
 //
 void task_exec(char *path)
 {
-	fs_node_t *fs_node = namei(path);
+	fs_node_t *fs_node = fs_namei(path);
 	if(!fs_node) {
 		panic("Cannot find init %s\n", path);
 	} else {
 		kprintf("Loading /%s, inode:%d, at address %p, length:%d\n", fs_node->name,
 				fs_node->inode, USER_CODE_START_ADDR, fs_node->length);
 	}
+
 	unsigned int num_pages = (fs_node->length / PAGE_SIZE) + 1;
 	unsigned int i;
 	for(i = 0; i < num_pages; i++) {
@@ -285,9 +286,9 @@ void task_exec(char *path)
 	unsigned int offset = 0, size = 0;
 	char *buff = (char *)USER_CODE_START_ADDR;
 	do {
-		size = read_fs(fs_node, offset, fs_node->length, buff);
+		size = fs_read(fs_node, offset, fs_node->length, buff);
 		offset += size;
 	} while(size > 0);
-
+	
 	switch_to_user_mode(USER_CODE_START_ADDR, USER_STACK_HI);
 }

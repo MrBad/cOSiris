@@ -1,34 +1,38 @@
 #include <string.h>
+#include <stdlib.h>	// malloc
 #include "include/types.h"
 #include "console.h"
 //#include "kheap.h"
-#include <stdlib.h> // malloc
 #include "assert.h"
 
 #include "vfs.h"
 
 
-unsigned int read_fs(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer) {
+unsigned int fs_read(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
+{
 	return node->read != 0 ? node->read(node, offset, size, buffer) : 0;
 }
 
-unsigned int write_fs(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer) {
+unsigned int fs_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
+{
 	return node->write != 0 ? node->write(node, offset, size, buffer) : 0;
 }
 
-void open_fs(fs_node_t *node, unsigned int flags) {
-	if (node->open != NULL) {
+void fs_open(fs_node_t *node, unsigned int flags)
+{
+	if(node->open != NULL) {
 		return node->open(node, flags);
 	}
 }
 
-void close_fs(fs_node_t *node) {
+void fs_close(fs_node_t *node) {
 	if (node->close != NULL) {
 		return node->close(node);
 	}
 }
 
-struct dirent *readdir_fs(fs_node_t *node, unsigned int index) {
+struct dirent *fs_readdir(fs_node_t *node, unsigned int index)
+{
 	if ((node->flags & FS_DIRECTORY) && node->readdir != 0) {
 		return node->readdir(node, index);
 	} else {
@@ -36,7 +40,7 @@ struct dirent *readdir_fs(fs_node_t *node, unsigned int index) {
 	}
 }
 
-fs_node_t *finddir_fs(fs_node_t *node, char *name) {
+fs_node_t *fs_finddir(fs_node_t *node, char *name) {
 	// Is the node a directory, and does it have a callback?
 	if ((node->flags & FS_DIRECTORY) && node->finddir != 0)
 		return node->finddir(node, name);
@@ -47,7 +51,7 @@ fs_node_t *finddir_fs(fs_node_t *node, char *name) {
 //
 //	Simple name to inode find
 //
-fs_node_t *namei(char *path)
+fs_node_t *fs_namei(char *path)
 {
 	fs_node_t *node = NULL;
 	KASSERT(*path);
@@ -66,7 +70,7 @@ fs_node_t *namei(char *path)
 	p = str;
 	while(len > 0) {
 		if(*p) {
-			if(!(node = finddir_fs(node ? node : fs_root, p))) {
+			if(!(node = fs_finddir(node ? node : fs_root, p))) {
 				break;
 			}
 		}
@@ -79,12 +83,12 @@ fs_node_t *namei(char *path)
 }
 
 // needs more testing -> for now will only mount /dev/ files
-int mount_fs(char *path, fs_node_t *node)
+int fs_mount(char *path, fs_node_t *node)
 {
 	KASSERT(*path);
 	KASSERT(*path == '/');
 	fs_node_t *n;
-	n = namei(path);
+	n = fs_namei(path);
 	if(!n) {
 		// full path does not exits, check if parent node exists //
 		// usually used in mount /dev/xxxx files
@@ -97,7 +101,7 @@ int mount_fs(char *path, fs_node_t *node)
 			}
 		}
 		if(strlen(base) && !strcmp(node->name, base)) {
-			n = namei(dir);
+			n = fs_namei(dir);
 			if(!n) {
 				free(dir);
 				return -1;
@@ -116,4 +120,20 @@ int mount_fs(char *path, fs_node_t *node)
 	}
 	// kprintf("%d, %d, %s\n", node->inode, node->parent_inode, node->name);
 	return 0;
+}
+
+
+void lstree(fs_node_t *parent)
+{
+	struct dirent *dir = 0;
+	unsigned int i = 0;
+	kprintf("Listing directory: %s\n", parent->name);
+	while((dir = fs_readdir(parent, i))) {
+		fs_node_t *file = fs_finddir(parent, dir->name);
+		kprintf("%s - inode:%d, parent_inode:%d, \n", file->name, file->inode, file->parent_inode);
+		if(file->flags & FS_DIRECTORY) {
+			lstree(file);
+		}
+		i++;
+	}
 }

@@ -32,7 +32,8 @@ typedef struct fs_node {
 	unsigned int flags;
 	unsigned int inode;
 	unsigned int length;
-	unsigned int impl;      // ?! implementation defined number
+	unsigned int ref_count;		// number of threads who open this file
+	unsigned int impl;      	// implementation defined number
 
 	unsigned int parent_inode;	// Who's my parent directory
 								// This info should go outside inode in future
@@ -54,18 +55,21 @@ struct dirent {
 	unsigned int inode;
 };
 
+
 fs_node_t *fs_root;
 
 
-unsigned int read_fs(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer);
-unsigned int write_fs(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer);
-void open_fs(fs_node_t *node, unsigned int flags);
-void close_fs(fs_node_t *node);
-fs_node_t *finddir_fs(fs_node_t *node, char *name);
-struct dirent *readdir_fs(fs_node_t *node, unsigned int index);
-fs_node_t *finddir_fs(fs_node_t *node, char *name);
-fs_node_t *namei(char *path);
-int mount_fs(char *path, fs_node_t *node);
+void fs_open(fs_node_t *node, unsigned int flags);
+void fs_close(fs_node_t *node);
+unsigned int fs_read(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer);
+unsigned int fs_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer);
 
+
+fs_node_t *fs_finddir(fs_node_t *node, char *name);
+struct dirent *fs_readdir(fs_node_t *node, unsigned int index);
+fs_node_t *fs_namei(char *path);
+int fs_mount(char *path, fs_node_t *node);
+
+void lstree(fs_node_t *parent);
 
 #endif

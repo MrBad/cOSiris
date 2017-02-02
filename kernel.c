@@ -24,57 +24,22 @@
 unsigned int initrd_location, initrd_end;
 unsigned int stack_ptr, stack_size;
 
-void list_root(fs_node_t *fs_root)
+void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsigned int sptr)
 {
-	// list the contents of //
-	unsigned int i = 0;
-	struct dirent *node = 0;
-	while((node = readdir_fs(fs_root, i))) {
-		kprintf("Found file %s\n", node->name);
-		fs_node_t *fs_node = finddir_fs(fs_root, node->name);
-		if(fs_node->flags & FS_DIRECTORY) {
-			kprintf("\tDir %s\t\n", fs_node->name);
-		} else {
-			// char buff[256];
-			// unsigned int size, offs = 0;
-			kprintf("name: %s, inode: %d, length: %d\n", fs_node->name, fs_node->inode, fs_node->length);
-			// do {
-			// 	size = read_fs(fs_node, offs, 256, buff);
-			// 	kprintf("%s", buff);
-			// 	offs+=size;
-			// } while(size > 0);
-		}
-		i++;
-	}
-}
-
-
-void shutdown()
-{
-	char *c = "Shutdown";
-	while (*c) { outb(0x8900, *c++); }
-}
-
-
-extern int get_flags();
-extern unsigned int get_esp();
-
-void test_user_mode();
-void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsigned int sptr) {
 	stack_ptr = sptr;
 	stack_size = ssize;
 
 	console_init();
 	serial_init();
 
-	multiboot_parse(magic, mboot);
+	// multiboot_parse(magic, mboot);
 	kprintf("cOSiris\n");
 
 	get_kernel_info(&kinfo);
 	kprintf("Kernel info:\n");
-	kprintf("\tcode start: 0x%X, start entry: 0x%X, data start: 0x%X\n", kinfo.code, kinfo.start, kinfo.data);
-	kprintf("\tbss start: 0x%X, end: 0x%X, total size: %i bytes\n", kinfo.bss, kinfo.end, kinfo.size);
-	kprintf("\tstack: %p, size: %p\n", kinfo.stack, kinfo.stack_size);
+	kprintf("\tcode start: 0x%p, start entry: 0x%p, data start: 0x%p\n", kinfo.code, kinfo.start, kinfo.data);
+	kprintf("\tbss start: 0x%p, end: 0x%p, total size: %d KB\n", kinfo.bss, kinfo.end, kinfo.size/1024);
+	kprintf("\tstack: 0x%p, size: 0x%p\n", stack_ptr, stack_size);
 	kprintf("Setup gdt entries\n");
 	gdt_init();
 
@@ -114,7 +79,7 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	syscall_init();
 
-	task_exec("/test_fork");
+	task_exec("/init");
 
 	kprintf("Should not get here\n");
 	return;

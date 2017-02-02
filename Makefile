@@ -52,10 +52,11 @@ fdimg: bzImage
 	sudo mount fd.img mnt -oloop -tmsdos
 	sudo cp kernel mnt
 	# sudo cp bin/init mnt
-	util/mkinitrd kernel.sym bin/init bin/test_fork bin/test_sbrk
+	util/mkinitrd kernel.sym bin/init bin/test_fork bin/test_sbrk bin/test_malloc
 	sudo cp initrd.img mnt
 	sudo umount mnt
 	sudo rm -rf mnt
+	
 fd:
 	mkdir mnt
 	mount /dev/fd0 mnt

@@ -3,6 +3,15 @@
 #include <assert.h>
 #include <string.h>	// memset
 
+
+#ifndef LOCK
+#define LOCK(x) &x = 1;
+#endif
+
+#ifndef UNLOCK
+#define UNLOCK(x) &x = 0;
+#endif
+
 #define MAGIC_HEAD 0xDEADC0DE
 #define MAGIC_END 0xDEADBABA
 #define PAGE_SIZE 0x1000
@@ -167,29 +176,4 @@ void *realloc(void *ptr, size_t size)
 	memcpy(n, ptr, size < p->size ? size : p->size);
 	free(ptr);
 	return n;
-}
-
-
-bool test_mem_1()
-{
-	unsigned int i;
-	char *p;
-	free(malloc(1));
-	int *k;
-	k = (int *)malloc(10000 * sizeof(int));
-	printf("Alloc\n");
-	for (i = 4000; i < 5000; i++) {
-		p = malloc(i);
-		memset(p, 'A', i);
-		k[i] = (unsigned int )p;
-	}
-	printf("Freeing\n");
-	for (i = 4000; i < 5000; i++) {
-		free((void *)k[i]);
-	}
-	free(k);
-	if(first_block->next == NULL && first_block->size == sbrk(0)-start_addr - sizeof(block_meta_t)) {
-		return true;
-	}
-	return false;
 }

@@ -15,7 +15,7 @@ switch_to_user_mode_asm:
         ;push .sjmp					; eip where to return
         push 0x10000000
         iret
-.sjmp
+; .sjmp
         jmp 0x10000000                  ; hardcoded user mode program
         ; call test_user_mode
         ret

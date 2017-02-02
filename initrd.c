@@ -89,20 +89,6 @@ struct fs_node * initrd_finddir(struct fs_node *parent_node, char *name) {
 	return 0;
 }
 
-void lstree(fs_node_t *parent)
-{
-	struct dirent *dir = 0;
-	unsigned int i = 0;
-	kprintf("Listing directory: %s\n", parent->name);
-	while((dir = readdir_fs(parent, i))) {
-		fs_node_t *file = finddir_fs(parent, dir->name);
-		kprintf("%s - inode:%d, parent_inode:%d, \n", file->name, file->inode, file->parent_inode);
-		if(file->flags & FS_DIRECTORY) {
-			lstree(file);
-		}
-		i++;
-	}
-}
 
 struct fs_node * initrd_new_node()
 {
@@ -117,7 +103,8 @@ struct fs_node * initrd_new_node()
 	return n;
 }
 
-struct fs_node *initrd_add_node(struct fs_node *node) {
+struct fs_node *initrd_add_node(struct fs_node *node)
+{
 	if(allocated_nodes <= nroot_nodes) {
 		kprintf("Extend array\n");
 		root_nodes = (fs_node_t *) realloc(root_nodes, sizeof(fs_node_t) * (allocated_nodes * 2));
@@ -148,7 +135,7 @@ struct fs_node *initrd_add_node(struct fs_node *node) {
 	return node;
 }
 
-void dump_fs() {
+void initrd_dump() {
 	unsigned int i;
 	for(i=0; i<nroot_nodes; i++) {
 		kprintf("i:%i, inode:%i, parent_inode:%i, %s\n", i, root_nodes[i].inode, root_nodes[i].parent_inode, root_nodes[i].name);

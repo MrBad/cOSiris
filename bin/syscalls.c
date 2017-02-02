@@ -12,6 +12,7 @@ void print_int(int n)
 	_syscall1(SYS_PRINT_INT, (uint32_t) n);
 }
 
+// processes
 pid_t fork()
 {
 	return _syscall0(SYS_FORK);
@@ -37,7 +38,17 @@ void ps()
 	_syscall0(SYS_PS);
 }
 
+// memory
 void * sbrk(int increment)
 {
 	return (void *) _syscall1(SYS_SBRK, increment);
 }
+
+
+// files
+// pipe
+//
+// int open(char *filename, int flags, ...) {}
+// //mkdir
+// //mknod
+// //chdir
