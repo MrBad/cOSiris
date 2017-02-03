@@ -58,6 +58,8 @@ void task_init()
 
 	current_task = task_new();
 	current_task->page_directory = (dir_t *) virt_to_phys(PDIR_ADDR);
+	current_task->root_dir = fs_root;
+	current_task->curr_dir = fs_root;
 	current_task->state = TASK_READY;
 	task_queue = current_task;
 	sti();
@@ -137,6 +139,9 @@ task_t *fork_inner()
 	// child has end addr as parent, clonned by clone directory //
 	t->heap->end_addr = current_task->heap->end_addr;
 
+	// files //
+	t->root_dir = current_task->root_dir;
+	t->curr_dir = current_task->curr_dir;
 	// clone files //
 	t->files = (struct file **) calloc(current_task->num_files, sizeof(struct file *));
 	int fd;
@@ -149,6 +154,8 @@ task_t *fork_inner()
 		t->files[fd]->offs = current_task->files[fd]->offs;
 		current_task->files[fd]->fs_node->ref_count++;
 	}
+	t->num_files = current_task->num_files;
+
 	t->state = TASK_READY;
 	switch_locked = false;
 	return t;
@@ -188,13 +195,15 @@ void task_free(task_t *task)
 	free_directory(task->page_directory);
 	// closing wait queue //
 	list_close(task->wait_queue);
+
 	// closing it's files //
 	for(fd = 0; fd < task->num_files; fd++) {
 		if(task->files[fd]) {
+			kprintf("pid:%d closing %d\n",task->pid, fd);
 			task->files[fd]->fs_node->ref_count--;
 			if(task->files[fd]->fs_node->ref_count == 0){
 				fs_close(task->files[fd]->fs_node);
-			};
+			}
 			free(task->files[fd]);
 		}
 	}

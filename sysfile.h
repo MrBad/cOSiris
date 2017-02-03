@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include "vfs.h"
 
-#define PROC_MAX_FDS 64
+#define PROC_MAX_OPEN_FILES 256 // maximum number of open files // 
 
 struct file {
 	unsigned short mode;

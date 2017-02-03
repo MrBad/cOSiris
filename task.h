@@ -16,6 +16,7 @@ typedef enum {
 } task_states_t;
 
 #define TASK_INITIAL_NUM_FILES 3
+#define MAX_OPEN_FILES 64
 
 typedef struct task {
 	pid_t pid;				// task + 0		process id
@@ -32,8 +33,11 @@ typedef struct task {
 	int exit_status;
 	list_t *wait_queue;
 	heap_t * heap; 			// user heap
-	struct file **files;	// 
-	int num_files;
+	// file sistem //
+	fs_node_t *root_dir; 	// which is process root directory ? use in chroot
+	fs_node_t *curr_dir; 	// current directory
+	struct file **files;	// pointer to num_files array
+	int num_files;			// available number of slots < MAX_OPEN_FILES
 } task_t;
 
 

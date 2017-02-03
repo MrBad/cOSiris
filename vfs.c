@@ -50,7 +50,7 @@ fs_node_t *fs_finddir(fs_node_t *node, char *name)
 }
 
 //
-//	Simple name to inode find
+//	Simple name to vfs node find ~ namei
 //
 fs_node_t *fs_namei(char *path)
 {
@@ -81,6 +81,15 @@ fs_node_t *fs_namei(char *path)
 	}
 	free(str);
 	return node;
+}
+
+// hard work here //
+// check permissions //
+// create if not exists //
+int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
+{
+	*node = fs_namei(path);
+	return 0;
 }
 
 // needs more testing -> for now will only mount /dev/ files

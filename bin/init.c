@@ -7,6 +7,7 @@
 int main()
 {
 	int fd = open("/README",0,0);
+	printf("%d\n", fd);
 	char buf[256];
 	if(fd < 0) {
 		printf("Cannot open file\n");
@@ -18,7 +19,7 @@ int main()
 		printf("In child\n");
 		while(1) {
 			int bytes = read(fd, buf, 255);
-			if(!bytes) break;
+			if(bytes < 1) break;
 			buf[bytes] = 0;
 			printf("%s", buf);
 		}
