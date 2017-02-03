@@ -83,14 +83,7 @@ fs_node_t *fs_namei(char *path)
 	return node;
 }
 
-// hard work here //
-// check permissions //
-// create if not exists //
-int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
-{
-	*node = fs_namei(path);
-	return 0;
-}
+
 
 // needs more testing -> for now will only mount /dev/ files
 int fs_mount(char *path, fs_node_t *node)
@@ -146,4 +139,15 @@ void lstree(fs_node_t *parent)
 		}
 		i++;
 	}
+}
+
+
+// hard work here //
+// check permissions //
+// create if not exists //
+int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
+{
+	kprintf("Not fully implemented\n");
+	*node = fs_namei(path);
+	return 0;
 }
