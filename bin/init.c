@@ -26,10 +26,10 @@ int main()
 			if(!strcmp(buf, "ps")) {
 				ps();
 			} else if (!strcmp(buf, "ls")) {
-				// lstree(NULL);
+				lstree();
 			} else if (!strcmp(buf, "help")) {
 				printf("ps - show process list\n");
-				// printf("ls - show file tree\n");
+				printf("ls - show file tree\n");
 				printf("ESC - shut down\n");
 			} else {
 				printf("%s: command not found - try help\n", buf);

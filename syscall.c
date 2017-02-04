@@ -16,9 +16,12 @@ void exit(int status) {
 void print(char *buf){
 	console_write(NULL, 0, strlen(buf), buf);
 }
+void lstree_null() {
+	lstree(NULL, 0);
+}
 static void *syscalls[] = {
 	&print,
-	&print_int,
+	&lstree_null,
 
 	&fork,
 	&task_wait,

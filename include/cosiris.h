@@ -3,7 +3,7 @@
 
 enum {
 	SYS_PRINT,
-	SYS_PRINT_INT,
+	SYS_LSTREE,
 	// process
 	SYS_FORK,
 	SYS_WAIT,
@@ -24,6 +24,7 @@ enum {
 	SYS_CHMOD,
 	SYS_CHOWN,
 	SYS_MKDIR,
+
 };
 
 #endif

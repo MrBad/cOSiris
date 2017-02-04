@@ -72,6 +72,6 @@ int fs_open_namei(char *path, int flag, int mode, fs_node_t **node);
 
 int fs_mount(char *path, fs_node_t *node);
 
-void lstree(fs_node_t *parent);
+void lstree(fs_node_t *parent, int level);
 
 #endif

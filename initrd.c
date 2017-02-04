@@ -152,7 +152,7 @@ fs_node_t *initrd_init(unsigned int location)
 	kprintf("Initrd init\n");
 	// initialise the root node
 	initrd_root = (fs_node_t *) calloc(1, sizeof(fs_node_t));
-	strcpy(initrd_root->name, "initrd");
+	strcpy(initrd_root->name, "/");
 	initrd_root->mask = initrd_root->uid = initrd_root->gid = initrd_root->length = initrd_root->inode = 0;
 	initrd_root->flags = FS_DIRECTORY;
 	initrd_root->read = 0;
