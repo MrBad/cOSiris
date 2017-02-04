@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include "console.h"
 #include "assert.h"
+#include "task.h"
 #include "vfs.h"
 
 
@@ -143,13 +144,20 @@ void lstree(fs_node_t *parent, int level)
 	}
 }
 
-
 // hard work here //
 // check permissions //
 // create if not exists //
+// more to do //
 int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
 {
-	// kprintf("Not fully implemented\n");
+	kprintf("fs_open_namei() not fully implemented\n");
+	char fpath[256];
+	if(*path != '/') {
+		strcpy(fpath, current_task->cwd);
+		strcat(fpath, path);
+		// kprintf("Actually opening %s\n", fpath);
+		path = fpath;
+	}
 	*node = fs_namei(path);
-	return 0;
+	return node ? 0 : -1;
 }

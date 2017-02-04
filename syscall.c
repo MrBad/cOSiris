@@ -9,7 +9,6 @@
 #include "sysfile.h"
 
 
-extern void print_int(unsigned int x);
 void exit(int status) {
 	task_exit(status);
 }
@@ -27,6 +26,7 @@ static void *syscalls[] = {
 	&task_wait,
 	&task_exit,
 	&getpid,
+	&sys_exec,
 	&ps,
 
 	&sys_sbrk,

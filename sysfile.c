@@ -2,7 +2,14 @@
 #include "console.h"
 #include "task.h"
 #include "sysfile.h"
+#include "vfs.h"
 
+// this belongs to sys_proc, but... //
+int sys_exec(char *path, char *argv[])
+{
+	task_exec(path);
+	return 0;
+}
 
 struct file *alloc_file()
 {

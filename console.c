@@ -93,6 +93,8 @@ static void console_putc(char c)
 	if(c == '\n') {
 		pos += SCR_COLS - pos % SCR_COLS;
 		scroll2pos(pos);
+	} else if(c == '\b') {
+		vid_mem[--pos] = ' ' | attr;
 	} else if(c == '\t') {
 		int i = pos % TAB_SPACES;
 		while(i-- > 0) vid_mem[pos++] = ' ' | attr;
@@ -101,6 +103,9 @@ static void console_putc(char c)
 	} else {
 		vid_mem[pos++] = c | attr;
 	}
+	if(pos % SCR_COLS == 0) {
+		scroll2pos(pos);
+	}
 	scroll_pos = pos;
 	set_cursor_pos(pos);
 }
@@ -108,9 +113,18 @@ static void console_putc(char c)
 
 void panic(char * str, ...)
 {
-
+	char buf[1024];
+	int i;
+	va_list args;
+	va_start(args, str);
+	vsprintf(buf, str, args);
+	va_end(args);
 	// spin_lock(&console_lock);
 	serial_debug("%s", str);
+	for(i = 0; i < 1024; i++) {
+		if(! buf[i]) break;
+		console_putc(buf[i]);
+	}
 	cli();
 	halt();
 }
@@ -123,7 +137,7 @@ void kprintf(char *fmt, ...)
 	va_start(args, fmt);
 	vsprintf(buf, fmt, args);
 	va_end(args);
-	// serial_write(buf);
+	serial_write(buf);
 	buf[1023] = 0;
 	// spin_lock(&console_lock);
 	for(i = 0; i < 1024; i++) {
@@ -159,15 +173,28 @@ extern bool ctrl_pressed;
 list_t * cons_wait_queue;
 void console_handler()
 {
+	unsigned char c;
+	static int chr_count = 0; // number of characters in a input row
 	// spin_lock(&console_lock);
-	unsigned char c = kbdgetc();
-	if(c && kbd_buff.e - kbd_buff.r < KBD_BUFF_SIZE) {
+	c = kbdgetc();
+	if(!c) return;
+	if(c == '\b') { // if backspace - for now is hardcoded to erase previously char
+		if(chr_count > 0) {
+			kbd_buff.e--;
+			chr_count--;
+			console_putc(c);
+		}
+		return;
+	}
+	if(kbd_buff.e - kbd_buff.r < KBD_BUFF_SIZE) {
 		c = (c=='\r') ? '\n' : c;
 		kbd_buff.buff[kbd_buff.e++ % KBD_BUFF_SIZE] = c;
 		console_putc(c);
+		chr_count++;
 		if(c == '\n' || kbd_buff.e == kbd_buff.r + KBD_BUFF_SIZE) {
 			kbd_buff.w = kbd_buff.e;
-			node_t *n;
+			chr_count=0;
+			node_t *n; // waking up procs waiting on read //
 			for(n = cons_wait_queue->head; n; n = n->next) {
 				// kprintf("waking up: %d\n", ((task_t *)n->data)->pid);
 				((task_t *)n->data)->state = TASK_READY;

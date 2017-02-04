@@ -83,8 +83,9 @@ char kbdgetc() {
 	// kprintf("%X ", scancode);
 //	return;
 	if(scancode & 0x80) {
+		// kprintf("[%x]", scancode);
 		// when key release //
-		if(scancode == 0x2A || scancode == 0x36) {
+		if(scancode==(0x2A|0x80) || scancode == 0x36) {
 			shift_pressed = false;
 			return 0;
 		}
@@ -141,10 +142,12 @@ char kbdgetc() {
 		if(shift_pressed) {
 			return kbd_map_shift[scancode];
 			// kprintf("%c", kbd_map_shift[scancode]);
-		} else if (ctrl_pressed) {
-			return kbd_map[scancode];
-			kprintf("[%c]", kbd_map[scancode]);
-		} else {
+		}
+		// else if (ctrl_pressed) {
+			// kprintf("[%c]", kbd_map[scancode]);
+			// return kbd_map[scancode];
+		// }
+		else {
 			return kbd_map[scancode];
 			// kprintf("%c", kbd_map[scancode]);
 		}

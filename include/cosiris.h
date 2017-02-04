@@ -9,6 +9,7 @@ enum {
 	SYS_WAIT,
 	SYS_EXIT,
 	SYS_GETPID,
+	SYS_EXEC,
 	SYS_PS,
 	// mem //
 	SYS_SBRK,

@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include "vfs.h"
 
-#define PROC_MAX_OPEN_FILES 256 // maximum number of open files // 
+#define PROC_MAX_OPEN_FILES 256 // maximum number of open files //
 
 struct file {
 	unsigned short mode;
@@ -13,7 +13,7 @@ struct file {
 	fs_node_t *fs_node;
 };
 
-
+int sys_exec(char *path, char *argv[]);
 int sys_open(char *filename, int flag, int mode);
 int sys_close(unsigned int fd);
 int sys_stat(const char *pathname, struct stat *buf);

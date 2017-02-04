@@ -31,8 +31,8 @@ int main()
 		printf("wait too many\n");
 		exit(4);
 	}
-	printf("OK child %d exited with status: %d\n", wp, status);
 	ps();
+	printf("Test OK\n\n");
 
 	printf("fork() stress test\n");
 	int i;
@@ -43,6 +43,7 @@ int main()
 			printf("fork returned -1\n");
 			break;
 		} else {
+			// printf("ok");
 			exit(0);
 		}
 	}
@@ -52,14 +53,14 @@ int main()
 			printf("Wait exit early\n");
 			exit(0);
 		}
-		// print_int(pid); print(" exited\n");
+		// printf("pid: %d exited\n", pid);
 	}
 
 	if(wait(NULL) != -1) {
-		print("Wait got too many\n");
+		printf("Wait got too many\n");
 		exit(0);
 	}
 
-	print("Fork test OK\n");
+	printf("Fork test OK\n");
 	ps();
 }

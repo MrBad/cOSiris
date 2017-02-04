@@ -49,14 +49,7 @@ task_t *task_new()
 	}
 	return t;
 }
-task_t *idle_task;
-void idle_loop()
-{
-	while(1) {
-		sti();
-		hlt();
-	}
-}
+
 void task_init()
 {
 	cli();
@@ -68,19 +61,12 @@ void task_init()
 	current_task = task_new();
 	current_task->page_directory = (dir_t *) virt_to_phys(PDIR_ADDR);
 	current_task->root_dir = fs_root;
-	current_task->cwd = fs_root;
+	current_task->cwd = strdup("/");
 	current_task->state = TASK_READY;
+	current_task->name = strdup("init");
 	task_queue = current_task;
 
 	sti();
-	pid_t pid = fork();
-	if(pid == 0) {
-		idle_task = current_task;
-		idle_task->name = strdup("idle");
-		idle_loop();
-	} else {
-		current_task->name = strdup("init");
-	}
 }
 
 void print_current_task()
@@ -94,7 +80,7 @@ void ps()
 	task_t *t = task_queue;
 	while(t) {
 		// no eip, esp - assumes we are already in kernel mode //
-		kprintf("pid: %d, ppid: %d, state: %s, ring: %d\n", t->pid, t->ppid, task_states[t->state], t->ring);
+		kprintf("%s, pid: %d, ppid: %d, state: %s, ring: %d\n", t->name?t->name:"[unnamed]", t->pid, t->ppid, task_states[t->state], t->ring);
 		t = t->next;
 	}
 }
@@ -131,8 +117,7 @@ task_t *task_switch_inner()
 	if(i == 10000) {
 		// panic("All threads sleeping?\n");
 		// halt();
-		kprintf("All threads sleeping...\n");
-		n = idle_task;
+		panic("All threads sleeping...\n");
 	}
 
 	current_task = n;
@@ -161,7 +146,7 @@ task_t *fork_inner()
 
 	// files //
 	t->root_dir = current_task->root_dir;
-	t->cwd = current_task->cwd;
+	t->cwd = strdup(current_task->cwd);
 	// clone files //
 	t->files = (struct file **) calloc(current_task->num_files, sizeof(struct file *));
 	int fd;
@@ -219,7 +204,7 @@ void task_free(task_t *task)
 	// closing it's files //
 	for(fd = 0; fd < task->num_files; fd++) {
 		if(task->files[fd]) {
-			kprintf("pid:%d closing %d\n",task->pid, fd);
+			// kprintf("pid:%d closing %d\n",task->pid, fd);
 			task->files[fd]->fs_node->ref_count--;
 			if(task->files[fd]->fs_node->ref_count == 0){
 				fs_close(task->files[fd]->fs_node);
@@ -311,9 +296,6 @@ void task_exit(int status)
 
 	task_switch();
 }
-// void exit(int status) {
-// 	task_exit(status);
-// }
 
 
 void switch_to_user_mode(uint32_t code_addr, uint32_t stack_hi_addr)
@@ -323,19 +305,30 @@ void switch_to_user_mode(uint32_t code_addr, uint32_t stack_hi_addr)
 }
 
 //
-//	Loading "init" from initrd.img "filesystem"
+//	Loading program from initrd.img "filesystem"
 //		into memory @0x10000000 and jump to it in ring 3
 //
 void task_exec(char *path)
 {
-	fs_node_t *fs_node = fs_namei(path);
-	if(!fs_node) {
-		panic("Cannot find init %s\n", path);
+	fs_node_t *fs_node;
+	if(fs_open_namei(path, 0, 0, &fs_node) < 0) {
+		kprintf("Cannot open %s\n", path);
+		return;
 	} else {
-		kprintf("Loading /%s, inode:%d, at address %p, length:%d\n", fs_node->name,
+		kprintf("Found: %s\n", path);
+	}
+	if(!(fs_node->flags & FS_FILE)) {
+		kprintf("%s is not a file\n", path);
+		return;
+	}
+	if(!fs_node) {
+		panic("Cannot find %s\n", path);
+	} else {
+		kprintf("Loading %s, inode:%d, at address %p, length:%d\n", fs_node->name,
 				fs_node->inode, USER_CODE_START_ADDR, fs_node->length);
 	}
-
+	if(current_task->name) free(current_task->name);
+	current_task->name = strdup(fs_node->name);
 	unsigned int num_pages = (fs_node->length / PAGE_SIZE) + 1;
 	unsigned int i;
 	for(i = 0; i < num_pages; i++) {

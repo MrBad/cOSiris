@@ -23,6 +23,6 @@ int main()
 		print("sbrk failed on decrement a PAGE_SIZE\n");
 		return 1;
 	}
-	exit(0);
 	print("Test passed OK\n");
+	exit(0);
 }

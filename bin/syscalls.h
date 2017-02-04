@@ -9,6 +9,7 @@ pid_t fork();
 pid_t wait(int *status);
 void exit(int status);
 pid_t getpid();
+int exec();
 void ps();
 void lstree();
 
