@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <stdlib.h>
+#include <string.h>
 #include "x86.h"
 #include "task.h"
 #include "mem.h"
@@ -26,6 +27,7 @@ void print_int(int x)
 
 task_t *task_new()
 {
+	unsigned int i;
 	task_t *t = (task_t *) calloc(1, sizeof(task_t));
 	t->pid = next_pid++;
 	// t->tss_kernel_stack = (unsigned int *)KERNEL_STACK_HI;//malloc_page_aligned(PAGE_SIZE);
@@ -36,18 +38,25 @@ task_t *task_new()
 	h->max_addr = UHEAP_END;
 	h->readonly = h->supervisor = false;
 	t->heap = h;
+	t->name = NULL;
 	// files //
 	t->files = (struct file **) calloc(TASK_INITIAL_NUM_FILES, sizeof(struct file *));
 	t->num_files = TASK_INITIAL_NUM_FILES;
-	// t->files[0] = malloc(sizeof(struct file));
-	// t->files[0]->fs_node = STDIN;
-	// t->files[1] = malloc(sizeof(struct file));
-	// t->files[1]->fs_node = STDOUT;
-	// t->files[2] = malloc(sizeof(struct file));
-
+	fs_node_t *console = fs_namei("/dev/console");
+	for(i=0;i<3;i++){
+		t->files[i] = malloc(sizeof(struct file));
+		t->files[i]->fs_node = console;
+	}
 	return t;
 }
-
+task_t *idle_task;
+void idle_loop()
+{
+	while(1) {
+		sti();
+		hlt();
+	}
+}
 void task_init()
 {
 	cli();
@@ -59,10 +68,19 @@ void task_init()
 	current_task = task_new();
 	current_task->page_directory = (dir_t *) virt_to_phys(PDIR_ADDR);
 	current_task->root_dir = fs_root;
-	current_task->curr_dir = fs_root;
+	current_task->cwd = fs_root;
 	current_task->state = TASK_READY;
 	task_queue = current_task;
+
 	sti();
+	pid_t pid = fork();
+	if(pid == 0) {
+		idle_task = current_task;
+		idle_task->name = strdup("idle");
+		idle_loop();
+	} else {
+		current_task->name = strdup("init");
+	}
 }
 
 void print_current_task()
@@ -111,7 +129,10 @@ task_t *task_switch_inner()
 		n = n->next;
 	}
 	if(i == 10000) {
-		panic("All threads sleeping?\n");
+		// panic("All threads sleeping?\n");
+		// halt();
+		kprintf("All threads sleeping...\n");
+		n = idle_task;
 	}
 
 	current_task = n;
@@ -129,7 +150,6 @@ task_t *get_current_task()
 
 task_t *fork_inner()
 {
-
 	switch_locked = true;
 	task_t *t = task_new();
 	t->ppid = current_task->pid;
@@ -141,7 +161,7 @@ task_t *fork_inner()
 
 	// files //
 	t->root_dir = current_task->root_dir;
-	t->curr_dir = current_task->curr_dir;
+	t->cwd = current_task->cwd;
 	// clone files //
 	t->files = (struct file **) calloc(current_task->num_files, sizeof(struct file *));
 	int fd;
@@ -209,6 +229,7 @@ void task_free(task_t *task)
 	}
 	free(task->files);
 	free(task->heap);
+	if(task->name) free(task->name);
 	free(task);
 }
 

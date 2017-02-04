@@ -33,9 +33,10 @@ typedef struct task {
 	int exit_status;
 	list_t *wait_queue;
 	heap_t * heap; 			// user heap
+	char *name;				// yeah, let's name it!
 	// file sistem //
 	fs_node_t *root_dir; 	// which is process root directory ? use in chroot
-	fs_node_t *curr_dir; 	// current directory
+	fs_node_t *cwd; 		// current working directory
 	struct file **files;	// pointer to num_files array
 	int num_files;			// available number of slots < MAX_OPEN_FILES
 } task_t;

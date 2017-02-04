@@ -4,6 +4,9 @@
 #include "x86.h"
 #include "irq.h"
 
+
+// whatta mess, i need to rewrite this //
+
 char kbd_buff[256];
 unsigned int kbd_buff_ptr = 0;
 
@@ -70,19 +73,26 @@ unsigned char kbd_map_shift[128] = {
 };
 
 bool shift_pressed = false;
+bool ctrl_pressed = false;
 
-void kbd_handler() {
+char kbdgetc() {
+
 	unsigned char scancode = 0;
 	if(inb(0x64) & 1)
-	scancode = inb(0x60);
-//	kprintf("%X ", scancode);
+		scancode = inb(0x60);
+	// kprintf("%X ", scancode);
 //	return;
 	if(scancode & 0x80) {
 		// when key release //
 		if(scancode == 0x2A || scancode == 0x36) {
 			shift_pressed = false;
-			return;
+			return 0;
 		}
+		if(scancode == (0x1d|0x80)) {
+			ctrl_pressed = false;
+			return 0;
+		}
+		// serial_debug("[%x] ", scancode);
 	} else {
 		scancode = scancode & 0x7F;
 		// 0x0E -> backspace
@@ -94,14 +104,22 @@ void kbd_handler() {
 		// 0x51 -> page down
 		// 0x47 -> home
 		// 0x4F -> end
-		serial_debug("%X ", scancode);
+		// serial_debug("%X ", scancode);
 		if(scancode == 0x48) {
-			scroll_up();
-			return;
+			scroll_line_up();
+			return 0;
+		}
+		if(scancode == 0x49) {
+			scroll_page_up();
+			return 0;
+		}
+		if (scancode == 0x51) {
+			scroll_page_down();
+			return 0;
 		}
 		if(scancode == 0x50) {
-			scroll_down();
-			return;
+			scroll_line_down();
+			return 0;
 		}
 		if (scancode == 0x1) {
 			kprintf("Shut down\n");
@@ -110,22 +128,31 @@ void kbd_handler() {
 				outb(0x8900, *c++);
 			}
 		}
-//		kprintf("%c", scancode);
+		// kprintf("%c", scancode);
 		// when key pressed //
 		if(scancode == 0x2A || scancode == 0x36) {
 			shift_pressed = true;
-			return;
+			return 0;
+		}
+		if (scancode == 0x1d) {
+			ctrl_pressed = true;
+			return 0;
 		}
 		if(shift_pressed) {
-			kprintf("%c", kbd_map_shift[scancode]);
+			return kbd_map_shift[scancode];
+			// kprintf("%c", kbd_map_shift[scancode]);
+		} else if (ctrl_pressed) {
+			return kbd_map[scancode];
+			kprintf("[%c]", kbd_map[scancode]);
 		} else {
-			kprintf("%c", kbd_map[scancode]);
+			return kbd_map[scancode];
+			// kprintf("%c", kbd_map[scancode]);
 		}
 	}
-	return;
+	return 0;
 }
 
 void kbd_install() {
-	irq_install_handler(0x1, kbd_handler); // seteaza timerul pe intreruperea 0
+	// irq_install_handler(0x1, kbd_handler); // seteaza timerul pe intreruperea 0
 	return;
 }

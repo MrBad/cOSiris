@@ -1,4 +1,5 @@
 #include <sys/types.h>
+#include <string.h>
 #include "isr.h"
 #include "console.h"
 #include "syscall.h"
@@ -13,10 +14,10 @@ void exit(int status) {
 	task_exit(status);
 }
 void print(char *buf){
-	console_write(buf);
+	console_write(NULL, 0, strlen(buf), buf);
 }
 static void *syscalls[] = {
-	&console_write,
+	&print,
 	&print_int,
 
 	&fork,

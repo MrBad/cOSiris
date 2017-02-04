@@ -8,7 +8,7 @@ NASM	=nasm -f elf -i$(INCDIR)/
 #CC	=gcc -g -Wall -W -O2 -nostdinc -fno-builtin -I$(INCDIR)
 CC	=gcc -m32 -g -Wall -W -O2 -nostdlib -fno-builtin -ffreestanding -I$(INCDIR)
 
-STRING	=memcpy.o strcpy.o strlen.o strcmp.o memset.o strdup.o strcat.o strncat.o
+STRING	=memcpy.o memmove.o strcpy.o strlen.o strcmp.o memset.o strdup.o strcat.o strncat.o
 STDARG	=vsprintf.o
 STDIO	=printf.o
 STDLIB 	=malloc.o

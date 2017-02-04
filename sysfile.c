@@ -13,7 +13,7 @@ struct file *alloc_file()
 
 int sys_open(char *filename, int flags, int mode)
 {
-	//kprintf("opening %s\n", filename);
+	// kprintf("opening %s\n", filename);
 	int fd;
 	for(fd = 0; fd < current_task->num_files; fd++) {
 		if(!current_task->files[fd]) {
@@ -86,7 +86,8 @@ int sys_read(int fd, void *buf, size_t count)
 		return -1;
 	}
 	// EOF ? //
-	if(f->offs >= f->fs_node->length) {
+	if(f->offs >= f->fs_node->length && f->fs_node->flags != FS_CHARDEVICE) {
+		// serial_debug("eof on file: fd: %d, %s, offs: %d length: %d\n", fd, f->fs_node->name, f->offs, f->fs_node->length);
 		return 0; // at EOF
 	}
 	unsigned int bytes = fs_read(f->fs_node, f->offs, count, buf);
@@ -94,7 +95,23 @@ int sys_read(int fd, void *buf, size_t count)
 	return bytes;
 }
 
-int sys_write(int fd, void *buf, size_t count){}
+int sys_write(int fd, void *buf, size_t count)
+{
+	struct file *f;
+	if(fd > current_task->num_files) {
+		kprintf("pid: %d, fd %d is bigger than allocated: %d\n",current_task->pid, fd, current_task->num_files);
+		return -1;
+	}
+	// File was not previously open //
+	if(!(f = current_task->files[fd])) {
+		kprintf("File %d not opened by proc %d\n", fd, current_task->files[fd]);
+		return -1;
+	}
+	unsigned int bytes = fs_write(f->fs_node, f->offs, count, buf);
+	f->offs += bytes;
+	return bytes;
+}
+
 int sys_chdir(char *filename){}
 int sys_chroot(char *filename){}
 int sys_chmod(char *filename, int uid, int gid){}

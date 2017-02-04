@@ -29,8 +29,8 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	stack_ptr = sptr;
 	stack_size = ssize;
 
-	console_init();
 	serial_init();
+
 
 	// multiboot_parse(magic, mboot);
 	kprintf("cOSiris\n");
@@ -71,9 +71,10 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	kprintf("Setup paging\n");
 	mem_init(mboot);
-
 	fs_root = initrd_init(initrd_location);
 	zero_init();
+
+	console_init();
 
 	task_init();
 

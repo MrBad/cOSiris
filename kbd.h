@@ -5,6 +5,6 @@
 #define _KBD_H
 
 void kbd_install();
-
+char kbdgetc();
 
 #endif

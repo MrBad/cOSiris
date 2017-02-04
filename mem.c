@@ -144,7 +144,7 @@ static void reserve_region(phys_t addr, size_t length, multiboot_header *mb)
 			continue;
 		}
 		// skip frames from vga start addr to end of the kernel //
-		if(ptr >= VGA_FB_ADDR && ptr <= kinfo.end) {
+		if(ptr >= VID_ADDR && ptr <= kinfo.end) {
 			continue;
 		}
 		// skip frames that belongs to initrd section //
@@ -205,7 +205,7 @@ static void identity_map_kernel(dir_t *dir, multiboot_header *mb)
 	phys_t addr;
 
 	// identity maps pages from VGA addr to kernel end //
-	for(addr = VGA_FB_ADDR; addr <= kinfo.end; addr += PAGE_SIZE) {
+	for(addr = VID_ADDR; addr <= kinfo.end; addr += PAGE_SIZE) {
 		identity_map_page(dir, addr);
 	}
 

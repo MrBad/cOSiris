@@ -130,6 +130,7 @@ void lstree(fs_node_t *parent)
 {
 	struct dirent *dir = 0;
 	unsigned int i = 0;
+	if(!parent) parent = fs_root;
 	kprintf("Listing directory: %s\n", parent->name);
 	while((dir = fs_readdir(parent, i))) {
 		fs_node_t *file = fs_finddir(parent, dir->name);

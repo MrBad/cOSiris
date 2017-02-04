@@ -1,171 +1,233 @@
-#define VGA_FB_ADDR 0xB8000
-#define CRTC_IO_ADDR 0x3D4
-#define SCR_COLS    80
-#define SCR_ROWS    24
-#define TAB_SPACES    4
-
-#include "x86.h"
-#include <stdarg.h>
+#include <sys/types.h>
 #include <string.h>
+#include <stdarg.h>
+#include "console.h"
+#include "kbd.h"
+#include "irq.h"
 #include "serial.h"
-
-extern void halt(void);
-
-static char *vid_mem = (char *) VGA_FB_ADDR;
-static unsigned long pos = 0;
-static unsigned long row, col;
-unsigned short attr = 0x07;
+#include "vfs.h"
+#include "x86.h"
+#include "task.h"
+#include "pipe.h"
+#include "initrd.h"
 
 
-void clrscr(void) {
-	unsigned int i;
-	for (i = 0; i < SCR_COLS * SCR_ROWS * 2; i += 2) {
-		vid_mem[i] = ' ';
-		vid_mem[i + 1] = attr;
-	}
+#define CRTC_PORT	0x3D4
+#define SCR_COLS	80
+#define SCR_ROWS	24
+#define TAB_SPACES	4
+#define BACKSPACE	0x100
+
+static uint16_t * vid_mem = (uint16_t *)VID_ADDR;
+static uint16_t attr = 0x700;
+static spin_lock_t console_lock;
+static int scroll_pos;
+
+//
+//	pos = col + 80 * row
+//
+static int get_cursor_pos()
+{
+	int pos;
+	outb(CRTC_PORT, 14);
+	pos = inb(CRTC_PORT+1) << 8;
+	outb(CRTC_PORT, 15);
+	pos |= inb(CRTC_PORT+1);
+	return pos;
 }
 
-// update cursor position on screen //
-void update_cursor(void) {
-	unsigned short offset;
-	offset = (row * SCR_COLS + col);
-	outb(CRTC_IO_ADDR + 0, 0x0E);
-	outb(CRTC_IO_ADDR + 1, offset >> 8);
-	outb(CRTC_IO_ADDR + 0, 0x0F);
-	outb(CRTC_IO_ADDR + 1, offset);
+static void set_cursor_pos(int pos)
+{
+	outb(CRTC_PORT, 14);
+	outb(CRTC_PORT+1, pos >> 8);
+	outb(CRTC_PORT, 15);
+	outb(CRTC_PORT+1, pos);
+	// vid_mem[pos] = ' ' | attr;
 }
 
-// hardware scrolling by changing framebuffer base addr //
-void scroll2row() {
-	unsigned short lines;
-	unsigned long offset;
-	if (row > SCR_ROWS) {
-		lines = row - SCR_ROWS + 1;
+
+static void scroll2pos(int pos)
+{
+	int rows = pos / SCR_COLS;
+	int offs;
+	if(rows > SCR_ROWS) {
+		offs = (rows - SCR_ROWS) * SCR_COLS;
 	} else {
-		lines = 0;
+		offs = 0;
 	}
-
-	offset = lines * SCR_COLS;
-	outb(CRTC_IO_ADDR + 0, 0x0C);
-	outb(CRTC_IO_ADDR + 1, offset >> 8);
-	outb(CRTC_IO_ADDR + 0, 0x0D);
-	outb(CRTC_IO_ADDR + 1, offset & 0xFF);
+	// serial_debug("offs: %d, pos:%d, r: %d\n", offs, pos, pos/SCR_COLS);
+	outb(CRTC_PORT, 0x0c);
+	outb(CRTC_PORT+1, offs >> 8);
+	outb(CRTC_PORT, 0x0d);
+	outb(CRTC_PORT+1, offs & 0xFF);
 }
 
-void scroll_up() {
-	row = 0;
-	scroll2row();
+void scroll_line_up() {
+	scroll_pos -= SCR_COLS;
+	if(scroll_pos < SCR_COLS * SCR_ROWS) scroll_pos = SCR_COLS*SCR_ROWS;
+	scroll2pos(scroll_pos);
+}
+void scroll_line_down() {
+	int curr_pos = get_cursor_pos();
+	scroll_pos += SCR_COLS;
+	if(scroll_pos > curr_pos) scroll_pos = curr_pos;
+	scroll2pos(scroll_pos);
+}
+void scroll_page_up()
+{
+	scroll_pos -= SCR_COLS*SCR_ROWS;
+	if(scroll_pos < SCR_COLS * SCR_ROWS) scroll_pos = SCR_COLS*SCR_ROWS;
+	scroll2pos(scroll_pos);
+}
+void scroll_page_down()
+{
+	int curr_pos = get_cursor_pos();
+	scroll_pos += SCR_COLS*SCR_ROWS;
+	if(scroll_pos > curr_pos) scroll_pos = curr_pos;
+	scroll2pos(scroll_pos);
 }
 
-void scroll_down() {
-	row = SCR_ROWS;
-	scroll2row();
-}
-
-void gotoxy(void) {
-	if (col >= SCR_COLS) {
-		row++;
-		col = 0;
+static void console_putc(char c)
+{
+	int pos = get_cursor_pos();
+	if(c == '\n') {
+		pos += SCR_COLS - pos % SCR_COLS;
+		scroll2pos(pos);
+	} else if(c == '\t') {
+		int i = pos % TAB_SPACES;
+		while(i-- > 0) vid_mem[pos++] = ' ' | attr;
+	} else if(c == BACKSPACE) {
+		if(pos > 0) --pos;
+	} else {
+		vid_mem[pos++] = c | attr;
 	}
-	if (row >= SCR_ROWS) {
-//		console_up();
-	}
-	pos = (row * SCR_COLS + col) * 2;
-	scroll2row();
-	update_cursor();
-}
-
-void clr2eol(void) {
-	for (; col < SCR_COLS; col++) {
-		gotoxy();
-		vid_mem[pos] = ' ';
-		vid_mem[pos + 1] = attr;
-	}
-}
-
-void clr2sol(void) {
-	for (; col > 0; col--) {
-		gotoxy();
-		vid_mem[pos] = ' ';
-		vid_mem[pos + 1] = attr;
-	}
-}
-
-void put_tab(void) {
-	unsigned int max;
-	for (max = col + TAB_SPACES; col < max; col++) {
-		gotoxy();
-		vid_mem[pos] = ' ';
-		vid_mem[pos + 1] = attr;
-	}
-}
-
-//
-//	No tty like write yet
-//
-void console_write(char *str) {
-	for (; *str; str++) {
-
-		switch (*str) {
-			case '\r':
-				clr2sol();
-				break;
-
-			case '\n':
-				clr2eol();
-				break;
-
-			case '\t':
-				put_tab();
-				break;
-
-			default:
-				vid_mem[pos] = *str;
-				vid_mem[pos + 1] = attr;
-				pos += 1;
-				col++;
-				break;
-		}
-		gotoxy();
-	}
+	scroll_pos = pos;
+	set_cursor_pos(pos);
 }
 
 
-void kprintf(char *fmt, ...) {
-	char buf[1024];
-	va_list args;
+void panic(char * str, ...)
+{
 
-	va_start(args, fmt);
-	vsprintf(buf, fmt, args);
-	va_end(args);
-
-	console_write(buf);
-	serial_write(buf);
-	return;
-}
-
-
-void console_init(void) {
-	clrscr();
-	row = 0;
-	col = 0;
-	pos = 0;
-	gotoxy();
-}
-
-
-void setxy(unsigned long r, unsigned long c) {
-	row = r;
-	col = c;
-	gotoxy();
-}
-
-void panic(char *fmt, ...) {
-	char buf[1024];
-	va_list args;
-	va_start(args, fmt);
-	vsprintf(buf, fmt, args);
-	va_end(args);
-	console_write(buf);
+	// spin_lock(&console_lock);
+	serial_debug("%s", str);
+	cli();
 	halt();
+}
+
+void kprintf(char *fmt, ...)
+{
+	char buf[1024];
+	unsigned int i;
+	va_list args;
+	va_start(args, fmt);
+	vsprintf(buf, fmt, args);
+	va_end(args);
+	// serial_write(buf);
+	buf[1023] = 0;
+	// spin_lock(&console_lock);
+	for(i = 0; i < 1024; i++) {
+		if(! buf[i]) break;
+		console_putc(buf[i]);
+	}
+	// spin_unlock(&console_lock);
+}
+unsigned int console_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
+{
+	unsigned int i;
+	// spin_lock(&console_lock);
+	for(i = 0; i < size; i++) {
+		console_putc(buffer[i]);
+	}
+	serial_debug("%s", buffer);
+	// spin_unlock(&console_lock);
+	return i;
+}
+
+// keyboard //
+#define KBD_BUFF_SIZE 10
+struct {
+	char buff[KBD_BUFF_SIZE];
+	uint16_t r;
+	uint16_t w;
+	uint16_t e;
+} kbd_buff;
+
+
+extern bool ctrl_pressed;
+
+list_t * cons_wait_queue;
+void console_handler()
+{
+	// spin_lock(&console_lock);
+	unsigned char c = kbdgetc();
+	if(c && kbd_buff.e - kbd_buff.r < KBD_BUFF_SIZE) {
+		c = (c=='\r') ? '\n' : c;
+		kbd_buff.buff[kbd_buff.e++ % KBD_BUFF_SIZE] = c;
+		console_putc(c);
+		if(c == '\n' || kbd_buff.e == kbd_buff.r + KBD_BUFF_SIZE) {
+			kbd_buff.w = kbd_buff.e;
+			node_t *n;
+			for(n = cons_wait_queue->head; n; n = n->next) {
+				// kprintf("waking up: %d\n", ((task_t *)n->data)->pid);
+				((task_t *)n->data)->state = TASK_READY;
+				list_del(cons_wait_queue, n);
+			}
+		}
+	}
+	// spin_unlock(&console_lock);
+}
+
+extern bool switch_locked;
+unsigned int console_read(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
+{
+	unsigned char c;
+	unsigned initial_size = size;
+	// spin_lock(&console_lock);
+	while(size > 0) {
+		// serial_debug("Should read %d bytes\n", size);
+		while(kbd_buff.r == kbd_buff.w) {
+			if(current_task->state == TASK_EXITING) {
+				//spin_unlock(&console_lock);
+				return -1;
+			}
+			if(current_task->state == TASK_READY) {
+				// serial_debug("Nothing to read, going to sleep: %d\n", current_task->pid);
+				list_add(cons_wait_queue, current_task);
+				current_task->state = TASK_SLEEPING;
+				task_switch();
+			}
+		}
+
+		c = kbd_buff.buff[kbd_buff.r++ % KBD_BUFF_SIZE];
+		*buffer++ = c;
+		size--;
+		if(c == '\n') break;
+	}
+	// spin_unlock(&console_lock);
+	return initial_size-size;
+}
+
+static fs_node_t *create_console_device()
+{
+	fs_node_t * n = initrd_new_node();
+	strcpy(n->name, "console");
+	n->uid = n->gid = 0;
+	n->mask = 0666;
+	n->flags = FS_CHARDEVICE;
+	n->read = console_read;
+	n->write = console_write;
+	n->open = 0;
+	n->close = 0;
+	n->readdir = 0;
+	n->finddir = 0;
+	n->length = 1;
+	return n;
+}
+
+void console_init()
+{
+	cons_wait_queue = list_open(NULL);
+	irq_install_handler(0x1, console_handler);
+	fs_mount("/dev/console", create_console_device());
 }
