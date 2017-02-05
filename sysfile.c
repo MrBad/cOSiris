@@ -171,8 +171,42 @@ int sys_close(unsigned int fd)
 	return 0;
 }
 
-int sys_stat(const char *pathname, struct stat *buf){}
-int sys_fstat(int fd, struct stat *buf){}
+static void populate_stat_buf(fs_node_t *fs_node, struct stat *buf)
+{
+	buf->st_dev = 0;									// the device id where it reside
+	buf->st_ino = fs_node->inode;
+	buf->st_mode = fs_node->flags;
+	buf->st_nlink = 0;									// not implemented yet -> number of links
+	buf->st_uid = fs_node->uid;
+	buf->st_gid = fs_node->gid;
+	buf->st_rdev = 0;									// the device id of..?!
+	buf->st_atime = buf->st_mtime = buf->st_ctime = 0;	// not available yet;
+}
+
+int sys_stat(char *path, struct stat *buf)
+{
+	fs_node_t *fs_node;
+	if(fs_open_namei(path, O_RDONLY, 0755, &fs_node) < 0) {
+		serial_debug("sys_stat() cannot open %s file\n", path);
+		return -1;
+	}
+	populate_stat_buf(fs_node, buf);
+	return 0;
+}
+
+int sys_fstat(int fd, struct stat *buf)
+{
+	struct file *f;
+	if(fd > current_task->num_files) {
+		return -1;
+	}
+	if(!current_task->files[fd]) {
+		return -1;
+	}
+	f = current_task->files[fd];
+	populate_stat_buf(f->fs_node, buf);
+	return 0;
+}
 
 int sys_read(int fd, void *buf, size_t count)
 {
@@ -213,8 +247,73 @@ int sys_write(int fd, void *buf, size_t count)
 	return bytes;
 }
 
-int sys_chdir(char *filename){}
-int sys_chroot(char *filename){}
+int sys_chdir(char *path)
+{
+	struct stat st;
+	// TODO - also check permissions //
+	if(sys_stat(path, &st) < 0) {
+		serial_debug("sys_chdir() - cannot stat %s\n", path);
+		return -1;
+	}
+	if(!(st.st_mode & FS_DIRECTORY)) {
+		serial_debug("sys_chdir() - not a directory %s\n", path);
+		return -1;
+	}
+	current_task->cwd = path;
+	return 0;
+}
+
+int sys_chroot(char *path)
+{
+	fs_node_t *fs_node;
+	if(!fs_open_namei(path, O_RDONLY, 0777, &fs_node)) {
+		serial_debug("sys_chroot() cannot open %s\n", path);
+		return -1;
+	}
+	if(!(fs_node->flags & FS_DIRECTORY)) {
+		serial_debug("sys_chdir() - %s is not a directory\n", path);
+		return -1;
+	}
+	// TODO - also check permissions //
+	current_task->root_dir = fs_node;
+	return 0;
+}
+
 int sys_chmod(char *filename, int uid, int gid){}
 int sys_chown(char *filename, int mode){}
-int sys_mkdir(const char *pathname, int mode){}
+int sys_mkdir(char *path, int mode)
+{
+	int i, len;
+	char *tmp, *dirname, *basename;
+	if(!path) return -1;
+
+	tmp = strdup(path);
+	while(tmp && tmp[strlen(tmp)-1] == '/') tmp[strlen(tmp)-1] = 0;
+	len = strlen(tmp);
+	for(i = len; i > 0; i--)
+		if(tmp[i] == '/')
+			break;
+
+	if(i == len) return -1;
+
+	dirname = strdup(tmp); dirname[i] = 0;
+	basename = strdup(tmp); memmove(basename, basename+i+1, len-i); basename[len-i]=0;
+	kprintf("%s, %s, %s, %d\n", tmp, dirname, basename, i);
+
+	fs_node_t *dir;
+
+	if(fs_open_namei(dirname, O_RDONLY, 0777, &dir)<0) {
+		serial_debug("Cannot open dirname %s\n", dirname);
+		return -1;
+	}
+	fs_node_t *file;
+	if((file = fs_finddir(dir, basename))) {
+		serial_debug("Dir exists %s\n", file->name);
+		return -1;
+	}
+	if(!fs_mkdir(dir, basename, mode)) {
+		serial_debug("Cannot create file: %s\n", basename);
+		return -1;
+	}
+	return 0;
+}

@@ -59,11 +59,12 @@ void task_init()
 	tss_flush();
 
 	current_task = task_new();
+	current_task->uid = current_task->gid = 0;
 	current_task->page_directory = (dir_t *) virt_to_phys(PDIR_ADDR);
 	current_task->root_dir = fs_root;
 	current_task->cwd = strdup("/");
-	current_task->state = TASK_READY;
 	current_task->name = strdup("init");
+	current_task->state = TASK_READY;
 	task_queue = current_task;
 
 	sti();
@@ -139,6 +140,8 @@ task_t *fork_inner()
 	task_t *t = task_new();
 	t->ppid = current_task->pid;
 	t->ring = current_task->ring;
+	t->uid = current_task->uid;
+	t->gid = current_task->gid;
 	t->page_directory = clone_directory();
 
 	// child has end addr as parent, clonned by clone directory //

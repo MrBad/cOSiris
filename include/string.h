@@ -2,6 +2,7 @@
 // #include "assert.h"
 
 char *strcpy(char *dest, char *src);
+char * strncpy(char *dest, const char *src, unsigned int n);
 int *strcmp(char *s1, char *s2);
 void *memcpy(void *dest, void *src, size_t n);
 // void* memcpy(void* dstptr, const void* srcptr, size_t size);

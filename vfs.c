@@ -50,6 +50,21 @@ fs_node_t *fs_finddir(fs_node_t *node, char *name)
 		return false;
 }
 
+
+fs_node_t * fs_mkdir(fs_node_t *node, char *name, int mode)
+{
+	if(!(node->flags & FS_DIRECTORY)) {
+		return NULL;
+	}
+	if(fs_finddir(node, name)) {
+		return NULL;
+	}
+	if(!node->mkdir) {
+		return NULL;
+	}
+	return node->mkdir(node, name, mode);
+}
+
 //
 //	Simple name to vfs node find ~ namei
 //
@@ -159,5 +174,5 @@ int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
 		path = fpath;
 	}
 	*node = fs_namei(path);
-	return node ? 0 : -1;
+	return *node ? 0 : -1;
 }

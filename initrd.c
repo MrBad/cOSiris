@@ -1,9 +1,10 @@
+#include <stdlib.h>
 #include "include/string.h"
 #include "x86.h"
 #include "console.h"
 //#include "kheap.h"
-#include <stdlib.h>
 #include "vfs.h"
+#include "task.h"
 
 
 typedef struct {
@@ -90,6 +91,8 @@ struct fs_node * initrd_finddir(struct fs_node *parent_node, char *name) {
 }
 
 
+
+
 struct fs_node * initrd_new_node()
 {
 	fs_node_t *n;
@@ -124,7 +127,7 @@ struct fs_node *initrd_add_node(struct fs_node *node)
 	n->impl = node->impl;
 	n->parent_inode = node->parent_inode;
 	n->next = node->next;
-	n->read = node->read;
+	n->read = initrd_read;
 	n->write = node->write;
 	n->open = node->open;
 	n->close = node->close;
@@ -133,6 +136,29 @@ struct fs_node *initrd_add_node(struct fs_node *node)
 	n->ptr = node->ptr;
 	nroot_nodes++;
 	return node;
+}
+
+struct fs_node * initrd_mkdir(struct fs_node *parent_node, char *name, unsigned int mode)
+{
+	fs_node_t *n = initrd_new_node();
+	strcpy(n->name, name);
+	n->mask = mode;
+	n->uid = current_task->uid;
+	n->gid = current_task->gid;
+	n->flags = FS_DIRECTORY;
+	n->length = 0;
+	n->impl = 0;
+	n->parent_inode = parent_node->inode;
+	n->next = 0;
+	n->read = 0;
+	n->write = 0;
+	n->open = 0;
+	n->close = 0;
+	n->readdir = &initrd_readdir;
+	n->finddir = &initrd_finddir;
+	n->mkdir = &initrd_mkdir;
+	n->ptr = 0;
+	return n;
 }
 
 void initrd_dump() {
@@ -161,6 +187,7 @@ fs_node_t *initrd_init(unsigned int location)
 	initrd_root->close = 0;
 	initrd_root->readdir = &initrd_readdir;
 	initrd_root->finddir = &initrd_finddir;
+	initrd_root->mkdir = &initrd_mkdir;
 	initrd_root->ptr = 0;
 	initrd_root->impl = 0;
 
@@ -197,6 +224,7 @@ fs_node_t *initrd_init(unsigned int location)
 	root_nodes[i].flags = FS_DIRECTORY;
 	root_nodes[i].readdir = &initrd_readdir;
 	root_nodes[i].finddir = &initrd_finddir;
+	root_nodes[i].mkdir = &initrd_mkdir;
 	i++;
 
 	nroot_nodes  = allocated_nodes = i;

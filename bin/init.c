@@ -7,7 +7,8 @@
 
 int main()
 {
-	printf("In init\n");
+
+	mkdir("/dev/testing", 0755);
 	pid_t pid = fork();
 	if(pid == 0) {
 		char *margv[] = {"cO sh", "this", 0};

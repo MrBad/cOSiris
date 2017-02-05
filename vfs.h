@@ -22,7 +22,7 @@ typedef void (*open_type_t)(struct fs_node *node, unsigned int flags);
 typedef void (*close_type_t)(struct fs_node *node);
 typedef struct dirent *(*readdir_type_t)(struct fs_node *node, unsigned int index);
 typedef struct fs_node *(*finddir_type_t)(struct fs_node *node, char *name);
-
+typedef struct fs_node *(*mkdir_type_t)(struct fs_node *node, char *name, unsigned int mode);
 
 typedef struct fs_node {
 	char name[256];				// this info should go ouside inode in future
@@ -45,6 +45,7 @@ typedef struct fs_node {
 	close_type_t close;
 	readdir_type_t readdir;
 	finddir_type_t finddir;
+	mkdir_type_t mkdir;
 
 	//struct fs_node *ptr;		// Used in mountpoints, symlinks, pipes
 	void *ptr;
@@ -67,6 +68,8 @@ unsigned int fs_write(fs_node_t *node, unsigned int offset, unsigned int size, c
 
 fs_node_t *fs_finddir(fs_node_t *node, char *name);
 struct dirent *fs_readdir(fs_node_t *node, unsigned int index);
+fs_node_t * fs_mkdir(fs_node_t *node, char *name, int mode);
+
 fs_node_t *fs_namei(char *path);
 int fs_open_namei(char *path, int flag, int mode, fs_node_t **node);
 

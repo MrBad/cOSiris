@@ -28,7 +28,8 @@ typedef struct task {
 	dir_t *page_directory;	// task + 20	task page directory
 	struct task *next;		// task + 24	next task
 	struct task *parent;	// parent task
-	uint32_t *tss_kernel_stack;
+	// uint32_t *tss_kernel_stack;
+	unsigned int uid, gid;
 	int ring;
 	task_states_t state;
 	int exit_status;

@@ -14,16 +14,16 @@ struct file {
 };
 
 int sys_exec(char *path, char *argv[]);
-int sys_open(char *filename, int flag, int mode);
+int sys_open(char *path, int flag, int mode);
 int sys_close(unsigned int fd);
-int sys_stat(const char *pathname, struct stat *buf);
+int sys_stat(char *path, struct stat *buf);
 int sys_fstat(int fd, struct stat *buf);
 int sys_read(int fd, void *buf, size_t count);
 int sys_write(int fd, void *buf, size_t count);
-int sys_chdir(char *filename);
-int sys_chroot(char *filename);
+int sys_chdir(char *path);
+int sys_chroot(char *path);
 int sys_chmod(char *filename, int uid, int gid);
 int sys_chown(char *filename, int mode);
-int sys_mkdir(const char *pathname, int mode);
+int sys_mkdir(char *pathname, int mode);
 
 #endif
