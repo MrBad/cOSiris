@@ -20,7 +20,7 @@
 
 static uint16_t * vid_mem = (uint16_t *)VID_ADDR;
 static uint16_t attr = 0x700;
-static spin_lock_t console_lock;
+// static spin_lock_t console_lock;
 static int scroll_pos;
 
 //

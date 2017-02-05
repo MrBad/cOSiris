@@ -66,5 +66,6 @@ pid_t task_wait(int *status);
 void ps();
 // void exec_init();
 void task_exec(char * path, char *argv[]);
+void switch_to_user_mode(uint32_t code_addr, uint32_t stack_hi_addr);
 
 #endif

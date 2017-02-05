@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include "syscalls.h"
 
-int main(int argc, char *argv[])
+int main()
 {
 	printf("In init\n");
 	pid_t pid = fork();

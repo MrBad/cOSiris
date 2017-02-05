@@ -26,7 +26,7 @@ bool is_file(char *file) { // todo - change to fstat when we will have it
 int main(int argc, char *argv[])
 {
 	// unsigned int *esp = (unsigned int *)(0x0FFFF000);
-	unsigned int i;
+	int i;
 	// printf("ARGV: %p\n", &argv);
 	// i = (unsigned int *)&argv;
 	// for(;i < esp; i++) {

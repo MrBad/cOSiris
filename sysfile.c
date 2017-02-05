@@ -26,7 +26,7 @@ int sys_exec(char *path, char *argv[])
 		return -1;
 	}
 	// todo-try to see it's mask - not supported yet //
-	kprintf("sys_exec(%s)", path);
+
 	// save argvs - we will destroy current process stack //
 	int needed_mem = 0;
 	if(argv) {
@@ -49,9 +49,14 @@ int sys_exec(char *path, char *argv[])
 			map(page, (unsigned int)frame_alloc(), P_PRESENT | P_READ_WRITE | P_USER);
 		}
 	}
+
 	// free it's stack //
 	for(i = 2; i > 0; i--) {
-		memset(USER_STACK_HI-(i * PAGE_SIZE), 0, PAGE_SIZE);
+		virt_t page = USER_STACK_HI-(i * PAGE_SIZE);
+		if(!is_mapped(page)) {
+			map(page, (unsigned int)frame_alloc(), P_PRESENT | P_READ_WRITE | P_USER);
+		}
+		memset((void *)page, 0, PAGE_SIZE);
 	}
 
 	// load/overwrite program into memory //
@@ -71,6 +76,7 @@ int sys_exec(char *path, char *argv[])
 	kprintf("Free mem starts at: %p, size: %d, needed_mem: %d\n", free_mem_start, free_mem_size, needed_mem);
 	if(needed_mem > free_mem_size) {
 		kprintf("alloc another free page pls!\n");
+		return -1;
 	}
 	// if we have 2 argv for example, we will have a memory like free mem=new_argv | ptr0 | ptr1| ptr1 points here 0| ptr2 points here|
 	char *p;
@@ -88,13 +94,13 @@ int sys_exec(char *path, char *argv[])
 
 	uint32_t *stack = (uint32_t *)(USER_STACK_HI);
 	stack--;
-	*stack = 0;
+	*stack = 0xC0DEBABE; // fake return point
 	stack--;
 	*stack = (uint32_t)new_argv; // push argv into stack //
 	stack--;
 	*stack = argc; // push argc into stack
-	kprintf("sys_exec(%s, %d), stack: %p\n", fs_node->name, argc, stack);
-	switch_to_user_mode(USER_CODE_START_ADDR, stack);
+	kprintf("sys_exec(%s, %d params), stack: %p\n", fs_node->name, argc, stack);
+	switch_to_user_mode(USER_CODE_START_ADDR, (uint32_t)stack);
 
 	return 0;
 }

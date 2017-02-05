@@ -64,7 +64,6 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	// find location of initial ramdisk //
 	if (mboot->mods_count > 0) {
-		kprintf("Modules: %d\n", mboot->mods_count);
 		initrd_location = *((unsigned int *) mboot->mods_addr);
 		initrd_end = *(unsigned int *) (mboot->mods_addr + 4);
 	}
@@ -79,9 +78,8 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	task_init();
 
 	syscall_init();
-	char *argv[] = {"testing", "this", "arguments", 0};
-	task_exec("/init", argv);
-
+	// task_exec("/init", NULL);
+	sys_exec("/init", NULL);
 	kprintf("Should not get here\n");
 	return;
 }
