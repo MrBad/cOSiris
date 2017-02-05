@@ -5,12 +5,13 @@
 #include <fcntl.h>
 #include "syscalls.h"
 
-int main()
+int main(int argc, char *argv[])
 {
+	printf("In init\n");
 	pid_t pid = fork();
 	if(pid == 0) {
-		printf("Loading cosh\n");
-		if(exec("/cosh") < 0) {
+		char *margv[] = {"cO sh", "this", 0};
+		if(exec("/cosh", margv) < 0) {
 			printf("Cannot load cosh\n");
 			return 1;
 		}

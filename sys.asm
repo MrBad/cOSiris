@@ -2,19 +2,25 @@ extern test_user_mode, print_int
 global switch_to_user_mode_asm
 switch_to_user_mode_asm:
         cli
+
+		mov ebx, [esp + 4]		; address
+		mov ecx, [esp + 8]		; stack addr
+
         mov ax, 0x23
         mov ds, ax
         mov es, ax
         mov fs, ax
         mov gs, ax
         push 0x23					; ring 3 ss
-        push 0xFFFF000				; ring 3 esp
-        pushf						; save flags
+        ;push 0xFFFF000				; ring 3 esp
+		push ecx
+		pushf						; save flags
         or dword [esp], 0x200		; enable interrupts after return
         push 0x1b                   ; user mode code segment
         ;push .sjmp					; eip where to return
-        push 0x10000000
-        iret
+        ;push 0x10000000
+		push ebx
+		iret
 ; .sjmp
         jmp 0x10000000                  ; hardcoded user mode program
         ; call test_user_mode

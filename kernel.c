@@ -79,8 +79,8 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	task_init();
 
 	syscall_init();
-
-	task_exec("/init");
+	char *argv[] = {"testing", "this", "arguments", 0};
+	task_exec("/init", argv);
 
 	kprintf("Should not get here\n");
 	return;

@@ -17,6 +17,7 @@ typedef enum {
 
 #define TASK_INITIAL_NUM_FILES 3
 #define MAX_OPEN_FILES 64
+#define MAX_ARGUMENTS 16
 
 typedef struct task {
 	pid_t pid;				// task + 0		process id
@@ -64,6 +65,6 @@ void task_exit(int status);
 pid_t task_wait(int *status);
 void ps();
 // void exec_init();
-void task_exec(char * path);
+void task_exec(char * path, char *argv[]);
 
 #endif

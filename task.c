@@ -308,8 +308,9 @@ void switch_to_user_mode(uint32_t code_addr, uint32_t stack_hi_addr)
 //	Loading program from initrd.img "filesystem"
 //		into memory @0x10000000 and jump to it in ring 3
 //
-void task_exec(char *path)
+void task_exec(char *path, char **argv)
 {
+
 	fs_node_t *fs_node;
 	if(fs_open_namei(path, 0, 0, &fs_node) < 0) {
 		kprintf("Cannot open %s\n", path);
@@ -327,14 +328,15 @@ void task_exec(char *path)
 		kprintf("Loading %s, inode:%d, at address %p, length:%d\n", fs_node->name,
 				fs_node->inode, USER_CODE_START_ADDR, fs_node->length);
 	}
+	unsigned int i;
 	if(current_task->name) free(current_task->name);
 	current_task->name = strdup(fs_node->name);
 	unsigned int num_pages = (fs_node->length / PAGE_SIZE) + 1;
-	unsigned int i;
 	for(i = 0; i < num_pages; i++) {
 		map(USER_CODE_START_ADDR + (PAGE_SIZE*i), (unsigned int)frame_alloc(),
 				P_PRESENT | P_READ_WRITE | P_USER);
 	}
+
 	// reserve 2 page stack //
 	for(i = 2; i > 0; i--) {
 		map(USER_STACK_HI-(i * PAGE_SIZE), (unsigned int) frame_calloc(),

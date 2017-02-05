@@ -25,11 +25,11 @@ typedef struct fs_node *(*finddir_type_t)(struct fs_node *node, char *name);
 
 
 typedef struct fs_node {
-	char name[256];			// this info should go ouside inode in future
-	unsigned int mask;
+	char name[256];				// this info should go ouside inode in future
+	unsigned int mask;			//
 	unsigned int uid;
 	unsigned int gid;
-	unsigned int flags;
+	unsigned int flags;			//
 	unsigned int inode;
 	unsigned int length;
 	unsigned int ref_count;		// number of threads who open this file

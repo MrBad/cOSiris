@@ -1,13 +1,101 @@
 #include <stdlib.h>
+#include <fcntl.h>
+#include <string.h>
 #include "console.h"
 #include "task.h"
 #include "sysfile.h"
 #include "vfs.h"
+#include "serial.h"
+
 
 // this belongs to sys_proc, but... //
 int sys_exec(char *path, char *argv[])
 {
-	task_exec(path);
+
+	fs_node_t *fs_node;
+	char **tmp_argv = NULL;
+	int argc = 0, i;
+
+	// try to open path //
+	if(fs_open_namei(path, O_RDONLY, 0755, &fs_node) < 0) {
+		serial_debug("sys_exec() cannot open %s file\n", path);
+		return -1;
+	}
+	if(!(fs_node->flags & FS_FILE)) {
+		serial_debug("sys_exec() %s is not a file\n", path);
+		return -1;
+	}
+	// todo-try to see it's mask - not supported yet //
+	kprintf("sys_exec(%s)", path);
+	// save argvs - we will destroy current process stack //
+	int needed_mem = 0;
+	if(argv) {
+	 	tmp_argv = calloc(MAX_ARGUMENTS, sizeof(char *));
+		for(argc = 0; argc < MAX_ARGUMENTS; argc++) {
+			if(!argv[argc]) break;
+			tmp_argv[argc] = strdup(argv[argc]);
+			needed_mem += strlen(argv[argc]) + sizeof(char) + sizeof(uint32_t);
+		}
+	}
+	// change name //
+	if(current_task->name) free(current_task->name);
+	current_task->name = strdup(fs_node->name);
+
+	// map if program needs more pages //
+	unsigned int num_pages = (fs_node->length / PAGE_SIZE) + 1;
+	for(i = 0; i < num_pages; i++) {
+		virt_t page = USER_CODE_START_ADDR + PAGE_SIZE * i;
+		if(!is_mapped(page)) {
+			map(page, (unsigned int)frame_alloc(), P_PRESENT | P_READ_WRITE | P_USER);
+		}
+	}
+	// free it's stack //
+	for(i = 2; i > 0; i--) {
+		memset(USER_STACK_HI-(i * PAGE_SIZE), 0, PAGE_SIZE);
+	}
+
+	// load/overwrite program into memory //
+	unsigned int offset = 0, size = 0;
+	char *buff = (char *)USER_CODE_START_ADDR;
+	do {
+		size = fs_read(fs_node, offset, fs_node->length, buff);
+		offset += size;
+	} while(size > 0);
+
+	// after mapped num_pages, we have some free mem - let's use it for passing arguments //
+	// maibe in future we will use stack instead of this, pushing strings into it //
+	void *free_mem_start = (void *) buff+offset;
+	unsigned int free_mem_size = num_pages*PAGE_SIZE-fs_node->length;
+	// zero the rest of alloc space //
+	memset(buff+offset, 0, free_mem_size);
+	kprintf("Free mem starts at: %p, size: %d, needed_mem: %d\n", free_mem_start, free_mem_size, needed_mem);
+	if(needed_mem > free_mem_size) {
+		kprintf("alloc another free page pls!\n");
+	}
+	// if we have 2 argv for example, we will have a memory like free mem=new_argv | ptr0 | ptr1| ptr1 points here 0| ptr2 points here|
+	char *p;
+	uint32_t *new_argv = (uint32_t *)free_mem_start;
+	p = (char *)(new_argv + argc);
+	for(i = 0; i < argc; i++) {
+		strcpy(p, tmp_argv[i]);
+		new_argv[i] = (uint32_t)p;
+		int len = strlen(tmp_argv[i]);
+		p[len]=0;
+		p+=len;
+		free(tmp_argv[i]);
+	}
+	if(tmp_argv) free(tmp_argv);
+
+	uint32_t *stack = (uint32_t *)(USER_STACK_HI);
+	stack--;
+	*stack = 0;
+	stack--;
+	*stack = (uint32_t)new_argv; // push argv into stack //
+	stack--;
+	*stack = argc; // push argc into stack
+	kprintf("sys_exec(%s, %d), stack: %p\n", fs_node->name, argc, stack);
+	switch_to_user_mode(USER_CODE_START_ADDR, stack);
+
 	return 0;
 }
 

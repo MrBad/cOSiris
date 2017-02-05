@@ -34,9 +34,9 @@ pid_t getpid()
 	return (pid_t) _syscall0(SYS_GETPID);
 }
 
-int exec(char *path)
+int exec(char *path, char **argv)
 {
-	return _syscall1(SYS_EXEC, (uint32_t) path);
+	return _syscall2(SYS_EXEC, (uint32_t) path, (uint32_t) argv);
 }
 void ps()
 {
