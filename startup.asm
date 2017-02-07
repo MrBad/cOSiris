@@ -435,13 +435,13 @@ irq13:
 	jmp irq_common
 
 irq14:
-	cli
+	;cli
 	push byte 0
 	push byte 46
 	jmp irq_common
 
 irq15:
-	cli
+	;cli
 	push byte 0
 	push byte 47
 	jmp irq_common
@@ -529,6 +529,17 @@ spin_lock:
 	lock cmpxchg [edx], cl
 	jnz .retry
 	ret
+
+
+; global port_read
+; port_read:
+; 	cld
+; 	mov edx, [esp + 4] ; port
+; 	mov edi, [esp + 8] ; buf
+; 	mov ecx, [esp + 12] ; size
+; 	rep
+; 	insw	; input from port specified in dx to mem pointed by edi
+; 	ret
 
 
 [SECTION .bss]

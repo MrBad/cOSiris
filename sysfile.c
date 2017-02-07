@@ -73,9 +73,9 @@ int sys_exec(char *path, char *argv[])
 	unsigned int free_mem_size = num_pages*PAGE_SIZE-fs_node->length;
 	// zero the rest of alloc space //
 	memset(buff+offset, 0, free_mem_size);
-	kprintf("Free mem starts at: %p, size: %d, needed_mem: %d\n", free_mem_start, free_mem_size, needed_mem);
+	// kprintf("Free mem starts at: %p, size: %d, needed_mem: %d\n", free_mem_start, free_mem_size, needed_mem);
 	if(needed_mem > free_mem_size) {
-		kprintf("alloc another free page pls!\n");
+		kprintf("alloc another free page pls or clean this code!\n");
 		return -1;
 	}
 	// if we have 2 argv for example, we will have a memory like free mem=new_argv | ptr0 | ptr1| ptr1 points here 0| ptr2 points here|
@@ -99,7 +99,7 @@ int sys_exec(char *path, char *argv[])
 	*stack = (uint32_t)new_argv; // push argv into stack //
 	stack--;
 	*stack = argc; // push argc into stack
-	kprintf("sys_exec(%s, %d params), stack: %p\n", fs_node->name, argc, stack);
+	// kprintf("sys_exec(%s, %d params), stack: %p\n", fs_node->name, argc, stack);
 	switch_to_user_mode(USER_CODE_START_ADDR, (uint32_t)stack);
 
 	return 0;
@@ -135,11 +135,13 @@ int sys_open(char *filename, int flags, int mode)
 			current_task->files[current_task->num_files] = NULL; // and null the reallocated buffer //
 		}
 		current_task->num_files = items;
-		kprintf("reallocated to %d files\n", items);
+		// kprintf("reallocated to %d files\n", items);
 	}
 
 	current_task->files[fd] = malloc(sizeof(struct file));
+
 	if((fs_open_namei(filename, flags, mode, &current_task->files[fd]->fs_node)) < 0) {
+		serial_debug("sys_open() cannot open %s\n", filename);
 		return -1;
 	}
 	if(!current_task->files[fd]->fs_node) {
@@ -249,14 +251,13 @@ int sys_write(int fd, void *buf, size_t count)
 
 int sys_chdir(char *path)
 {
-	struct stat st;
-	// TODO - also check permissions //
-	if(sys_stat(path, &st) < 0) {
-		serial_debug("sys_chdir() - cannot stat %s\n", path);
+	fs_node_t *fs_node;
+	if(!fs_open_namei(path, O_RDONLY, 0777, &fs_node)) {
+		serial_debug("sys_chdir() cannot open %s\n", path);
 		return -1;
 	}
-	if(!(st.st_mode & FS_DIRECTORY)) {
-		serial_debug("sys_chdir() - not a directory %s\n", path);
+	if(!(fs_node->flags & FS_DIRECTORY)) {
+		serial_debug("sys_chdir() - %s is not a directory\n", path);
 		return -1;
 	}
 	current_task->cwd = path;
@@ -271,7 +272,7 @@ int sys_chroot(char *path)
 		return -1;
 	}
 	if(!(fs_node->flags & FS_DIRECTORY)) {
-		serial_debug("sys_chdir() - %s is not a directory\n", path);
+		serial_debug("sys_chroot() - %s is not a directory\n", path);
 		return -1;
 	}
 	// TODO - also check permissions //
@@ -279,26 +280,54 @@ int sys_chroot(char *path)
 	return 0;
 }
 
-int sys_chmod(char *filename, int uid, int gid){}
-int sys_chown(char *filename, int mode){}
+// check permissions //
+int sys_chmod(char *filename, int uid, int gid)
+{
+	fs_node_t *fs_node;
+	if(!fs_open_namei(filename, O_RDONLY, 0777, &fs_node)) {
+		serial_debug("sys_chmod() cannot open %s\n", filename);
+		return -1;
+	}
+	fs_node->uid = uid;
+	fs_node->gid = gid;
+	return 0;
+}
+
+int sys_chown(char *filename, int mode)
+{
+	fs_node_t *fs_node;
+	if(!fs_open_namei(filename, O_RDONLY, 0777, &fs_node)) {
+		serial_debug("sys_chown() cannot open %s\n", filename);
+		return -1;
+	}
+	fs_node->mask = mode;
+	return 0;
+}
+
+
 int sys_mkdir(char *path, int mode)
 {
 	int i, len;
 	char *tmp, *dirname, *basename;
 	if(!path) return -1;
 
-	tmp = strdup(path);
+	if(*path != '/') { // relative path
+		tmp = calloc(1, strlen(current_task->cwd)+1 + strlen(path)+1);
+		strcat(tmp, current_task->cwd);
+		strcat(tmp, path);
+	} else { 			// absolute path
+		tmp = strdup(path);
+	}
+
 	while(tmp && tmp[strlen(tmp)-1] == '/') tmp[strlen(tmp)-1] = 0;
 	len = strlen(tmp);
 	for(i = len; i > 0; i--)
 		if(tmp[i] == '/')
 			break;
-
 	if(i == len) return -1;
 
 	dirname = strdup(tmp); dirname[i] = 0;
 	basename = strdup(tmp); memmove(basename, basename+i+1, len-i); basename[len-i]=0;
-	kprintf("%s, %s, %s, %d\n", tmp, dirname, basename, i);
 
 	fs_node_t *dir;
 

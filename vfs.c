@@ -142,23 +142,6 @@ int fs_mount(char *path, fs_node_t *node)
 }
 
 
-void lstree(fs_node_t *parent, int level)
-{
-	struct dirent *dir = 0;
-	unsigned int i = 0; int j;
-	if(!parent) parent = fs_root;
-	kprintf("Listing directory: %s\n", parent->name);
-	while((dir = fs_readdir(parent, i))) {
-		fs_node_t *file = fs_finddir(parent, dir->name);
-		for(j=0; j<level;j++) kprintf("    ");
-		kprintf("%s - inode:%d, parent_inode:%d, \n", file->name, file->inode, file->parent_inode);
-		if(file->flags & FS_DIRECTORY) {
-			lstree(file, ++level);
-		}
-		i++;
-	}
-}
-
 // hard work here //
 // check permissions //
 // create if not exists //
@@ -175,4 +158,24 @@ int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
 	}
 	*node = fs_namei(path);
 	return *node ? 0 : -1;
+}
+
+
+
+
+void lstree(fs_node_t *parent, int level)
+{
+	struct dirent *dir = 0;
+	unsigned int i = 0; int j;
+	if(!parent) parent = fs_root;
+	kprintf("Listing directory: %s\n", parent->name);
+	while((dir = fs_readdir(parent, i))) {
+		fs_node_t *file = fs_finddir(parent, dir->name);
+		for(j=0; j<level;j++) kprintf("    ");
+		kprintf("%s - inode:%d, parent_inode:%d, \n", file->name, file->inode, file->parent_inode);
+		if(file->flags & FS_DIRECTORY) {
+			lstree(file, ++level);
+		}
+		i++;
+	}
 }

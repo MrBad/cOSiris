@@ -107,6 +107,7 @@ task_t *task_switch_inner()
 	task_t *n = current_task->next;
 	unsigned int i;
 	for(i = 0; i < 10000; i++) {
+		// sti();
 		if(!n) {
 			n = task_queue;
 		}
@@ -116,8 +117,6 @@ task_t *task_switch_inner()
 		n = n->next;
 	}
 	if(i == 10000) {
-		// panic("All threads sleeping?\n");
-		// halt();
 		panic("All threads sleeping...\n");
 	}
 
@@ -239,6 +238,9 @@ pid_t task_wait(int *status)
 			switch_locked = false;
 			kprintf("no childs\n");
 			return -1;
+		}
+		if(current_task->pid == 1) {
+			panic("You tried to sleep init\n");
 		}
 		current_task->state = TASK_SLEEPING;
 		kprintf("Going to sleep\n");

@@ -26,14 +26,14 @@ bool is_file(char *file) { // todo - change to fstat when we will have it
 int main(int argc, char *argv[])
 {
 	// unsigned int *esp = (unsigned int *)(0x0FFFF000);
-	int i;
+	// int i;
 	// printf("ARGV: %p\n", &argv);
 	// i = (unsigned int *)&argv;
 	// for(;i < esp; i++) {
 		// printf("i:%p, esp: %p, val:%p, %s\n", i, esp, *i, i<esp?"YES":"NO");
 	// }{
-	for(i =0; i < argc; i++)
-		printf("argc:%d, argv:%s\n", i, argv[i]);
+	// for(i =0; i < argc; i++)
+	// 	printf("argc:%d, argv:%s\n", i, argv[i]);
 
 	char buf[256];
 	while(1) {
