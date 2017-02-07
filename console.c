@@ -20,7 +20,7 @@
 
 static uint16_t * vid_mem = (uint16_t *)VID_ADDR;
 static uint16_t attr = 0x700;
-// static spin_lock_t console_lock;
+static spin_lock_t console_lock;
 static int scroll_pos;
 
 //
@@ -139,12 +139,12 @@ void kprintf(char *fmt, ...)
 	va_end(args);
 	serial_write(buf);
 	buf[1023] = 0;
-	// spin_lock(&console_lock);
+	spin_lock(&console_lock);
 	for(i = 0; i < 1024; i++) {
 		if(! buf[i]) break;
 		console_putc(buf[i]);
 	}
-	// spin_unlock(&console_lock);
+	spin_unlock(&console_lock);
 }
 unsigned int console_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
 {
