@@ -3,7 +3,7 @@
 
 #include "hd_queue.h"
 
-void hd_start(hd_buf_t *hdb);
+void hd_rw(hd_buf_t *hdb);
 void hd_init();
 
 #endif

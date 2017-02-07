@@ -89,9 +89,7 @@ hd_buf_t *get_hd_buf(int block_no)
 		spin_lock(&hdb->lock);
 
 		spin_unlock(&hd_queue->lock);
-		// and get the data from distk //
-		// kprintf("hd_start %d\n", block_no);
-		hd_start(hdb);
+		hd_rw(hdb);
 	}
 	return hdb;
 }
@@ -108,7 +106,7 @@ void put_hd_buf(hd_buf_t *hdb)
 	hdb->ref_count--;
 	if(hdb->is_dirty && hdb->ref_count == 0) {
 		kprintf("pid: %d flushing block %d\n", current_task->pid, hdb->block_no);
-		hd_start(hdb);
+		hd_rw(hdb);
 		hdb->is_dirty = 0;
 	}
 	spin_unlock(&hdb->lock);
@@ -141,29 +139,23 @@ int hd_queue_init()
 		hd_buf_t *hdb3 = get_hd_buf(3);
 		put_hd_buf(hdb3);
 		put_hd_buf(hdb2);
-		// kprintf("should be waked up\n");
-		int i;
-		// for(i=0; i<8; i++){
-			// kprintf("[%i:%x]\n", i, b[i]);
-		// }
-		// b[1]=0xbaba;
-
-		// put_hd_buf(hdb);
-
-		cli();
+		// cli();
 		for(n=hd_queue->list->head; n; n=n->next) {
 			kprintf("pid:%d block %d in cache, dirty: %d, locked: %d\n", current_task->pid, ((hd_buf_t *)n->data)->block_no,((hd_buf_t *)n->data)->is_dirty, ((hd_buf_t *)n->data)->lock);
 		}
-		sti();
+		// sti();
 		task_exit(0);
 
 	}
-	while(1);
-	// int i;
-	// for(i=0; i<128;i++) {
-		// kprintf("%x ", b[i]);
-		// if(i % 4 == 0 ) kprintf("\n");
-	// }
+	if(fork()==0) {
+		hd_buf_t *hdb5 = get_hd_buf(5);
+		hd_buf_t *hdb4 = get_hd_buf(4);
+		strcpy(hdb4->buf, "Vio is testing");
+		hdb4->is_dirty = true;
+		put_hd_buf(hdb4);
+		put_hd_buf(hdb5);
+		task_exit(0);
+	}
 
 	return 0;
 }

@@ -128,23 +128,25 @@ void panic(char * str, ...)
 	cli();
 	halt();
 }
-
+extern bool switch_locked;
 void kprintf(char *fmt, ...)
 {
 	char buf[1024];
 	unsigned int i;
+	switch_locked = true;
 	va_list args;
 	va_start(args, fmt);
 	vsprintf(buf, fmt, args);
 	va_end(args);
 	serial_write(buf);
 	buf[1023] = 0;
-	spin_lock(&console_lock);
+	// spin_lock(&console_lock);
 	for(i = 0; i < 1024; i++) {
 		if(! buf[i]) break;
 		console_putc(buf[i]);
 	}
-	spin_unlock(&console_lock);
+	// spin_unlock(&console_lock);
+	switch_locked = false;
 }
 unsigned int console_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
 {

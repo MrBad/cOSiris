@@ -32,6 +32,7 @@ typedef struct task {
 	unsigned int uid, gid;
 	int ring;
 	task_states_t state;
+	void *sleep_addr;
 	int exit_status;
 	list_t *wait_queue;
 	heap_t * heap; 			// user heap
@@ -69,4 +70,7 @@ void ps();
 void task_exec(char * path, char *argv[]);
 void switch_to_user_mode(uint32_t code_addr, uint32_t stack_hi_addr);
 
+
+void sleep_on(void *addr);
+int wakeup(void *addr);
 #endif

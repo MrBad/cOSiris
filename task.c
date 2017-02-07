@@ -357,3 +357,28 @@ void task_exec(char *path, char **argv)
 
 	switch_to_user_mode(USER_CODE_START_ADDR, USER_STACK_HI);
 }
+
+void sleep_on(void *addr)
+{
+	switch_locked = true;
+	current_task->state = TASK_SLEEPING;
+	current_task->sleep_addr = addr;
+	switch_locked = false;
+
+	task_switch();
+}
+
+int wakeup(void *addr)
+{
+	int cnt;
+	task_t * t;
+	switch_locked = true;
+	for(t = task_queue; t; t = t->next) {
+		if(t->state == TASK_SLEEPING && t->sleep_addr == addr) {
+			cnt++; t->state = TASK_READY;
+		}
+	}
+	switch_locked = false;
+	kprintf("waked up %d tasks\n", cnt);
+	return cnt;
+}
