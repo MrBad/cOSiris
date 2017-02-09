@@ -17,6 +17,8 @@ typedef struct hd_buf {
 
 
 int hd_queue_init();
+hd_buf_t *get_hd_buf(int block_no);
+void put_hd_buf(hd_buf_t *hdb);
 
 
 #endif

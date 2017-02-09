@@ -82,9 +82,8 @@ void hd_handler()
 
 	list_del(cmd_queue->list, cmd_queue->list->head);
 	wakeup(cmd->hd_buf);
-	kprintf("%d operations in q\n", cmd_queue->list->num_items);
-	delay(2000);
-	return;
+	KASSERT(cmd_queue->list->num_items == 0);
+	// kprintf("%d operations in q\n", cmd_queue->list->num_items);
 }
 
 // void hd_start(unsigned int sector)

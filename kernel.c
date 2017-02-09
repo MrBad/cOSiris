@@ -21,6 +21,7 @@
 #include "zero.h"
 #include "pipe.h"
 #include "hd_queue.h"
+#include "cofs.h"
 
 unsigned int initrd_location, initrd_end;
 unsigned int stack_ptr, stack_size;
@@ -63,7 +64,6 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	kprintf("Setup keyboard\n");
 	kbd_install();
 
-
 	// find location of initial ramdisk //
 	if (mboot->mods_count > 0) {
 		initrd_location = *((unsigned int *) mboot->mods_addr);
@@ -78,9 +78,9 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	console_init();
 	task_init();
 	syscall_init();
-	
-	hd_queue_init();
 
+	// hd_queue_init();
+	cofs_init();
 	// task_exec("/init", NULL);
 	sys_exec("/init", NULL);
 	kprintf("Should not get here\n");

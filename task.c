@@ -50,6 +50,17 @@ task_t *task_new()
 	return t;
 }
 
+// this task it will be called when no other task can be scheduled //
+task_t *idle_task;
+void idle_loop()
+{
+	while(true) {
+		// kprintf(".");
+		sti();
+		hlt();
+	}
+}
+
 void task_init()
 {
 	cli();
@@ -66,7 +77,11 @@ void task_init()
 	current_task->name = strdup("init");
 	current_task->state = TASK_READY;
 	task_queue = current_task;
-
+	if(fork() == 0) {
+		current_task->name = strdup("idle");
+		idle_task = current_task;
+		idle_loop();
+	}
 	sti();
 }
 
@@ -103,21 +118,20 @@ task_t *task_switch_inner()
 	if(switch_locked) {
 		return current_task;
 	}
-
 	task_t *n = current_task->next;
 	unsigned int i;
-	for(i = 0; i < 10000; i++) {
-		// sti();
+	for(i = 0; i < 100; i++) {
 		if(!n) {
 			n = task_queue;
 		}
-		if(n->state == TASK_READY) {
+		if(n->state == TASK_READY && n != idle_task) {
 			break;
 		}
 		n = n->next;
 	}
-	if(i == 10000) {
-		panic("All threads sleeping...\n");
+	if(i == 100) {
+		// kprintf("All threads sleeping...\n");
+		n = idle_task;
 	}
 
 	current_task = n;
@@ -240,7 +254,7 @@ pid_t task_wait(int *status)
 			return -1;
 		}
 		if(current_task->pid == 1) {
-			panic("You tried to sleep init\n");
+			kprintf("You tried to sleep init\n");
 		}
 		current_task->state = TASK_SLEEPING;
 		kprintf("Going to sleep\n");
@@ -379,6 +393,6 @@ int wakeup(void *addr)
 		}
 	}
 	switch_locked = false;
-	kprintf("waked up %d tasks\n", cnt);
+	// kprintf("waked up %d tasks\n", cnt);
 	return cnt;
 }

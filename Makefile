@@ -13,7 +13,7 @@ LDFLAGS	= -g -melf_i386 -T ldscript.ld #-Map System.map
 OBJS =	x86.o console.o kernel.o startup.o multiboot.o gdt.o idt.o isr.o irq.o \
 		timer.o kbd.o serial.o delay.o mem.o kheap.o vfs.o initrd.o \
 		task.o sched.o syscall.o sys.o zero.o pipe.o list.o \
-		sysfile.o hd.o hd_queue.o \
+		sysfile.o hd.o hd_queue.o cofs.o \
 		lib/libc.a
 
 bzImage: all
@@ -56,6 +56,8 @@ fdimg: bzImage
 	# sudo cp bin/init mnt
 	util/mkinitrd kernel.sym bin/init bin/test_fork bin/test_sbrk \
 		bin/test_malloc bin/cosh README
+	util/mkcofs hdd.img bin/init bin/cosh bin/test_malloc bin/test_sbrk kernel.lst README
+	
 	sudo cp initrd.img mnt
 	sudo umount mnt
 	sudo rm -rf mnt
