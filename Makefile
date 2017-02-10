@@ -72,4 +72,4 @@ fd:
 run: fdimg
 	$(BOCHS) -f bochsrc -q
 runq: fdimg
-	qemu-system-i386 -kernel kernel.bin -curses -initrd initrd.img -drive file=hdd.img,index=1,media=disk,format=raw
+	qemu-system-i386 -kernel kernel.bin -curses -initrd initrd.img -drive file=hdd.img,index=0,media=disk,format=raw

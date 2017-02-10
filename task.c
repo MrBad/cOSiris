@@ -77,11 +77,11 @@ void task_init()
 	current_task->name = strdup("init");
 	current_task->state = TASK_READY;
 	task_queue = current_task;
-	if(fork() == 0) {
-		current_task->name = strdup("idle");
-		idle_task = current_task;
-		idle_loop();
-	}
+	// if(fork() == 0) {
+	// 	current_task->name = strdup("idle");
+	// 	idle_task = current_task;
+	// 	idle_loop();
+	// }
 	sti();
 }
 

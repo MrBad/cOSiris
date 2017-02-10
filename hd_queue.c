@@ -48,7 +48,6 @@ hd_buf_t *get_hd_buf(int block_no)
 	hd_buf_t * hdb = NULL;
 	spin_lock(&buf_queue->lock);
 	for(n = buf_queue->list->head; n; n = n->next) {
-		//kprintf("bufq\n");
 		if(((hd_buf_t *)n->data)->block_no == block_no) {
 			hdb = (hd_buf_t *) n->data;
 			break;

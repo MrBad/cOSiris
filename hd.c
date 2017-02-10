@@ -37,6 +37,7 @@ static int disk = 0;
 static int base_port = ATA0_BASE_IO;
 static int base2_port = ATA0_BASE2_IO;
 
+#if 0
 typedef struct cmd {
 	hd_buf_t * hd_buf;
 	task_t * task;
@@ -55,7 +56,7 @@ cmd_t *new_cmd(hd_buf_t *hd_buf, task_t *task) {
 	cmd->task = current_task;
 	return cmd;
 }
-
+#endif
 void free_cmd(void *data) {
 	free(data);
 }
@@ -69,6 +70,7 @@ int hd_wait_ready(bool check_error)
 	return 0;
 }
 
+#if 0
 void hd_handler()
 {
 	// kprintf("in hd handler\n");
@@ -123,7 +125,37 @@ void hd_rw(hd_buf_t *hdb)
 	}
 	spin_unlock(&cmd_queue->lock);
 }
+#endif
 
+
+
+spin_lock_t hd_lock;
+void hd_rw(hd_buf_t *hdb) {
+	KASSERT(hdb->lock==1);
+	spin_lock(&hd_lock);
+	int sector = hdb->block_no;
+	int ret = 0;
+	hd_wait_ready(0);
+	outb(0x1f2, 1);
+	outb(0x1f3, sector & 0xFF);
+	outb(0x1f4, (sector >> 8) & 0xFF);
+	outb(0x1f5, (sector >> 16) & 0xFF);
+	outb(0x1f6, 0xE0|((disk % 2) << 4) | ((sector>>24)&0x0F));
+	if(hdb->is_dirty) {
+		outb(0x1f7, 0x30);
+		if((ret = hd_wait_ready(1)) < 0) {
+			panic("hd_wait_ready, write\n");
+		}
+		port_write(0x1f0, hdb->buf, 256);
+	} else {
+		outb(0x1f7, 0x20);
+		if((ret = hd_wait_ready(1)) < 0) {
+			panic("hd_wait_ready, read\n");
+		}
+		port_read(0x1f0, hdb->buf, 256);
+	}
+	spin_unlock(&hd_lock);
+}
 
 
 static bool check_disk(int disk_num)
@@ -161,8 +193,9 @@ void hd_init()
 	if(!found) {
 		panic("Cannot find any disk\n");
 	}
-	irq_install_handler(14, hd_handler);
-
+	// irq_install_handler(14, hd_handler);
+#if 0
 	cmd_queue = calloc(1, sizeof(*cmd_queue));
 	cmd_queue->list = list_open(free_cmd);
+#endif
 }

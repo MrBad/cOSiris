@@ -80,10 +80,10 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	syscall_init();
 
 	// hd_queue_init();
-	if(fork()==0) {
+	// if(fork()==0) {
 		cofs_init();
-		task_exit(0);
-	}
+		// task_exit(0);
+	// }
 
 	// sys_exec("/init", NULL);
 	// ps();
