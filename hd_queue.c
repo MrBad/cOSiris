@@ -48,6 +48,7 @@ hd_buf_t *get_hd_buf(int block_no)
 	hd_buf_t * hdb = NULL;
 	spin_lock(&buf_queue->lock);
 	for(n = buf_queue->list->head; n; n = n->next) {
+		//kprintf("bufq\n");
 		if(((hd_buf_t *)n->data)->block_no == block_no) {
 			hdb = (hd_buf_t *) n->data;
 			break;
@@ -117,38 +118,5 @@ int hd_queue_init()
 	if(!(buf_queue->list = list_open(free_hd_buf))) {
 		panic("list_open");
 	}
-	// kprintf("hd queue\n\n");
-	//
-	// node_t *n;
-	// if(fork() == 0) { fork();
-	// 	kprintf("child reading\n");
-	// 	hd_buf_t *hdb = get_hd_buf(0);
-	// 	uint16_t *b = (uint16_t *) hdb->buf;
-	// 	hdb->is_dirty = true;
-	// 	b[0]=0xdead;
-	// 	put_hd_buf(hdb);
-	//
-	// 	hd_buf_t *hdb2 = get_hd_buf(2);
-	// 	hd_buf_t *hdb3 = get_hd_buf(3);
-	// 	put_hd_buf(hdb3);
-	// 	put_hd_buf(hdb2);
-	// 	// cli();
-	// 	for(n=buf_queue->list->head; n; n=n->next) {
-	// 		kprintf("pid:%d block %d in cache, dirty: %d, locked: %d\n", current_task->pid, ((hd_buf_t *)n->data)->block_no,((hd_buf_t *)n->data)->is_dirty, ((hd_buf_t *)n->data)->lock);
-	// 	}
-	// 	// sti();
-	// 	task_exit(0);
-	//
-	// }
-	// if(fork()==0) {
-	// 	hd_buf_t *hdb5 = get_hd_buf(5);
-	// 	hd_buf_t *hdb4 = get_hd_buf(4);
-	// 	strcpy(hdb4->buf, "Vio is testing");
-	// 	hdb4->is_dirty = true;
-	// 	put_hd_buf(hdb4);
-	// 	put_hd_buf(hdb5);
-	// 	task_exit(0);
-	// }
-
 	return 0;
 }

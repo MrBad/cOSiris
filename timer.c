@@ -25,9 +25,9 @@ void timer_handler(struct iregs *r) {
 	// if(timer_ticks % 1000 == 0) {
 		task_switch(r);
 	// }
-//	if(timer_ticks % 100 == 0) {
-//		kprintf(".");
-//	}
+	if(timer_ticks % 1000 == 0) {
+		// kprintf(".");
+	}
 }
 
 

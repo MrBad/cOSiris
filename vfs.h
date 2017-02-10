@@ -4,6 +4,7 @@
 #ifndef _VFS_H
 #define _VFS_H
 
+#include "x86.h"
 
 #define FS_FILE        0x01
 #define FS_DIRECTORY   0x02
@@ -26,10 +27,11 @@ typedef struct fs_node *(*mkdir_type_t)(struct fs_node *node, char *name, unsign
 
 typedef struct fs_node {
 	char name[256];				// this info should go ouside inode in future
-	unsigned int mask;			//
+	unsigned int mask;			// ??
 	unsigned int uid;
 	unsigned int gid;
-	unsigned int flags;			//
+	unsigned int flags;			// loose ambiguous flags
+	unsigned short int type;
 	unsigned int inode;
 	unsigned int length;
 	unsigned int ref_count;		// number of threads who open this file
@@ -38,7 +40,7 @@ typedef struct fs_node {
 	unsigned int parent_inode;	// Who's my parent directory
 								// This info should go outside inode in future
 	struct fs_node *next;		// pointer to the next node in list
-
+	spin_lock_t lock;
 	read_type_t read;
 	write_type_t write;
 	open_type_t open;

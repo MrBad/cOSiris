@@ -56,8 +56,8 @@ void idle_loop()
 {
 	while(true) {
 		// kprintf(".");
-		sti();
-		hlt();
+		// sti();
+		// hlt();
 	}
 }
 
@@ -130,8 +130,8 @@ task_t *task_switch_inner()
 		n = n->next;
 	}
 	if(i == 100) {
-		// kprintf("All threads sleeping...\n");
-		n = idle_task;
+		panic("All threads sleeping...\n");
+		// n = idle_task;
 	}
 
 	current_task = n;

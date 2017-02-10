@@ -80,9 +80,13 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	syscall_init();
 
 	// hd_queue_init();
-	cofs_init();
-	// task_exec("/init", NULL);
-	sys_exec("/init", NULL);
+	if(fork()==0) {
+		cofs_init();
+		task_exit(0);
+	}
+
+	// sys_exec("/init", NULL);
+	// ps();
 	kprintf("Should not get here\n");
 	return;
 }

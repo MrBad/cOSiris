@@ -78,16 +78,15 @@ void irq_install(void){
 
 void irq_handler(struct iregs *r) {
 	// a blank function pointer //
-
+	void (*handler) (struct iregs *r);
+	handler = irq_routines[r->int_no - 32];
+	if(handler) {
+		// kprintf("have handler");
+		handler(r);
+	}
 	if(r->int_no >= 0x28) {	// daca e intrerupere pe slave, send end of interrupt
 		outb(port_8259S, 0x20);
 	}
 	// trimite end of interrupt pe master indiferent (sclavul e legat la master irq2, triggereaza ambele)
 	outb(port_8259M, 0x20);
-
-	void (*handler) (struct iregs *r);
-	handler = irq_routines[r->int_no - 32];
-	if(handler) {
-		handler(r);
-	}
 }

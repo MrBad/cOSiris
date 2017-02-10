@@ -133,7 +133,7 @@ void kprintf(char *fmt, ...)
 {
 	char buf[1024];
 	unsigned int i;
-	switch_locked = true;
+	// switch_locked = true;
 	va_list args;
 	va_start(args, fmt);
 	vsprintf(buf, fmt, args);
@@ -146,7 +146,7 @@ void kprintf(char *fmt, ...)
 		console_putc(buf[i]);
 	}
 	// spin_unlock(&console_lock);
-	switch_locked = false;
+	// switch_locked = false;
 }
 unsigned int console_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
 {
@@ -204,6 +204,7 @@ void console_handler()
 			}
 		}
 	}
+	// outb(0x20, 0x20);
 	// spin_unlock(&console_lock);
 }
 

@@ -46,9 +46,13 @@ task_switch:
 	mov ebx, [eax + 20]				; it's cloned directory
 	mov cr3, ebx					; change page directory
 	sti
-	jmp [eax + 16]					; jump tp it's saved eip -> probably task_switch.bye or fork.child
-
+	mov ecx, [eax+16]
+	mov eax, 0x20
+	out 0x20, al
+	jmp ecx							; jump to it's saved eip -> probably task_switch.bye or fork.child
 .bye:
+	mov eax, 0x20
+	out 0x20, al
 	ret
 
 

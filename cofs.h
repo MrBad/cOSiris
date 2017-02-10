@@ -4,6 +4,8 @@
 #ifndef _COFS_H
 #define _COFS_H
 
+// #include "vfs.h"
+
 #define COFS_MAGIC 0xC0517155	// cosiris magic number
 
 
@@ -45,7 +47,7 @@ typedef struct cofs_inode
 	unsigned short int	uid;
 	unsigned short int	gid;
 	unsigned short int	num_links;
-	unsigned int atime,mtime,ctime;
+	unsigned int 	atime, mtime, ctime;
 	unsigned int	size;
 	unsigned int	addrs[NUM_DIRECT + 3]; // + SNG_IDX + DBL_IDX + reserved for triple idx
 } cofs_inode_t;
@@ -59,5 +61,15 @@ struct cofs_dirent {
 typedef struct cofs_dirent cofs_dirent_t;
 
 int cofs_init();
+//
+// void cofs_open(fs_node_t *node, unsigned int flags);
+// void cofs_close(fs_node_t *node);
+// unsigned int cofs_read(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer);
+// unsigned int cofs_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer);
+// fs_node_t *cofs_finddir(fs_node_t *node, char *name);
+// struct dirent *cofs_readdir(fs_node_t *node, unsigned int index);
+// fs_node_t *cofs_mkdir(fs_node_t *node, char *name, int mode);
+//
+//
 
 #endif

@@ -11,7 +11,7 @@
 #include "irq.h"
 #include "list.h"
 #include "task.h"
-#include "delay.h"
+#include "serial.h"
 
 #define ATA_ERR 0x01
 #define ATA_DRQ 0x08
@@ -71,37 +71,43 @@ int hd_wait_ready(bool check_error)
 
 void hd_handler()
 {
+	// kprintf("in hd handler\n");
+	// switch_locked = true;
 	KASSERT(cmd_queue->lock == 1);
-	if(cmd_queue->list->num_items == 0)
+	if(cmd_queue->list->num_items == 0) {
 		return;
+	}
 	cmd_t *cmd = (cmd_t *) cmd_queue->list->head->data;
 	KASSERT(cmd->hd_buf->lock == 1);
 	if(!cmd->hd_buf->is_dirty && hd_wait_ready(true) >= 0) {
 		port_read(base_port | 0, cmd->hd_buf->buf, 256);
 	}
-
 	list_del(cmd_queue->list, cmd_queue->list->head);
 	wakeup(cmd->hd_buf);
 	KASSERT(cmd_queue->list->num_items == 0);
 	// kprintf("%d operations in q\n", cmd_queue->list->num_items);
+	// switch_locked = false;
+
 }
 
 // void hd_start(unsigned int sector)
 void hd_start(hd_buf_t *hdb)
 {
-	kprintf("pid: %d invoking hd_start for block %d, %s\n",current_task->pid, hdb->block_no, hdb->is_dirty?"writing":"reading");
+	// kprintf("pid: %d invoking hd_start for block %d, %s\n",current_task->pid, hdb->block_no, hdb->is_dirty?"writing":"reading");
 	int sector = hdb->block_no; // for now
 	hd_wait_ready(0);
-	outb(base2_port|6, 0); // generate interrupt when have data //
+	outb(base2_port|6, 0x08); // generate interrupt when have data //
 	outb(base_port|2, 1);
 	outb(base_port|3, sector & 0xFF);
 	outb(base_port|4, (sector >> 8) & 0xFF);
 	outb(base_port|5, (sector >> 16) & 0xFF);
 	outb(base_port|6, 0xE0|((disk % 2) << 4) | ((sector>>24)&0x0F));
 	if(hdb->is_dirty) {
+		// kprintf("writing block: %d", sector);
 		outb(base_port|7, 0x30); // 0x30 - write sector //
 		port_write(base_port|0, hdb->buf, 256); // no need to sleep on write //
 	} else {
+		// kprintf("reading block\n");
 		outb(base_port|7, 0x20); // 0x20 - Command read sector //
 		sleep_on(hdb);
 	}

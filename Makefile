@@ -57,7 +57,7 @@ fdimg: bzImage
 	util/mkinitrd kernel.sym bin/init bin/test_fork bin/test_sbrk \
 		bin/test_malloc bin/cosh README
 	util/mkcofs hdd.img bin/init bin/cosh bin/test_malloc bin/test_sbrk kernel.lst README
-	
+
 	sudo cp initrd.img mnt
 	sudo umount mnt
 	sudo rm -rf mnt
@@ -72,4 +72,4 @@ fd:
 run: fdimg
 	$(BOCHS) -f bochsrc -q
 runq: fdimg
-	qemu-system-i386 -kernel kernel.bin -curses -initrd initrd.img
+	qemu-system-i386 -kernel kernel.bin -curses -initrd initrd.img -drive file=hdd.img,index=1,media=disk,format=raw

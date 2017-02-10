@@ -61,6 +61,7 @@ int page_fault(struct iregs *r)
 	kprintf("\n%s", paging_on() ? "paging ON" : "paging OFF");
 	//	panic("\npanic\n____");
 	//shutdown();
+	ps();
 	return false;
 }
 

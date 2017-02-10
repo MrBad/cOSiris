@@ -11,9 +11,10 @@
 #include <unistd.h>
 #include <libgen.h>
 
+#define FS_FILE        0x01
+#define FS_DIRECTORY   0x02
 
 #include "cofs.h"
-#include "vfs.h"
 
 #define BLOCK_SIZE 512
 
@@ -159,6 +160,7 @@ void inode_append(unsigned int inum, void *ptr, unsigned int size)
 		offset += n;
 		p += n;
 	}
+	// printf(">>>%d\n", offset);
 	ino.size = offset;
 	write_inode(inum, &ino);
 }
@@ -223,6 +225,13 @@ int main(int argc, char *argv[])
 	printf("size: %d, data_blocks: %d, num_inodes: %d, bitmap_start: %d, inode_start: %d, num_meta_blocks: %d\n",
 		superb.size, superb.num_blocks, superb.num_inodes, superb.bitmap_start, superb.inode_start, num_meta_blocks);
 
+	// check if we already have cofs fs //
+	read_sector(1, buf);
+	if(((unsigned int*)buf)[0] == COFS_MAGIC){
+		printf("Already formated\n");
+		// exit(0);
+	}
+
 	unsigned int i;
 	// bzero fs //
 	memset(buf, 0, BLOCK_SIZE);
@@ -277,6 +286,7 @@ int main(int argc, char *argv[])
 	write_inode(root_inode, &ino);
 	block_alloc(free_block);
 
+	printf("First free block is %d\n", free_block);
 	close(fsfd);
 
 	return 0;
