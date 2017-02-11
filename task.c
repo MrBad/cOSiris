@@ -9,6 +9,7 @@
 #include "gdt.h"
 #include "assert.h"
 #include "vfs.h"
+#include "cofs.h"
 
 bool switch_locked = false;
 char *task_states[] = {
@@ -43,9 +44,10 @@ task_t *task_new()
 	t->files = (struct file **) calloc(TASK_INITIAL_NUM_FILES, sizeof(struct file *));
 	t->num_files = TASK_INITIAL_NUM_FILES;
 	fs_node_t *console = fs_namei("/dev/console");
-	for(i=0;i<3;i++){
+	KASSERT(console != NULL);
+	for(i=0; i < 3; i++){
 		t->files[i] = malloc(sizeof(struct file));
-		t->files[i]->fs_node = console;
+		t->files[i]->fs_node = cofs_dup(console);
 	}
 	return t;
 }
@@ -171,12 +173,12 @@ task_t *fork_inner()
 			continue;
 		}
 		t->files[fd] = calloc(1, sizeof(struct file));
-		if(!current_task->files[fd]->fs_node)
+		if(!current_task->files[fd]->fs_node) {
 			panic("task fork: pid: %d, fd: %d fs_node does not exists\n", current_task->pid, fd);
-		t->files[fd]->fs_node = current_task->files[fd]->fs_node;
+		}
+		t->files[fd]->fs_node = cofs_dup(current_task->files[fd]->fs_node);
 		t->files[fd]->offs = current_task->files[fd]->offs;
-		kprintf("xxx");
-		current_task->files[fd]->fs_node->ref_count++;
+		// current_task->files[fd]->fs_node->ref_count++;
 	}
 	t->num_files = current_task->num_files;
 

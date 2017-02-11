@@ -23,18 +23,8 @@ bool is_file(char *file) { // todo - change to fstat when we will have it
 	}
 }
 
-int main(int argc, char *argv[])
+int main()
 {
-	// unsigned int *esp = (unsigned int *)(0x0FFFF000);
-	// int i;
-	// printf("ARGV: %p\n", &argv);
-	// i = (unsigned int *)&argv;
-	// for(;i < esp; i++) {
-		// printf("i:%p, esp: %p, val:%p, %s\n", i, esp, *i, i<esp?"YES":"NO");
-	// }{
-	// for(i =0; i < argc; i++)
-	// 	printf("argc:%d, argv:%s\n", i, argv[i]);
-
 	char buf[256];
 	while(1) {
 		printf("# ");
@@ -50,9 +40,13 @@ int main(int argc, char *argv[])
 		else if (!strcmp(buf, "ls")) {
 			lstree();
 		}
+		else if(!strcmp(buf, "cdc")) {
+			cofs_dump_cache();
+		}
 		else if (!strcmp(buf, "help")) {
 			printf("ps - show process list\n");
 			printf("ls - show file tree\n");
+			printf("cdc - show cofs dump cache\n");
 			printf("ESC - shut down\n");
 		}
 		else if(is_file(buf)) {

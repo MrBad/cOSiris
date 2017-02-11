@@ -101,6 +101,7 @@ fs_node_t *fs_namei(char *path)
 }
 
 
+#if 0
 
 // needs more testing -> for now will only mount /dev/ files
 int fs_mount(char *path, fs_node_t *node)
@@ -109,6 +110,7 @@ int fs_mount(char *path, fs_node_t *node)
 	KASSERT(*path);
 	KASSERT(*path == '/');
 	fs_node_t *n;
+
 	n = fs_namei(path);
 	if(!n) {
 		// full path does not exits, check if parent node exists //
@@ -133,16 +135,17 @@ int fs_mount(char *path, fs_node_t *node)
 		free(dir);
 	}
 	else {
+		kprintf("MOUNT\n");
 		// replace parent //
 		node->parent_inode = n->parent_inode;
 		node->ptr = n; // keep track of old node - n, so we can unmount later
 		node->flags = FS_MOUNTPOINT;
 		// node->parent_inode = n->inode;
 	}
-	// kprintf("%d, %d, %s\n", node->inode, node->parent_inode, node->name);
+	kprintf("%d, %d, %s\n", node->inode, node->parent_inode, node->name);
 	return 0;
 }
-
+#endif
 
 // hard work here //
 // check permissions //
@@ -163,21 +166,20 @@ int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
 }
 
 
-
-
 void lstree(fs_node_t *parent, int level)
 {
 	struct dirent *dir = 0;
 	unsigned int i = 0; int j;
 	if(!parent) parent = fs_root;
 	kprintf("Listing directory: %s\n", parent->name);
-	while((dir = fs_readdir(parent, i))) {
+	while((dir = fs_readdir(parent, i++))) {
+		if(!strcmp(dir->name, ".") || !strcmp(dir->name, "..")) continue;
 		fs_node_t *file = fs_finddir(parent, dir->name);
 		for(j=0; j<level;j++) kprintf("    ");
-		kprintf("%s - inode:%d, parent_inode:%d, \n", file->name, file->inode, file->parent_inode);
+		kprintf("%s - inode:%d, \n", file->name, file->inode);
 		if(file->flags & FS_DIRECTORY) {
-			lstree(file, ++level);
+			lstree(file, level+1);
 		}
-		i++;
+		cofs_put_node(file);
 	}
 }

@@ -70,6 +70,8 @@ fs_node_t *cofs_init();
 // struct dirent *cofs_readdir(fs_node_t *node, unsigned int index);
 // fs_node_t *cofs_mkdir(fs_node_t *node, char *name, int mode);
 //
-//
+
+void cofs_dump_cache();
+fs_node_t *cofs_dup(fs_node_t *node);
 
 #endif

@@ -87,3 +87,7 @@ int mkdir(const char *pathname, int mode) {
 void lstree() {
 	_syscall0(SYS_LSTREE);
 }
+void cofs_dump_cache()
+{
+	_syscall0(SYS_COFS_DUMP_CACHE);
+}

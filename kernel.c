@@ -75,8 +75,7 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	// fs_root = initrd_init(initrd_location);
 
 	fs_root = cofs_init();
-
-	zero_init();
+	// zero_init();
 	console_init();
 	task_init();
 	syscall_init();

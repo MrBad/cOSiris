@@ -7,7 +7,7 @@
 #include "x86.h"
 #include "mem.h"
 #include "sysfile.h"
-
+#include "cofs.h"
 
 void exit(int status) {
 	task_exit(status);
@@ -42,6 +42,7 @@ static void *syscalls[] = {
 	&sys_chmod,
 	&sys_chown,
 	&sys_mkdir,
+	&cofs_dump_cache,
 };
 static unsigned int num_syscalls;
 

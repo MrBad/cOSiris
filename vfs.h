@@ -39,7 +39,8 @@ typedef struct fs_node {
 	unsigned int atime, ctime, mtime;
 	unsigned int *addrs;
 	int impl;
-	unsigned int parent_inode;	// Who's my parent directory
+	// unsigned int parent_inode;	// we should loose this, because an inode can be child of many parents
+								// Who's my parent directory
 								// This info should go outside inode in future
 	struct fs_node *next;		// pointer to the next node in list
 	unsigned int lock;

@@ -11,8 +11,8 @@ BOOTFLAGS = -f bin
 LDFLAGS	= -g -melf_i386 -T ldscript.ld #-Map System.map
 
 OBJS =	x86.o console.o kernel.o startup.o multiboot.o gdt.o idt.o isr.o irq.o \
-		timer.o kbd.o serial.o delay.o mem.o kheap.o vfs.o initrd.o \
-		task.o sched.o syscall.o sys.o zero.o pipe.o list.o \
+		timer.o kbd.o serial.o delay.o mem.o kheap.o vfs.o \
+		task.o sched.o syscall.o sys.o pipe.o list.o \
 		sysfile.o hd.o hd_queue.o cofs.o \
 		lib/libc.a
 

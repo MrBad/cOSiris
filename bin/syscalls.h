@@ -28,4 +28,7 @@ int chmod(char *filename, int uid, int gid);
 int chown(char *filename, int mode);
 int mkdir(const char *pathname, int mode);
 
+
+void cofs_dump_cache();
+
 #endif

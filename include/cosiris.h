@@ -25,7 +25,7 @@ enum {
 	SYS_CHMOD,
 	SYS_CHOWN,
 	SYS_MKDIR,
-
+	SYS_COFS_DUMP_CACHE,
 };
 
 #endif

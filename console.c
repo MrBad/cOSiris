@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include "console.h"
 #include "kbd.h"
 #include "irq.h"
@@ -140,12 +141,12 @@ void kprintf(char *fmt, ...)
 	va_end(args);
 	serial_write(buf);
 	buf[1023] = 0;
-	// spin_lock(&console_lock);
+	spin_lock(&console_lock);
 	for(i = 0; i < 1024; i++) {
 		if(buf[i]==0) break;
 		console_putc(buf[i]);
 	}
-	// spin_unlock(&console_lock);
+	spin_unlock(&console_lock);
 	// switch_locked = false;
 }
 unsigned int console_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
@@ -241,10 +242,12 @@ unsigned int console_read(fs_node_t *node, unsigned int offset, unsigned int siz
 	return initial_size-size;
 }
 
+#if 0
 static fs_node_t *create_console_device()
 {
-	fs_node_t * n = initrd_new_node();
+	fs_node_t * n = calloc(1, sizeof(fs_node_t));
 	strcpy(n->name, "console");
+	n->inode = 0;
 	n->uid = n->gid = 0;
 	n->mask = 0666;
 	n->flags = FS_CHARDEVICE;
@@ -257,10 +260,20 @@ static fs_node_t *create_console_device()
 	n->size = 1;
 	return n;
 }
+#endif
 
 void console_init()
 {
 	cons_wait_queue = list_open(NULL);
 	irq_install_handler(0x1, console_handler);
-	fs_mount("/dev/console", create_console_device());
+	// fs_mount("/dev/console", create_console_device());
+	fs_node_t *cons = fs_namei("/dev/console");
+	if(!cons) {
+		panic("Cannot find /dev/console\n");
+	}
+	if(!(cons->type & FS_CHARDEVICE)) {
+		panic("/dev/console is not a char device\n");
+	}
+	cons->read = console_read;
+	cons->write = console_write;
 }
