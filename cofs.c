@@ -12,36 +12,26 @@
 #include "list.h"
 #include "vfs.h"
 
-// an in-memory representation of disk inode
-typedef struct minode
-{
-	uint32_t inum;
-	int ref_count;
-	spin_lock_t lock;
-	int flags;
-
-	unsigned short int	type;
-	unsigned short int	major;
-	unsigned short int	minor;
-	unsigned short int	uid;
-	unsigned short int	gid;
-	unsigned short int	num_links;
-	unsigned int atime, mtime, ctime;
-	unsigned int size;
-	unsigned int addrs[NUM_DIRECT + 3];
-} minode_t;
-
-
 struct cofs_superblock superb;
-#define MAX_CACHED_NODES 200
+#define MAX_CACHED_NODES 1000
 #define COFS_ROOT_INUM 1
 
 typedef struct {
 	spin_lock_t lock;
 	list_t *list;
-} cofs_ncache_t;
+} cofs_cache_t;
 
-cofs_ncache_t *cofs_ncache;
+cofs_cache_t *cofs_cache;
+
+
+
+void cofs_open(fs_node_t *node, unsigned int flags);
+void cofs_close(fs_node_t *node);
+unsigned int cofs_read(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer);
+unsigned int cofs_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer);
+fs_node_t *cofs_finddir(fs_node_t *node, char *name);
+struct dirent *cofs_readdir(fs_node_t *node, unsigned int index);
+fs_node_t *cofs_mkdir(fs_node_t *node, char *name, int mode);
 
 
 void get_superblock(cofs_superblock_t *sb)
@@ -109,21 +99,22 @@ void block_free(uint32_t block)
 	put_hd_buf(hdb);
 }
 
+fs_node_t *cofs_get_node(uint32_t inum);
 //	Allocates a free inode on disk
-cofs_inode_t *inode_alloc(unsigned short int type)
+fs_node_t *inode_alloc(unsigned short int type)
 {
 	int ino_num;
 	hd_buf_t *hdb;
 	cofs_inode_t *ino;
 	for(ino_num = 1; ino_num < superb.num_inodes; ino_num++) {
 		hdb = get_hd_buf(INO_BLK(ino_num, superb));
-		ino = (cofs_inode_t*)(hdb->buf + ino_num % NUM_INOPB);
+		ino = (cofs_inode_t*)hdb->buf + ino_num % NUM_INOPB;
 		if(ino->type == 0) { // if type == 0 -> is unalocated
 			memset(ino, 0, sizeof(*ino));
 			ino->type = type;
 			hdb->is_dirty = true;
 			put_hd_buf(hdb);
-			return ino;
+			return cofs_get_node(ino_num);
 		}
 		put_hd_buf(hdb);
 	}
@@ -131,136 +122,154 @@ cofs_inode_t *inode_alloc(unsigned short int type)
 	return NULL;
 }
 
-// copy from memory inode to disk
-void miupdate(minode_t *minode)
+
+
+// update from memory inode on disk //
+void cofs_update_node(fs_node_t *node)
 {
 	cofs_inode_t *ino;
-	hd_buf_t *hdb = get_hd_buf(INO_BLK(minode->inum, superb));
-	ino = (cofs_inode_t*) hdb->buf + minode->inum % NUM_INOPB;
-	ino->type = minode->type;
-	ino->major = minode->major;
-	ino->minor = minode->minor;
-	ino->num_links = minode->num_links;
-	ino->size = minode->size;
-	memcpy(ino->addrs, minode->addrs, sizeof(ino->addrs));
+	hd_buf_t *hdb = get_hd_buf(INO_BLK(node->inode, superb));
+	ino = (cofs_inode_t *) hdb->buf + node->inode % NUM_INOPB;
+	ino->type = node->type;
+	ino->type = node->type;
+	ino->uid = node->uid;
+	ino->gid = node->gid;
+	ino->num_links = node->num_links;
+	ino->atime = node->atime;
+	ino->ctime = node->ctime;
+	ino->mtime = node->mtime;
+	ino->size = node->size;
+	memcpy(ino->addrs, node->addrs, sizeof(ino->addrs));
 	hdb->is_dirty = true;
 	put_hd_buf(hdb);
 }
 
-//
-//	find the inode inum on disk and returns an cached fs_node
-//
-minode_t *get_minode(uint32_t inum)
+//	finds the inode inum and returns a cached fs_node
+// 	does not retrieve the inode from disk - lock does that
+fs_node_t *cofs_get_node(uint32_t inum)
 {
 	node_t *n;
-	minode_t *minode, *free_minode=NULL;
+	fs_node_t *node, *free_node=NULL;
+	spin_lock(&cofs_cache->lock);
+	for(n = cofs_cache->list->head; n; n = n->next) {
+		 node = (fs_node_t *)n->data;
+		 if(node->inode == inum) {
+			 spin_unlock(&cofs_cache->lock);
+			 return node;
+		 }
+		 if(node->ref_count == 0) { // unused by any process
+			 free_node = node;
+		 }
+	}
+	if(!free_node) {
+		if(cofs_cache->list->num_items >= MAX_CACHED_NODES) {
+			kprintf("cofs_get_node - MAX_CACHED_NODES limit\n");
+			return NULL;
+		}
+		free_node = malloc(sizeof(fs_node_t));
+		list_add(cofs_cache->list, free_node);
+	}
+	memset(free_node, 0, sizeof(*free_node));
+	node = free_node;
+	node->inode = inum;
+	node->ref_count = 1;
+	// ops //
+	node->open = cofs_open;
+	node->close = cofs_close;
+	node->read = cofs_read;
+	node->write = cofs_write;
+	node->finddir = cofs_finddir;
+	node->readdir = cofs_readdir;
+	node->mkdir = cofs_mkdir;
 
-	spin_lock(&cofs_ncache->lock);
-	for(n = cofs_ncache->list->head; n; n = n->next) {
-		minode = (minode_t*)n->data;
-		if(minode->inum == inum) {
-			spin_unlock(&cofs_ncache->lock);
-			return minode;
-		}
-		if(!free_minode && minode->type == 0) {
-			free_minode = minode; // save it //
-		}
-	}
-	if(!free_minode) {
-		if(cofs_ncache->list->num_items >= MAX_CACHED_NODES) {
-			panic("cached nodes reached MAX_CACHED_NODES %d\n", MAX_CACHED_NODES);
-		}
-		free_minode = calloc(1, sizeof(minode_t));
-		list_add(cofs_ncache->list, free_minode);
-	}
-	minode = free_minode;
-	minode->inum = inum;
-	minode->ref_count=1;
-	minode->flags = 0;
-	kprintf("%d\n", cofs_ncache->list->num_items);
-	spin_unlock(&cofs_ncache->lock);
-	return minode;
+	spin_unlock(&cofs_cache->lock);
+	return node;
 }
 
-minode_t midup(minode_t *minode){}
-void mitrunc(minode_t *minode){}
-
-// locks the inode
-// gets it from disk if necessary
-void milock(minode_t *minode)
+fs_node_t *cofs_dup(fs_node_t *node)
 {
-	if(minode == NULL || minode->ref_count == 0) {
-		panic("milock - no minode");
-	}
-	spin_lock(&minode->lock);
-	if(minode->flags == 0) {
-		hd_buf_t *hdb = get_hd_buf(INO_BLK(minode->inum, superb));
-		cofs_inode_t *ino = (cofs_inode_t*)hdb->buf + minode->inum % NUM_INOPB;
-		kprintf("inode size %d\n", ino->size);
-		minode->type = ino->type;
-		minode->major = ino->major;
-		minode->minor = ino->minor;
-		minode->uid = ino->uid;
-		minode->gid = ino->gid;
-		minode->num_links = ino->num_links;
-		minode->atime = ino->atime;
-		minode->ctime = ino->ctime;
-		minode->mtime = ino->mtime;
-		minode->size = ino->size;
-		memcpy(minode->addrs, ino->addrs, sizeof(minode->addrs));
-		put_hd_buf(hdb);
-		minode->flags = 1;
-		if(minode->type == 0) {
-			panic("minode type\n");
-		}
-	}
+	spin_lock(&cofs_cache->lock);
+	node->ref_count++;
+	spin_unlock(&cofs_cache->lock);
+	return node;
 }
-void miunlock(minode_t *minode)
+
+//locks the inode,
+//gets data to it from disk if needed
+void cofs_lock(fs_node_t *node)
 {
-	if(minode==NULL||minode->lock!=1||minode->ref_count<0) {
-		panic("miunlock");
+
+	hd_buf_t *hdb;
+	if(node == NULL||node->ref_count == 0) {
+		panic("cofs_lock - no node");
 	}
-	spin_unlock(&minode->lock);
+	spin_lock(&node->lock);
+	hdb = get_hd_buf(INO_BLK(node->inode, superb));
+	cofs_inode_t *ino = (cofs_inode_t*) hdb->buf + node->inode % NUM_INOPB;
+	node->type = node->flags = ino->type;
+	node->uid = ino->uid;
+	node->gid = ino->gid;
+	node->num_links = ino->num_links;
+	node->atime = ino->atime;
+	node->ctime = ino->ctime;
+	node->mtime = ino->mtime;
+	node->size = ino->size;
+	node->addrs = calloc(1, sizeof(ino->addrs));
+	memcpy(node->addrs, ino->addrs, sizeof(ino->addrs));
+	put_hd_buf(hdb);
+	if(node->type == 0) {
+		panic("cofs_lock - node type is 0");
+	}
 }
 
-void miput(minode_t *minode)
+void cofs_unlock(fs_node_t *node)
 {
-	spin_lock(&cofs_ncache->lock);
-	if(minode->ref_count==1 && minode->flags&1 && minode->num_links==0) {
-		spin_unlock(&cofs_ncache->lock);
-		mitrunc(minode);
-		minode->type=0;
-		miupdate(minode);
-		spin_lock(&cofs_ncache->lock);
-		minode->flags=0;
+	if(node==NULL || node->lock!=1 || node->ref_count < 0) {
+		panic("cofs_unlock()");
 	}
-	spin_unlock(&cofs_ncache->lock);
+	spin_unlock(&node->lock);
 }
 
+// truncate the node //
+void cofs_trunc(node){}
 
+// release the node - if no num_links -> truncate it //
+void cofs_put_node(fs_node_t *node)
+{
+	spin_lock(&cofs_cache->lock);
+	if(node->ref_count==1 && node->type > 0 && node->num_links == 0) {
+		spin_unlock(&cofs_cache->lock);
+		cofs_trunc(node);
+		node->type = 0;
+		cofs_update_node(node);
+		spin_lock(&cofs_cache->lock);
+	}
+	node->ref_count--;
+	spin_unlock(&cofs_cache->lock);
+}
 
 //
 //	 fbn - file block number 0,1,2...
 //	return disk block address of nth block in inode ino
 //	if there is no such block, it allocates one
 //
-uint32_t block_map(minode_t *minode, uint32_t fbn)
+uint32_t block_map(fs_node_t *node, uint32_t fbn)
 {
 	hd_buf_t *hdb;
 	uint32_t addr;
 
 	if(fbn < NUM_DIRECT) {
-		if(minode->addrs[fbn] == 0) {
-			minode->addrs[fbn] = block_alloc();
+		if(node->addrs[fbn] == 0) {
+			node->addrs[fbn] = block_alloc();
 		}
-		return minode->addrs[fbn];
+		return node->addrs[fbn];
 	}
 	else if(fbn < NUM_DIRECT+NUM_SIND) {
 		// kprintf("indirect\n");
-		if(minode->addrs[SIND_IDX] == 0) {
-			minode->addrs[SIND_IDX] = block_alloc();
+		if(node->addrs[SIND_IDX] == 0) {
+			node->addrs[SIND_IDX] = block_alloc();
 		}
-		hdb = get_hd_buf(minode->addrs[SIND_IDX]);
+		hdb = get_hd_buf(node->addrs[SIND_IDX]);
 		if(((uint32_t *)hdb->buf)[fbn-NUM_DIRECT] == 0) {
 			((uint32_t *)hdb->buf)[fbn-NUM_DIRECT] = block_alloc();
 			hdb->is_dirty = true;
@@ -273,7 +282,7 @@ uint32_t block_map(minode_t *minode, uint32_t fbn)
 		// kprintf("double indirect\n");
 		uint32_t midx = (fbn-NUM_DIRECT-NUM_SIND) / NUM_SIND;
 		uint32_t sidx = (fbn-NUM_DIRECT-NUM_SIND) % NUM_SIND;
-		hdb = get_hd_buf(minode->addrs[DIND_IDX]);
+		hdb = get_hd_buf(node->addrs[DIND_IDX]);
 		if(((uint32_t*)hdb->buf)[midx] == 0) {
 			((uint32_t*)hdb->buf)[midx] = block_alloc();
 			hdb->is_dirty = true;
@@ -293,45 +302,145 @@ uint32_t block_map(minode_t *minode, uint32_t fbn)
 	return 0;
 }
 
-void minode_trunc(minode_t *minode)
-{
-	uint32_t fbn = minode->size % BLOCK_SIZE;
-	uint32_t i;
-	fbn++;
-	for(i=0; i<fbn; i++) {
-		kprintf("free block %d\n", fbn);
-	}
-}
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
-int miread(minode_t *minode, char *dest, uint32_t offset, uint32_t size)
+unsigned int cofs_read(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
 {
-	uint32_t tot, m;
-  	hd_buf_t *hdb;
-	// f(ip->type == T_DEV){
-	//   if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].read)
-	//     return -1;
-	//   return devsw[ip->major].read(ip, dst, n);
-	// }
-	if(offset > minode->size || offset + size < offset)
-		return -1;
-
-	if(offset + size > minode->size)
-		size = minode->size - offset;
-
-	for(tot=0; tot < size; tot+=m, offset+=m, dest+=m) {
-	// kprintf("mIREAD: $%d\n", block_map(minode, offset/BLOCK_SIZE));
-		hdb = get_hd_buf(block_map(minode, offset/BLOCK_SIZE));
-		m = min(size - tot, BLOCK_SIZE - offset % BLOCK_SIZE);
-		memcpy(dest, hdb->buf + offset % BLOCK_SIZE, m);
+	hd_buf_t *hdb;
+	if(offset > node->size) {
+		return 0;
+	}
+	if(offset + size > node->size) {
+		size = node->size - offset;
+	}
+	unsigned int total, num_bytes;
+	for(total = 0; total < size; total += num_bytes) {
+		hdb = get_hd_buf(block_map(node, offset / BLOCK_SIZE));
+		num_bytes = min(size - total, BLOCK_SIZE - offset % BLOCK_SIZE);
+		memcpy(buffer, hdb->buf + offset % BLOCK_SIZE, num_bytes);
+		offset += num_bytes;
+		buffer += num_bytes;
 		put_hd_buf(hdb);
+	}
+	return size;
+}
+unsigned int cofs_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
+{
+	hd_buf_t *hdb;
+	kprintf("cofs_write: %d\n", node->inode);
+	if(offset > node->size) {
+		return 0;
+	}
+	if(offset + size > MAX_FILE_SIZE*BLOCK_SIZE) {
+		return 0;
+	}
+	unsigned int total, num_bytes = 0;
+	for(total = 0; total < size; total += num_bytes) {
+		hdb = get_hd_buf(block_map(node, offset / BLOCK_SIZE));
+    	num_bytes = min(size - total, BLOCK_SIZE - offset % BLOCK_SIZE);
+		memcpy(hdb->buf + offset % BLOCK_SIZE, buffer, num_bytes);
+    	hdb->is_dirty=true;
+	    put_hd_buf(hdb);
+  	}
+	kprintf("node_size: %d, offset now: %d new_size: %d, nub:%d\n", node->size, offset, size, num_bytes);
+	if(size > 0 && offset > node->size) {
+		kprintf("update node\n");
+	  	node->size = offset;
+		cofs_update_node(node);
 	}
 	return size;
 }
 
 
+void cofs_open(fs_node_t *node, unsigned int flags) {
 
-int cofs_init()
+}
+void cofs_close(fs_node_t *node) {
+
+}
+
+fs_node_t *cofs_finddir(fs_node_t *node, char *name)
+{
+	// kprintf("finddir: %s in node: %s\n", name, node->name);
+	KASSERT(node->type & FS_DIRECTORY);
+	cofs_dirent_t dir;
+	int n, offs = 0, inum = 0;
+	fs_node_t *new_node;
+
+
+	while((n = cofs_read(node, offs, sizeof(dir), (char *)&dir)) > 0) {
+		if(strcmp(dir.name, name) == 0) {
+			inum = dir.inode;
+			break;
+		}
+		offs += n;
+	}
+
+	if(inum == 0) {
+		// kprintf("cannot find: %s in %s\n", name, node->name);
+		return NULL;
+	}
+	new_node = cofs_get_node(inum);
+	strncpy(new_node->name, name, sizeof(new_node->name));
+	cofs_dup(new_node);
+	return new_node;
+}
+
+extern struct dirent dirent;
+struct dirent *cofs_readdir(fs_node_t *node, unsigned int index)
+{
+	cofs_lock(node);
+	unsigned int n, offs;
+	cofs_dirent_t dir;
+	offs = index * sizeof(cofs_dirent_t);
+	if((n = cofs_read(node, offs, sizeof(dir), (char *)&dir)) > 0) {
+		strncpy(dirent.name, dir.name, sizeof(dirent.name));
+		dirent.name[strlen(dir.name)] = 0;
+		dirent.inode = dir.inode;
+	}
+	cofs_unlock(node);
+	return &dirent;
+}
+
+int cofs_dirlink(fs_node_t *node, char *name, unsigned int inum) {
+	fs_node_t *n;
+	if((n = cofs_finddir(node, name))!= NULL) {
+		cofs_put_node(n);
+		return -1;
+	}
+	int num_bytes;
+	cofs_dirent_t dir = {0};
+	unsigned int offs = 0;
+ 	while((num_bytes = cofs_read(node, offs, sizeof(dir), (char *)&dir)) > 0) {
+		if(dir.inode == 0) {
+			break;
+		}
+		offs += num_bytes;
+	}
+	strncpy(dir.name, name, sizeof(dir.name));
+	dir.inode = inum;
+	if((cofs_write(node, offs, sizeof(dir), (char *)&dir)) != sizeof(dir)) {
+		panic("cofs_dirlink");
+	}
+	return 0;
+}
+
+fs_node_t * cofs_mkdir(fs_node_t *node, char *name, int mode) {
+	kprintf("mkdir: %d\n", node->inode);
+	fs_node_t *n;
+	if((n = cofs_finddir(node, name))!= NULL) {
+		cofs_put_node(n);
+		return NULL;
+	}
+	fs_node_t *new_file = inode_alloc(FS_DIRECTORY);
+	new_file->mask = mode; // and mask?! //
+	cofs_lock(node);
+	cofs_dirlink(node, name, new_file->inode);
+	cofs_unlock(node);
+	return new_file;
+}
+
+fs_node_t *cofs_init()
 {
 	KASSERT(BLOCK_SIZE % sizeof(struct cofs_inode) == 0);
 	kprintf("sizeof inode: %d\n",sizeof(cofs_inode_t));
@@ -343,49 +452,57 @@ int cofs_init()
 	}
 	kprintf("size: %d, data: %d, num_inodes:%d, bitmap_start: %d, ino_start: %d\n", superb.size, superb.num_blocks, superb.num_inodes,
 		superb.bitmap_start, superb.inode_start);
-	// kprintf("Max file size: %d KB\n", MAX_FILE_SIZE * 512 / 1024);
+	kprintf("Max file size: %d KB\n", MAX_FILE_SIZE * 512 / 1024);
 
-	cofs_ncache = calloc(1, sizeof(cofs_ncache_t));
-	cofs_ncache->list = list_open(NULL);
+	cofs_cache = calloc(1, sizeof(*cofs_cache));
+	cofs_cache->list = list_open(NULL);
 
 	int i, offs=0;
-
-	minode_t *m;
-	m = get_minode(1);
-	milock(m);
-	if(m->type != FS_DIRECTORY) {
+	fs_node_t *node;
+	node = cofs_get_node(1);
+	cofs_lock(node);
+	if(node->type != FS_DIRECTORY) {
 		panic("root");
 	}
+
+	strcpy(node->name, "/");
+	//fs_node_t *new_file = inode_alloc(FS_FILE);
+	//kprintf("Inode: %d\n", new_file->inode);
+	//cofs_dirlink(node, "testing4", new_file->inode);
+	cofs_mkdir(node, "blah", 0755);
 	cofs_dirent_t dir;
-	while((i = miread(m, (char *)&dir, offs, sizeof(dir))) > 0) {
-		kprintf("---[%d\t%s\n", dir.inode, dir.name);
+	// while((i = cofs_read(node, (char *)&dir, offs, sizeof(dir))) > 0) {
+	while((i = cofs_read(node, offs, sizeof(dir), (char *)&dir)) > 0) {
+		// kprintf("---[%d\t%s\n", dir.inode, dir.name);
 		if(!dir.inode) break;
 		offs += i;
 	}
-	kprintf("---OK\n");
-	miunlock(m);
-	miput(m);
-	char buf[4096];
+	cofs_unlock(node);
+	cofs_put_node(node);
+
 	offs = 0;
-	m = get_minode(6);
-	milock(m);
-	kprintf("size: %d\n", m->size);
-	while((i = miread(m, buf, offs, 4096)) > 0) {
-		kprintf(">%d %d\t", i, offs);
+	while((i = cofs_read(node, offs, sizeof(dir), (char *)&dir)) > 0) {
+		if(!dir.inode) break;
+		kprintf("-[%d    %s\n", dir.inode, dir.name);
 		offs += i;
 	}
-	miunlock(m);
-	miput(m);
-	kprintf("OK");
-while(1);
+	kprintf("---OK, %p\n", node->finddir);
 
-	// while((i = miread(m, buf, offs, sizeof(buf)-1)) > 0) {
-		// kprintf("read %d from %d\n", i, m->size);
-		// offs += i;
+while (1) {sti();hlt();}
+	// char buf[128];
+	// offs = 0;
+	// node = cofs_get_node(7);
+	// cofs_lock(node);
+	// kprintf("size: %d\n", node->size);
+	// while((i = cofs_read(node, offs, 127, buf)) > 0) {
+	// 	buf[i] = 0;
+	// 	kprintf("%s", buf);
+	// 	offs += i;
 	// }
-
-	// miunlock(m);
-	// miput(m);
-	//while (1);
-	return 0;
+	// cofs_unlock(node);
+	// cofs_put_node(node);
+	// kprintf("OK\n");
+	cofs_dup(node);
+kprintf("refs: %d\n", node->ref_count);
+	return node;
 }

@@ -171,8 +171,11 @@ task_t *fork_inner()
 			continue;
 		}
 		t->files[fd] = calloc(1, sizeof(struct file));
+		if(!current_task->files[fd]->fs_node)
+			panic("task fork: pid: %d, fd: %d fs_node does not exists\n", current_task->pid, fd);
 		t->files[fd]->fs_node = current_task->files[fd]->fs_node;
 		t->files[fd]->offs = current_task->files[fd]->offs;
+		kprintf("xxx");
 		current_task->files[fd]->fs_node->ref_count++;
 	}
 	t->num_files = current_task->num_files;
@@ -345,12 +348,12 @@ void task_exec(char *path, char **argv)
 		panic("Cannot find %s\n", path);
 	} else {
 		kprintf("Loading %s, inode:%d, at address %p, length:%d\n", fs_node->name,
-				fs_node->inode, USER_CODE_START_ADDR, fs_node->length);
+				fs_node->inode, USER_CODE_START_ADDR, fs_node->size);
 	}
 	unsigned int i;
 	if(current_task->name) free(current_task->name);
 	current_task->name = strdup(fs_node->name);
-	unsigned int num_pages = (fs_node->length / PAGE_SIZE) + 1;
+	unsigned int num_pages = (fs_node->size / PAGE_SIZE) + 1;
 	for(i = 0; i < num_pages; i++) {
 		map(USER_CODE_START_ADDR + (PAGE_SIZE*i), (unsigned int)frame_alloc(),
 				P_PRESENT | P_READ_WRITE | P_USER);
@@ -365,7 +368,7 @@ void task_exec(char *path, char **argv)
 	unsigned int offset = 0, size = 0;
 	char *buff = (char *)USER_CODE_START_ADDR;
 	do {
-		size = fs_read(fs_node, offset, fs_node->length, buff);
+		size = fs_read(fs_node, offset, fs_node->size, buff);
 		offset += size;
 	} while(size > 0);
 

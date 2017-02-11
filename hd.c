@@ -1,5 +1,8 @@
 //
 //	Hard disk low level functions - PIO mode
+//		I will not use interrupts for now, because of some strange errors on qemu
+//			Anyway, maybe i will rewrite this for using DMA later,
+//			performance is not important on this point
 //
 #include <sys/types.h>
 #include <stdlib.h>

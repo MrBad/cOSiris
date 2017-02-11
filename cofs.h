@@ -4,7 +4,7 @@
 #ifndef _COFS_H
 #define _COFS_H
 
-// #include "vfs.h"
+#include "vfs.h"
 
 #define COFS_MAGIC 0xC0517155	// cosiris magic number
 
@@ -60,7 +60,7 @@ struct cofs_dirent {
 };
 typedef struct cofs_dirent cofs_dirent_t;
 
-int cofs_init();
+fs_node_t *cofs_init();
 //
 // void cofs_open(fs_node_t *node, unsigned int flags);
 // void cofs_close(fs_node_t *node);

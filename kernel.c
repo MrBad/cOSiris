@@ -72,20 +72,16 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 
 	kprintf("Setup paging\n");
 	mem_init(mboot);
-	fs_root = initrd_init(initrd_location);
+	// fs_root = initrd_init(initrd_location);
+
+	fs_root = cofs_init();
 
 	zero_init();
 	console_init();
 	task_init();
 	syscall_init();
+	sys_exec("/init", NULL);
 
-	// hd_queue_init();
-	// if(fork()==0) {
-		cofs_init();
-		// task_exit(0);
-	// }
-
-	// sys_exec("/init", NULL);
 	// ps();
 	kprintf("Should not get here\n");
 	return;

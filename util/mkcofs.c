@@ -259,6 +259,14 @@ int main(int argc, char *argv[])
 	strcpy(dir.name, "..");
 	inode_append(root_inode, &dir, sizeof(dir));
 
+	// dev directory //
+	int dev_inode = inode_alloc(FS_DIRECTORY);
+	memset(&dir, 0,sizeof(struct cofs_dirent));
+	dir.inode = dev_inode;
+	strcpy(dir.name, "dev");
+	inode_append(root_inode, &dir, sizeof(dir));
+
+
 	int fd, inode_num, num_bytes;
 	for(i = 2; i < (unsigned int)argc; i++) {
 		if((fd = open(argv[i], O_RDONLY)) < 0) {

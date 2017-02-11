@@ -44,10 +44,12 @@ struct dirent *fs_readdir(fs_node_t *node, unsigned int index)
 fs_node_t *fs_finddir(fs_node_t *node, char *name)
 {
 	// Is the node a directory, and does it have a callback?
-	if ((node->flags & FS_DIRECTORY) && node->finddir != 0)
+	if ((node->flags & FS_DIRECTORY) && node->finddir != 0) {
 		return node->finddir(node, name);
-	else
+	} else {
+		// kprintf("finddir not found for node: %d\n", node->inode);
 		return false;
+	}
 }
 
 
@@ -73,7 +75,6 @@ fs_node_t *fs_namei(char *path)
 	fs_node_t *node = NULL;
 	KASSERT(*path);
 	KASSERT(*path == '/');
-
 	char *p; int len = strlen(path);
 	if(len == 1) {
 		return fs_root;
@@ -104,6 +105,7 @@ fs_node_t *fs_namei(char *path)
 // needs more testing -> for now will only mount /dev/ files
 int fs_mount(char *path, fs_node_t *node)
 {
+
 	KASSERT(*path);
 	KASSERT(*path == '/');
 	fs_node_t *n;

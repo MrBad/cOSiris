@@ -115,7 +115,6 @@ struct fs_node *initrd_add_node(struct fs_node *node)
 
 	allocated_nodes *= 2;
 
-
 	struct fs_node *n = &root_nodes[nroot_nodes];
 	strcpy(n->name, node->name);
 	n->mask = node->mask;
@@ -123,7 +122,7 @@ struct fs_node *initrd_add_node(struct fs_node *node)
 	n->gid = node->gid;
 	n->flags = node->flags;
 	n->inode = nroot_nodes;
-	n->length = node->length;
+	n->size = node->size;
 	n->impl = node->impl;
 	n->parent_inode = node->parent_inode;
 	n->next = node->next;
@@ -146,7 +145,7 @@ struct fs_node * initrd_mkdir(struct fs_node *parent_node, char *name, unsigned 
 	n->uid = current_task->uid;
 	n->gid = current_task->gid;
 	n->flags = FS_DIRECTORY;
-	n->length = 0;
+	n->size = 0;
 	n->impl = 0;
 	n->parent_inode = parent_node->inode;
 	n->next = 0;
@@ -179,7 +178,7 @@ fs_node_t *initrd_init(unsigned int location)
 	// initialise the root node
 	initrd_root = (fs_node_t *) calloc(1, sizeof(fs_node_t));
 	strcpy(initrd_root->name, "/");
-	initrd_root->mask = initrd_root->uid = initrd_root->gid = initrd_root->length = initrd_root->inode = 0;
+	initrd_root->mask = initrd_root->uid = initrd_root->gid = initrd_root->size = initrd_root->inode = 0;
 	initrd_root->flags = FS_DIRECTORY;
 	initrd_root->read = 0;
 	initrd_root->write = 0;
@@ -206,7 +205,7 @@ fs_node_t *initrd_init(unsigned int location)
 		// kprintf("^%i, %p, %p\n", i, file_headers[i].offset, location);
 		strcpy(root_nodes[i].name, file_headers[i].name);
 		root_nodes[i].mask = root_nodes[i].uid = root_nodes[i].gid = root_nodes[i].parent_inode = 0;
-		root_nodes[i].length = file_headers[i].length;
+		root_nodes[i].size = file_headers[i].length;
 		root_nodes[i].inode = i;
 		root_nodes[i].flags = FS_FILE;
 		root_nodes[i].read = &initrd_read;

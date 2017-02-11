@@ -4,16 +4,16 @@
 #ifndef _VFS_H
 #define _VFS_H
 
-#include "x86.h"
+// #include "x86.h"
 
-#define FS_FILE        0x01
-#define FS_DIRECTORY   0x02
-#define FS_CHARDEVICE  0x04
-#define FS_BLOCKDEVICE 0x08
-#define FS_PIPE        0x10
-#define FS_SYMLINK     0x20
-#define FS_MOUNTPOINT  0x40 // Is the file an active mountpoint?
-
+#define FS_FILE			0x01
+#define FS_DIRECTORY	0x02
+#define FS_CHARDEVICE 	0x04
+#define FS_BLOCKDEVICE	0x08
+#define FS_PIPE			0x10
+#define FS_SYMLINK		0x20
+#define FS_MOUNTPOINT	0x40 // Is the file an active mountpoint?
+#define FS_VALID		0x80
 
 struct fs_node;
 
@@ -33,14 +33,19 @@ typedef struct fs_node {
 	unsigned int flags;			// loose ambiguous flags
 	unsigned short int type;
 	unsigned int inode;
-	unsigned int length;
-	unsigned int ref_count;		// number of threads who open this file
-	unsigned int impl;      	// implementation defined number
-
+	unsigned int size;
+	int ref_count;				// number of threads who open this file
+	unsigned int num_links;		// number of files linking to this (links or directory)
+	unsigned int atime, ctime, mtime;
+	unsigned int *addrs;
+	int impl;
 	unsigned int parent_inode;	// Who's my parent directory
 								// This info should go outside inode in future
 	struct fs_node *next;		// pointer to the next node in list
-	spin_lock_t lock;
+	unsigned int lock;
+
+
+
 	read_type_t read;
 	write_type_t write;
 	open_type_t open;
@@ -71,7 +76,6 @@ unsigned int fs_write(fs_node_t *node, unsigned int offset, unsigned int size, c
 fs_node_t *fs_finddir(fs_node_t *node, char *name);
 struct dirent *fs_readdir(fs_node_t *node, unsigned int index);
 fs_node_t * fs_mkdir(fs_node_t *node, char *name, int mode);
-
 fs_node_t *fs_namei(char *path);
 int fs_open_namei(char *path, int flag, int mode, fs_node_t **node);
 

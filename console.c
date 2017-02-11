@@ -142,7 +142,7 @@ void kprintf(char *fmt, ...)
 	buf[1023] = 0;
 	// spin_lock(&console_lock);
 	for(i = 0; i < 1024; i++) {
-		if(! buf[i]) break;
+		if(buf[i]==0) break;
 		console_putc(buf[i]);
 	}
 	// spin_unlock(&console_lock);
@@ -196,12 +196,14 @@ void console_handler()
 		if(c == '\n' || kbd_buff.e == kbd_buff.r + KBD_BUFF_SIZE) {
 			kbd_buff.w = kbd_buff.e;
 			chr_count=0;
-			node_t *n; // waking up procs waiting on read //
-			for(n = cons_wait_queue->head; n; n = n->next) {
-				// kprintf("waking up: %d\n", ((task_t *)n->data)->pid);
-				((task_t *)n->data)->state = TASK_READY;
-				list_del(cons_wait_queue, n);
-			}
+			wakeup(&kbd_buff);
+			// node_t *n; // waking up procs waiting on read //
+			// for(n = cons_wait_queue->head; n; n = n->next) {
+			// 	if(!n) break;
+			// 	// kprintf("waking up: %d\n", ((task_t *)n->data)->pid);
+			// 	((task_t *)n->data)->state = TASK_READY;
+			// 	list_del(cons_wait_queue, n);
+			// }
 		}
 	}
 	// outb(0x20, 0x20);
@@ -223,9 +225,10 @@ unsigned int console_read(fs_node_t *node, unsigned int offset, unsigned int siz
 			}
 			if(current_task->state == TASK_READY) {
 				// serial_debug("Nothing to read, going to sleep: %d\n", current_task->pid);
-				list_add(cons_wait_queue, current_task);
-				current_task->state = TASK_SLEEPING;
-				task_switch();
+				sleep_on(&kbd_buff);
+				//list_add(cons_wait_queue, current_task);
+				//current_task->state = TASK_SLEEPING;
+				//task_switch();
 			}
 		}
 
@@ -251,7 +254,7 @@ static fs_node_t *create_console_device()
 	n->close = 0;
 	n->readdir = 0;
 	n->finddir = 0;
-	n->length = 1;
+	n->size = 1;
 	return n;
 }
 

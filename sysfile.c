@@ -42,7 +42,7 @@ int sys_exec(char *path, char *argv[])
 	current_task->name = strdup(fs_node->name);
 
 	// map if program needs more pages //
-	unsigned int num_pages = (fs_node->length / PAGE_SIZE) + 1;
+	unsigned int num_pages = (fs_node->size / PAGE_SIZE) + 1;
 	for(i = 0; i < num_pages; i++) {
 		virt_t page = USER_CODE_START_ADDR + PAGE_SIZE * i;
 		if(!is_mapped(page)) {
@@ -63,14 +63,14 @@ int sys_exec(char *path, char *argv[])
 	unsigned int offset = 0, size = 0;
 	char *buff = (char *)USER_CODE_START_ADDR;
 	do {
-		size = fs_read(fs_node, offset, fs_node->length, buff);
+		size = fs_read(fs_node, offset, fs_node->size, buff);
 		offset += size;
 	} while(size > 0);
 
 	// after mapped num_pages, we have some free mem - let's use it for passing arguments //
 	// maibe in future we will use stack instead of this, pushing strings into it //
 	void *free_mem_start = (void *) buff+offset;
-	unsigned int free_mem_size = num_pages*PAGE_SIZE-fs_node->length;
+	unsigned int free_mem_size = num_pages*PAGE_SIZE-fs_node->size;
 	// zero the rest of alloc space //
 	memset(buff+offset, 0, free_mem_size);
 	// kprintf("Free mem starts at: %p, size: %d, needed_mem: %d\n", free_mem_start, free_mem_size, needed_mem);
@@ -223,8 +223,8 @@ int sys_read(int fd, void *buf, size_t count)
 		return -1;
 	}
 	// EOF ? //
-	if(f->offs >= f->fs_node->length && f->fs_node->flags != FS_CHARDEVICE) {
-		// serial_debug("eof on file: fd: %d, %s, offs: %d length: %d\n", fd, f->fs_node->name, f->offs, f->fs_node->length);
+	if(f->offs >= f->fs_node->size && f->fs_node->flags != FS_CHARDEVICE) {
+		// serial_debug("eof on file: fd: %d, %s, offs: %d size: %d\n", fd, f->fs_node->name, f->offs, f->fs_node->size);
 		return 0; // at EOF
 	}
 	unsigned int bytes = fs_read(f->fs_node, f->offs, count, buf);
