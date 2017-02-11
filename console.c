@@ -15,7 +15,7 @@
 #define CRTC_PORT	0x3D4
 #define SCR_COLS	80
 #define SCR_ROWS	24
-#define TAB_SPACES	4
+#define TAB_SPACES	8
 #define BACKSPACE	0x100
 
 static uint16_t * vid_mem = (uint16_t *)VID_ADDR;
@@ -96,7 +96,7 @@ static void console_putc(char c)
 	} else if(c == '\b') {
 		vid_mem[--pos] = ' ' | attr;
 	} else if(c == '\t') {
-		int i = pos % TAB_SPACES;
+		int i = pos % TAB_SPACES == 0 ? TAB_SPACES : TAB_SPACES - (pos % TAB_SPACES);
 		while(i-- > 0) vid_mem[pos++] = ' ' | attr;
 	} else if(c == BACKSPACE) {
 		if(pos > 0) --pos;
