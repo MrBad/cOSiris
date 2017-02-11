@@ -13,7 +13,7 @@
 #include "vfs.h"
 
 struct cofs_superblock superb;
-#define MAX_CACHED_NODES 1000
+#define MAX_CACHED_NODES 100
 #define COFS_ROOT_INUM 1
 
 typedef struct {
@@ -200,12 +200,12 @@ fs_node_t *cofs_dup(fs_node_t *node)
 void cofs_lock(fs_node_t *node)
 {
 	hd_buf_t *hdb;
-	if(node == NULL||node->ref_count == 0) {
-		if(node == NULL)
-			panic("cofs_lock - no node\n");
-		else
-			panic("ref_count for node %s is %d\n", node->name, node->ref_count);
-	}
+
+	if(node == NULL)
+		panic("cofs_lock - no node\n");
+	if(node->ref_count == 0)
+		panic("ref_count for node %s is %d\n", node->name, node->ref_count);
+
 	spin_lock(&node->lock);
 	if(node->type == 0) {
 		//kprintf("geting from disk: %d\n", node->inode);
@@ -382,7 +382,7 @@ void cofs_close(fs_node_t *node) {
 fs_node_t *cofs_finddir(fs_node_t *node, char *name)
 {
 	if(!(node->type & FS_DIRECTORY)) {
-		panic("In search for %s - node: %s is not a directory\n", name, node->name);
+		panic("cofs_finddir() In search for %s - node: %s is not a directory\n", name, node->name);
 	}
 
 	cofs_dirent_t dir;
@@ -543,6 +543,9 @@ fs_node_t *cofs_init()
 		console = inode_alloc(FS_CHARDEVICE);
 		cofs_dirlink(dev, "console", console->inode);
 	}
+	cofs_put_node(dev);
+	cofs_put_node(console);
+
 	kprintf("dev: %d\n", dev->size);
 	return root;
 }

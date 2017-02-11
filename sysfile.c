@@ -100,6 +100,7 @@ int sys_exec(char *path, char *argv[])
 	stack--;
 	*stack = argc; // push argc into stack
 	// kprintf("sys_exec(%s, %d params), stack: %p\n", fs_node->name, argc, stack);
+	fs_close(fs_node);
 	switch_to_user_mode(USER_CODE_START_ADDR, (uint32_t)stack);
 
 	return 0;
@@ -178,11 +179,13 @@ static void populate_stat_buf(fs_node_t *fs_node, struct stat *buf)
 	buf->st_dev = 0;									// the device id where it reside
 	buf->st_ino = fs_node->inode;
 	buf->st_mode = fs_node->flags;
-	buf->st_nlink = 0;									// not implemented yet -> number of links
+	buf->st_nlink = fs_node->num_links;					// not implemented yet -> number of links
 	buf->st_uid = fs_node->uid;
 	buf->st_gid = fs_node->gid;
 	buf->st_rdev = 0;									// the device id of..?!
-	buf->st_atime = buf->st_mtime = buf->st_ctime = 0;	// not available yet;
+	buf->st_atime = fs_node->atime;
+	buf->st_mtime = buf->st_mtime;
+	buf->st_ctime = buf->st_ctime;
 }
 
 int sys_stat(char *path, struct stat *buf)

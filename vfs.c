@@ -88,6 +88,10 @@ fs_node_t *fs_namei(char *path)
 	p = str;
 	while(len > 0) {
 		if(*p) {
+			if(node) {
+				// kprintf("fs_namei - open %s, ref: %d, len: %d\n", node->name, node->ref_count, len);
+				node->ref_count--;
+			}
 			if(!(node = fs_finddir(node ? node : fs_root, p))) {
 				break;
 			}
@@ -180,6 +184,6 @@ void lstree(fs_node_t *parent, int level)
 		if(file->flags & FS_DIRECTORY) {
 			lstree(file, level+1);
 		}
-		cofs_put_node(file);
+		file->ref_count--;
 	}
 }

@@ -28,7 +28,7 @@ void print_int(int x)
 
 task_t *task_new()
 {
-	unsigned int i;
+	// unsigned int i;
 	task_t *t = (task_t *) calloc(1, sizeof(task_t));
 	t->pid = next_pid++;
 	// t->tss_kernel_stack = (unsigned int *)KERNEL_STACK_HI;//malloc_page_aligned(PAGE_SIZE);
@@ -41,14 +41,16 @@ task_t *task_new()
 	t->heap = h;
 	t->name = NULL;
 	// files //
-	t->files = (struct file **) calloc(TASK_INITIAL_NUM_FILES, sizeof(struct file *));
-	t->num_files = TASK_INITIAL_NUM_FILES;
-	fs_node_t *console = fs_namei("/dev/console");
-	KASSERT(console != NULL);
-	for(i=0; i < 3; i++){
-		t->files[i] = malloc(sizeof(struct file));
-		t->files[i]->fs_node = cofs_dup(console);
-	}
+	// t->files = (struct file **) calloc(TASK_INITIAL_NUM_FILES, sizeof(struct file *));
+	// t->num_files = TASK_INITIAL_NUM_FILES;
+	// fs_node_t *console = fs_namei("/dev/console");
+	// KASSERT(console != NULL);
+	// for(i=0; i < 3; i++) {
+	// 	t->files[i] = malloc(sizeof(struct file));
+	// 	t->files[i]->fs_node = console;
+	// 	console->ref_count++;
+	// }
+	// console->ref_count--;
 	return t;
 }
 
@@ -79,6 +81,19 @@ void task_init()
 	current_task->name = strdup("init");
 	current_task->state = TASK_READY;
 	task_queue = current_task;
+
+	// files //
+	current_task->files = (struct file **) calloc(TASK_INITIAL_NUM_FILES, sizeof(struct file *));
+	current_task->num_files = TASK_INITIAL_NUM_FILES;
+	fs_node_t *console = fs_namei("/dev/console");
+	KASSERT(console != NULL);
+	int i;
+	for(i=0; i < 3; i++) {
+		current_task->files[i] = malloc(sizeof(struct file));
+		current_task->files[i]->fs_node = console;
+		console->ref_count++;
+	}
+	console->ref_count -= 2; // close previously opened console //
 	// if(fork() == 0) {
 	// 	current_task->name = strdup("idle");
 	// 	idle_task = current_task;
@@ -176,9 +191,10 @@ task_t *fork_inner()
 		if(!current_task->files[fd]->fs_node) {
 			panic("task fork: pid: %d, fd: %d fs_node does not exists\n", current_task->pid, fd);
 		}
-		t->files[fd]->fs_node = cofs_dup(current_task->files[fd]->fs_node);
+		t->files[fd]->fs_node = current_task->files[fd]->fs_node;
 		t->files[fd]->offs = current_task->files[fd]->offs;
-		// current_task->files[fd]->fs_node->ref_count++;
+		current_task->files[fd]->fs_node->ref_count++;
+		kprintf("name: %s, ref: %d", current_task->files[fd]->fs_node->name, current_task->files[fd]->fs_node->ref_count);
 	}
 	t->num_files = current_task->num_files;
 
@@ -225,7 +241,7 @@ void task_free(task_t *task)
 	// closing it's files //
 	for(fd = 0; fd < task->num_files; fd++) {
 		if(task->files[fd]) {
-			// kprintf("pid:%d closing %d\n",task->pid, fd);
+			kprintf("pid:%d closing %d\n",task->pid, fd);
 			task->files[fd]->fs_node->ref_count--;
 			if(task->files[fd]->fs_node->ref_count == 0){
 				fs_close(task->files[fd]->fs_node);

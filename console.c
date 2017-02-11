@@ -276,4 +276,5 @@ void console_init()
 	}
 	cons->read = console_read;
 	cons->write = console_write;
+	// cons->ref_count--;
 }
