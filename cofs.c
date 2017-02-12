@@ -212,7 +212,6 @@ void cofs_lock(fs_node_t *node)
 		hdb = get_hd_buf(INO_BLK(node->inode, superb));
 		cofs_inode_t *ino = (cofs_inode_t*) hdb->buf + node->inode % NUM_INOPB;
 		node->type = ino->type;
-		node->flags = ino->type;
 		node->uid = ino->uid;
 		node->gid = ino->gid;
 		node->num_links = ino->num_links;
@@ -538,11 +537,9 @@ fs_node_t *cofs_init()
 	fs_node_t *dev, *console;
 	dev = cofs_finddir(root, "dev");
 	if(!dev) {
-		kprintf("creating dev\n");
 		dev = cofs_mkdir(root, "dev", 0755);
 	}
 	cofs_lock(dev);
-	kprintf("size: %d\n", dev->size);
 	console = cofs_finddir(dev, "console");
 	if(!console) {
 		console = inode_alloc(FS_CHARDEVICE);
@@ -556,14 +553,6 @@ fs_node_t *cofs_init()
 	}
 	cofs_put_node(console);
 	cofs_unlock(dev);
-
-	// struct dirent *dir;
-	// int i=0;
-	// kprintf("listing\n");
-	// while((dir = cofs_readdir(dev, i++))) {
-	// 	kprintf(">%s, %d\n", dir->name, dir->inode);
-	// }
-
 	cofs_put_node(dev);
 	cofs_put_node(root);
 	// cofs_dump_cache();

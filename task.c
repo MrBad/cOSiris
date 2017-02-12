@@ -358,7 +358,7 @@ void task_exec(char *path, char **argv)
 	} else {
 		kprintf("Found: %s\n", path);
 	}
-	if(!(fs_node->flags & FS_FILE)) {
+	if(!(fs_node->type & FS_FILE)) {
 		kprintf("%s is not a file\n", path);
 		return;
 	}

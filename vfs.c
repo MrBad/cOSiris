@@ -2,21 +2,11 @@
 #include <stdlib.h>	// malloc
 #include <sys/types.h>
 #include "console.h"
+#include "serial.h"
 #include "assert.h"
 #include "task.h"
 #include "vfs.h"
 
-
-
-unsigned int fs_read(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
-{
-	return node->read != 0 ? node->read(node, offset, size, buffer) : 0;
-}
-
-unsigned int fs_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
-{
-	return node->write != 0 ? node->write(node, offset, size, buffer) : 0;
-}
 
 void fs_open(fs_node_t *node, unsigned int flags)
 {
@@ -32,9 +22,20 @@ void fs_close(fs_node_t *node)
 	}
 }
 
+unsigned int fs_read(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
+{
+	return node->read != 0 ? node->read(node, offset, size, buffer) : 0;
+}
+
+unsigned int fs_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
+{
+	return node->write != 0 ? node->write(node, offset, size, buffer) : 0;
+}
+
+
 struct dirent *fs_readdir(fs_node_t *node, unsigned int index)
 {
-	if ((node->flags & FS_DIRECTORY) && node->readdir != 0) {
+	if ((node->type & FS_DIRECTORY) && node->readdir != 0) {
 		return node->readdir(node, index);
 	} else {
 		return false;
@@ -44,7 +45,7 @@ struct dirent *fs_readdir(fs_node_t *node, unsigned int index)
 fs_node_t *fs_finddir(fs_node_t *node, char *name)
 {
 	// Is the node a directory, and does it have a callback?
-	if ((node->flags & FS_DIRECTORY) && node->finddir != 0) {
+	if ((node->type & FS_DIRECTORY) && node->finddir != 0) {
 		return node->finddir(node, name);
 	} else {
 		// kprintf("finddir not found for node: %d\n", node->inode);
@@ -55,7 +56,7 @@ fs_node_t *fs_finddir(fs_node_t *node, char *name)
 
 fs_node_t * fs_mkdir(fs_node_t *node, char *name, int mode)
 {
-	if(!(node->flags & FS_DIRECTORY)) {
+	if(!(node->type & FS_DIRECTORY)) {
 		return NULL;
 	}
 	if(fs_finddir(node, name)) {
@@ -181,9 +182,9 @@ void lstree(fs_node_t *parent, int level)
 		fs_node_t *file = fs_finddir(parent, dir->name);
 		for(j=0; j<level;j++) kprintf("    ");
 		kprintf("%s - inode:%d, \n", file->name, file->inode);
-		if(file->flags & FS_DIRECTORY) {
+		if(file->type & FS_DIRECTORY) {
 			lstree(file, level+1);
 		}
-		file->ref_count--;
+		fs_close(file);
 	}
 }

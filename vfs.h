@@ -27,26 +27,20 @@ typedef struct fs_node *(*mkdir_type_t)(struct fs_node *node, char *name, unsign
 
 typedef struct fs_node {
 	char name[256];				// this info should go ouside inode in future
-	unsigned int mask;			// ??
-	unsigned int uid;
-	unsigned int gid;
-	unsigned int flags;			// loose ambiguous flags
-	unsigned short int type;
-	unsigned int inode;
+	unsigned int mask;			//
+	unsigned int uid;			//
+	unsigned int gid;			//
+	unsigned short int type;	// type of file - FS_
+	unsigned int inode;			// inode, unix
 	unsigned int size;
 	int ref_count;				// number of threads who open this file
-	unsigned int num_links;		// number of files linking to this (links or directory)
+	unsigned int num_links;		// number of files linking to this (on disk links or directory)
 	unsigned int atime, ctime, mtime;
 	unsigned int *addrs;
 	int impl;
-	// unsigned int parent_inode;	// we should loose this, because an inode can be child of many parents
-								// Who's my parent directory
-								// This info should go outside inode in future
-	struct fs_node *next;		// pointer to the next node in list
+
 	unsigned int lock;
-
-
-
+	// operations //
 	read_type_t read;
 	write_type_t write;
 	open_type_t open;
@@ -54,9 +48,7 @@ typedef struct fs_node {
 	readdir_type_t readdir;
 	finddir_type_t finddir;
 	mkdir_type_t mkdir;
-
-	//struct fs_node *ptr;		// Used in mountpoints, symlinks, pipes
-	void *ptr;
+	void *ptr;				// reserved
 } fs_node_t;
 
 struct dirent {

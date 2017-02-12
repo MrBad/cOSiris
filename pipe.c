@@ -1,8 +1,7 @@
 #include <string.h>
+#include <stdlib.h>
 #include "pipe.h"
 #include "vfs.h"
-//#include "kheap.h"
-#include <stdlib.h>
 #include "task.h"
 #include "console.h"
 #include "x86.h"
@@ -13,6 +12,7 @@
 // Need a clean way to schedule next, wait queue,
 // put process to sleep -> some clean interface ...
 // maibe a generic queue or something
+//	NEEDS REWRITE
 //////////////////////////////////////////////////
 static void awake_list(vfs_pipe_t *pipe)
 {
@@ -40,10 +40,10 @@ void pipe_open(fs_node_t *node, unsigned int flags) {
 void pipe_close(fs_node_t *node)
 {
 	vfs_pipe_t *pipe = (vfs_pipe_t *) node->ptr;
-	if(node->flags & PIPE_READ) {
+	if(node->type & PIPE_READ) {
 		pipe->readers--;
 	}
-	if(node->flags & PIPE_WRITE) {
+	if(node->type & PIPE_WRITE) {
 		pipe->writers--;
 	}
 	if(!pipe->readers && !pipe->writers)
@@ -140,7 +140,7 @@ int new_pipe(fs_node_t **nodes)
 
 	nodes[0] = (fs_node_t *)calloc(1, sizeof(fs_node_t));
 	strcpy(nodes[0]->name, "[pipe:read]");
-	nodes[0]->flags = FS_PIPE | PIPE_READ;
+	nodes[0]->type = FS_PIPE | PIPE_READ;
 	nodes[0]->open = pipe_open;
 	nodes[0]->close = pipe_close;
 	nodes[0]->read = pipe_read;
@@ -149,7 +149,7 @@ int new_pipe(fs_node_t **nodes)
 
 	nodes[1] = (fs_node_t *) calloc(1, sizeof(fs_node_t));
 	strcpy(nodes[1]->name, "[pipe:write]");
-	nodes[1]->flags = FS_PIPE | PIPE_WRITE;
+	nodes[1]->type = FS_PIPE | PIPE_WRITE;
 	nodes[1]->open = pipe_open;
 	nodes[1]->close = pipe_close;
 	nodes[1]->read = 0;

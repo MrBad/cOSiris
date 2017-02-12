@@ -21,7 +21,7 @@ int sys_exec(char *path, char *argv[])
 		serial_debug("sys_exec() cannot open %s file\n", path);
 		return -1;
 	}
-	if(!(fs_node->flags & FS_FILE)) {
+	if(!(fs_node->type & FS_FILE)) {
 		serial_debug("sys_exec() %s is not a file\n", path);
 		return -1;
 	}
@@ -228,7 +228,7 @@ int sys_read(int fd, void *buf, size_t count)
 		return -1;
 	}
 	// EOF ? //
-	if(f->offs >= f->fs_node->size && f->fs_node->flags != FS_CHARDEVICE) {
+	if(f->offs >= f->fs_node->size && f->fs_node->type != FS_CHARDEVICE) {
 		// serial_debug("eof on file: fd: %d, %s, offs: %d size: %d\n", fd, f->fs_node->name, f->offs, f->fs_node->size);
 		return 0; // at EOF
 	}
@@ -261,7 +261,7 @@ int sys_chdir(char *path)
 		serial_debug("sys_chdir() cannot open %s\n", path);
 		return -1;
 	}
-	if(!(fs_node->flags & FS_DIRECTORY)) {
+	if(!(fs_node->type & FS_DIRECTORY)) {
 		serial_debug("sys_chdir() - %s is not a directory\n", path);
 		return -1;
 	}
@@ -276,7 +276,7 @@ int sys_chroot(char *path)
 		serial_debug("sys_chroot() cannot open %s\n", path);
 		return -1;
 	}
-	if(!(fs_node->flags & FS_DIRECTORY)) {
+	if(!(fs_node->type & FS_DIRECTORY)) {
 		serial_debug("sys_chroot() - %s is not a directory\n", path);
 		return -1;
 	}
