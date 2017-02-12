@@ -157,7 +157,7 @@ int fs_mount(char *path, fs_node_t *node)
 // more to do //
 int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
 {
-	kprintf("fs_open_namei() not fully implemented\n");
+	serial_debug("fs_open_namei() not fully implemented\n");
 	char fpath[256];
 	if(*path != '/') {
 		strcpy(fpath, current_task->cwd);

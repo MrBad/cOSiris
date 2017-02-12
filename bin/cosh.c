@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include "syscalls.h"
 
 //
@@ -14,13 +15,18 @@ void trim(char *str, int len) {
 }
 
 bool is_file(char *file) { // todo - change to fstat when we will have it
-	int fd = open(file, O_RDONLY, 0);
-	if(fd < 0) {
+	// int fd = open(file, O_RDONLY, 0);
+	// if(fd < 0) {
+	// 	return false;
+	// } else {
+	// 	close(fd);
+	// 	return true;
+	// }
+	struct stat st;
+	if(stat(file, &st) < 0) {
 		return false;
-	} else {
-		close(fd);
-		return true;
 	}
+	return true;
 }
 
 int main()
@@ -37,7 +43,7 @@ int main()
 		else if(!strcmp(buf, "ps")) {
 			ps();
 		}
-		else if (!strcmp(buf, "ls")) {
+		else if (!strcmp(buf, "lstree")) {
 			lstree();
 		}
 		else if(!strcmp(buf, "cdc")) {
@@ -45,7 +51,8 @@ int main()
 		}
 		else if (!strcmp(buf, "help")) {
 			printf("ps - show process list\n");
-			printf("ls - show file tree\n");
+			printf("ls - show files\n");
+			printf("lstree - show files tree\n");
 			printf("cdc - show cofs dump cache\n");
 			printf("ESC - shut down\n");
 		}

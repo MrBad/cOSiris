@@ -194,7 +194,7 @@ task_t *fork_inner()
 		t->files[fd]->fs_node = current_task->files[fd]->fs_node;
 		t->files[fd]->offs = current_task->files[fd]->offs;
 		current_task->files[fd]->fs_node->ref_count++;
-		kprintf("name: %s, ref: %d", current_task->files[fd]->fs_node->name, current_task->files[fd]->fs_node->ref_count);
+		// kprintf("name: %s, ref: %d\n", current_task->files[fd]->fs_node->name, current_task->files[fd]->fs_node->ref_count);
 	}
 	t->num_files = current_task->num_files;
 
@@ -241,7 +241,7 @@ void task_free(task_t *task)
 	// closing it's files //
 	for(fd = 0; fd < task->num_files; fd++) {
 		if(task->files[fd]) {
-			kprintf("pid:%d closing %d\n",task->pid, fd);
+			// kprintf("pid:%d closing %d\n",task->pid, fd);
 			task->files[fd]->fs_node->ref_count--;
 			if(task->files[fd]->fs_node->ref_count == 0){
 				fs_close(task->files[fd]->fs_node);
@@ -278,12 +278,12 @@ pid_t task_wait(int *status)
 			kprintf("You tried to sleep init\n");
 		}
 		current_task->state = TASK_SLEEPING;
-		kprintf("Going to sleep\n");
+		// kprintf("Going to sleep\n");
 		switch_locked = false;
 
 		task_switch();
 
-		kprintf("Wakeup\n");
+		// kprintf("Wakeup\n");
 	}
 
 	switch_locked = true;

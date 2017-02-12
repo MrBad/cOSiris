@@ -149,6 +149,7 @@ void hd_rw(hd_buf_t *hdb) {
 		if((ret = hd_wait_ready(1)) < 0) {
 			panic("hd_wait_ready, write\n");
 		}
+		// kprintf("port_write %d\n", hdb->block_no);
 		port_write(0x1f0, hdb->buf, 256);
 	} else {
 		outb(0x1f7, 0x20);
@@ -156,6 +157,7 @@ void hd_rw(hd_buf_t *hdb) {
 			panic("hd_wait_ready, read\n");
 		}
 		port_read(0x1f0, hdb->buf, 256);
+		// kprintf("port_read %d\n", hdb->block_no);
 	}
 	spin_unlock(&hd_lock);
 }

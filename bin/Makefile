@@ -10,12 +10,13 @@ ASMFLAGS = -g -f elf
 OBJS=crt0.o sys.o syscalls.o ../lib/libc.a
 
 
-all: $(OBJS) init.o test_fork.o test_sbrk.o test_malloc.o cosh.o
+all: $(OBJS) init.o test_fork.o test_sbrk.o test_malloc.o cosh.o ls.o
 	$(LD) $(LDFLAGS) -o init init.o $(OBJS)
 	$(LD) $(LDFLAGS) -o test_fork test_fork.o $(OBJS)
 	$(LD) $(LDFLAGS) -o test_sbrk test_sbrk.o $(OBJS)
 	$(LD) $(LDFLAGS) -o test_malloc test_malloc.o $(OBJS)
 	$(LD) $(LDFLAGS) -o cosh cosh.o $(OBJS)
+	$(LD) $(LDFLAGS) -o ls ls.o $(OBJS)
 	# objdump -b binary -m i386 -D $(TARGET) > $(TARGET).lst
 
 ../lib/libc.a: ../lib/Makefile

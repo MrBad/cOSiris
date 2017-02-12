@@ -87,7 +87,6 @@ uint32_t block_alloc()
 // frees a block number on disk //
 void block_free(uint32_t block)
 {
-	// kprintf("free block %d\n",block);
 	hd_buf_t *hdb;
 	uint32_t bitmap_block, idx, mask;
 	bitmap_block = BITMAP_BLOCK(block, superb);
@@ -128,10 +127,11 @@ fs_node_t *inode_alloc(unsigned short int type)
 // update from memory inode on disk //
 void cofs_update_node(fs_node_t *node)
 {
+	KASSERT(node);
+	KASSERT(node->type);
 	cofs_inode_t *ino;
 	hd_buf_t *hdb = get_hd_buf(INO_BLK(node->inode, superb));
 	ino = (cofs_inode_t *) hdb->buf + node->inode % NUM_INOPB;
-	ino->type = node->type;
 	ino->type = node->type;
 	ino->uid = node->uid;
 	ino->gid = node->gid;
@@ -208,10 +208,11 @@ void cofs_lock(fs_node_t *node)
 
 	spin_lock(&node->lock);
 	if(node->type == 0) {
-		//kprintf("geting from disk: %d\n", node->inode);
+		// kprintf("geting from disk: %d\n", node->inode);
 		hdb = get_hd_buf(INO_BLK(node->inode, superb));
 		cofs_inode_t *ino = (cofs_inode_t*) hdb->buf + node->inode % NUM_INOPB;
-		node->type = node->flags = ino->type;
+		node->type = ino->type;
+		node->flags = ino->type;
 		node->uid = ino->uid;
 		node->gid = ino->gid;
 		node->num_links = ino->num_links;
@@ -223,7 +224,7 @@ void cofs_lock(fs_node_t *node)
 		memcpy(node->addrs, ino->addrs, sizeof(ino->addrs));
 		put_hd_buf(hdb);
 		if(node->type == 0) {
-			panic("cofs_lock - node type is 0");
+			panic("cofs_lock - node type is 0\n");
 		}
 	}
 }
@@ -251,6 +252,7 @@ void cofs_put_node(fs_node_t *node)
 {
 	spin_lock(&cofs_cache->lock);
 	if(node->ref_count==1 && node->type > 0 && node->num_links == 0) {
+		kprintf("Unlinking %s\n", node->name);
 		spin_unlock(&cofs_cache->lock);
 		cofs_trunc(node);
 		node->type = 0;
@@ -340,6 +342,7 @@ unsigned int cofs_read(fs_node_t *node, unsigned int offset, unsigned int size, 
 	}
 	return size;
 }
+
 // writes size bytes from buffer, at offset in node //
 unsigned int cofs_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
 {
@@ -358,12 +361,12 @@ unsigned int cofs_write(fs_node_t *node, unsigned int offset, unsigned int size,
 		memcpy(hdb->buf + offset % BLOCK_SIZE, buffer, num_bytes);
 		offset += num_bytes;
 		buffer += num_bytes;
-		hdb->is_dirty=true;
+		hdb->is_dirty = true;
 	    put_hd_buf(hdb);
   	}
-	kprintf("write %s, offs: %d, size:%d, node_size: %d\n", node->name, offset, size, node->size);
+	// kprintf("write %s, offs: %d, size:%d, node_size: %d\n", node->name, offset, size, node->size);
 	if(size > 0 && offset > node->size) {
-		kprintf("update node\n");
+		// kprintf("update node\n");
 	  	node->size = offset;
 		cofs_update_node(node);
 	}
@@ -379,6 +382,8 @@ void cofs_close(fs_node_t *node) {
 }
 
 // find and retrieve node having name, inside parent node directory //
+// increment ref_count, to keep it's reference in memory
+// use should put_node after retrieving it
 fs_node_t *cofs_finddir(fs_node_t *node, char *name)
 {
 	if(!(node->type & FS_DIRECTORY)) {
@@ -401,7 +406,7 @@ fs_node_t *cofs_finddir(fs_node_t *node, char *name)
 	}
 	new_node = cofs_get_node(inum);
 	cofs_lock(new_node);
-	strncpy(new_node->name, name, sizeof(new_node->name)-1);
+	if(new_node->inode!=1)strncpy(new_node->name, name, sizeof(new_node->name)-1);
 	cofs_unlock(new_node);
 	// cofs_put_node(new_node);
 	return new_node;
@@ -412,7 +417,7 @@ struct dirent *cofs_readdir(fs_node_t *node, unsigned int index)
 {
 	unsigned int n, offs;
 	cofs_dirent_t dir;
-
+	KASSERT(node->lock == 0);
 	cofs_lock(node);
 skip:
 	offs = index * sizeof(cofs_dirent_t);
@@ -458,24 +463,23 @@ int cofs_dirlink(fs_node_t *node, char *name, unsigned int inum)
 }
 
 // creates a directory in node
+// increments ref_count
 fs_node_t * cofs_mkdir(fs_node_t *node, char *name, unsigned int mode)
 {
-	kprintf("mkdir: %d\n", node->inode);
-	fs_node_t *n;
-
-	if((n = cofs_finddir(node, name))!= NULL) {
-		cofs_put_node(n);
+	fs_node_t *new_dir;
+	if((new_dir = cofs_finddir(node, name))!= NULL) {
+		cofs_put_node(new_dir);
 		kprintf("directory %s exists\n", name);
 		return NULL;
 	}
-	fs_node_t *new_dir = inode_alloc(FS_DIRECTORY);
+	new_dir = inode_alloc(FS_DIRECTORY);
 	cofs_lock(new_dir);
-	// kprintf("links: %d\n", new_dir->num_links);
+	strncpy(new_dir->name, name, sizeof(new_dir->name)-1);
 	new_dir->mask = mode; // and mask?! //
 	new_dir->num_links = 1;
 	// create . and .. //
-	cofs_dirlink(new_dir, ".", new_dir->inode); // self
-	cofs_dirlink(new_dir, "..", node->inode); // parent
+	cofs_dirlink(new_dir, ".", new_dir->inode);
+	cofs_dirlink(new_dir, "..", node->inode);
 	cofs_update_node(new_dir);
 	cofs_unlock(new_dir);
 
@@ -494,7 +498,7 @@ void cofs_dump_cache()
 	kprintf("%d nodes in cache\n", cofs_cache->list->num_items);
 	for(n = cofs_cache->list->head; n; n = n->next) {
 		node = (fs_node_t *)n->data;
-		kprintf("name: %s, ino: %d, ref_count: %d\n", node->name, node->inode, node->ref_count);
+		kprintf("name: %s, ino: %d, ref_count: %d, %s\n", node->name, node->inode, node->ref_count, node->lock ? "locked":"unlocked");
 	}
 	spin_unlock(&cofs_cache->lock);
 }
@@ -528,24 +532,41 @@ fs_node_t *cofs_init()
 		panic("root is not a directory");
 	}
 	strcpy(root->name, "/");
-	cofs_dup(root); // increase ref_count so we never discard it from cache
 	cofs_unlock(root);
-	cofs_put_node(root);
 
-	// check /dev
-	fs_node_t *dev = cofs_finddir(root, "dev");
+	// dev //
+	fs_node_t *dev, *console;
+	dev = cofs_finddir(root, "dev");
 	if(!dev) {
-		cofs_mkdir(root, "dev", 0755);
+		kprintf("creating dev\n");
+		dev = cofs_mkdir(root, "dev", 0755);
 	}
-	// create /dev/console
-	fs_node_t *console = cofs_finddir(dev, "console");
+	cofs_lock(dev);
+	kprintf("size: %d\n", dev->size);
+	console = cofs_finddir(dev, "console");
 	if(!console) {
 		console = inode_alloc(FS_CHARDEVICE);
-		cofs_dirlink(dev, "console", console->inode);
+		cofs_lock(console);
+		strncpy(console->name, "console", sizeof(console->name)-1);
+		console->num_links = 1;
+		console->mask = 0755;
+		cofs_update_node(console);
+		cofs_dirlink(dev, console->name, console->inode);
+		cofs_unlock(console);
 	}
-	cofs_put_node(dev);
 	cofs_put_node(console);
+	cofs_unlock(dev);
 
-	kprintf("dev: %d\n", dev->size);
+	// struct dirent *dir;
+	// int i=0;
+	// kprintf("listing\n");
+	// while((dir = cofs_readdir(dev, i++))) {
+	// 	kprintf(">%s, %d\n", dir->name, dir->inode);
+	// }
+
+	cofs_put_node(dev);
+	cofs_put_node(root);
+	// cofs_dump_cache();
+
 	return root;
 }

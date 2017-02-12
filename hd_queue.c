@@ -99,6 +99,7 @@ void put_hd_buf(hd_buf_t *hdb)
 	}
 	hdb->ref_count--;
 	if(hdb->is_dirty && hdb->ref_count == 0) {
+		// kprintf("writing hdb %d\n", hdb->block_no);
 		hd_rw(hdb);
 		hdb->is_dirty = 0;
 	}
