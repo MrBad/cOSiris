@@ -15,13 +15,6 @@ void trim(char *str, int len) {
 }
 
 bool is_file(char *file) { // todo - change to fstat when we will have it
-	// int fd = open(file, O_RDONLY, 0);
-	// if(fd < 0) {
-	// 	return false;
-	// } else {
-	// 	close(fd);
-	// 	return true;
-	// }
 	struct stat st;
 	if(stat(file, &st) < 0) {
 		return false;
@@ -34,7 +27,7 @@ int main()
 	char buf[256];
 	while(1) {
 		printf("# ");
-		int n = read(0, buf, 255);
+		int n = read(0, buf, sizeof(buf)-1);
 		buf[n--] = 0;
 		trim(buf, n);
 		if(!strlen(buf)) {

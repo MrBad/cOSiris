@@ -1,5 +1,7 @@
 #include <stdarg.h>
-void print(char *str);
+#include <string.h>
+
+// void print(char *str);
 
 int printf(char * fmt, ...)
 {
@@ -8,8 +10,9 @@ int printf(char * fmt, ...)
 	va_start(args, fmt);
 	vsprintf(buf, fmt, args);
 	va_end(args);
+	buf[1023]=0;
 
-	print(buf); // for now...
+	write(1, buf, strlen(buf)); // for now...
 
 	return 0;
 }

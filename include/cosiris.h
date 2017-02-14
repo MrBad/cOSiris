@@ -2,30 +2,29 @@
 #define _COSIRIS_H
 
 enum {
-	SYS_PRINT,
-	SYS_LSTREE,
+	SYS_LSTREE,	// 0
 	// process
-	SYS_FORK,
-	SYS_WAIT,
-	SYS_EXIT,
-	SYS_GETPID,
-	SYS_EXEC,
-	SYS_PS,
+	SYS_FORK,	// 1
+	SYS_WAIT,	// 2
+	SYS_EXIT,	// 3
+	SYS_GETPID,	// 4
+	SYS_EXEC,	// 5
+	SYS_PS,		// 6
 	// mem //
-	SYS_SBRK,
+	SYS_SBRK,	// 7
 	// files //
-	SYS_OPEN,
-	SYS_CLOSE,
-	SYS_STAT,
-	SYS_FSTAT,
-	SYS_READ,
-	SYS_WRITE,
-	SYS_CHDIR,
-	SYS_CHROOT,
-	SYS_CHMOD,
-	SYS_CHOWN,
-	SYS_MKDIR,
-	SYS_COFS_DUMP_CACHE,
+	SYS_OPEN,	// 8
+	SYS_CLOSE,	// 9
+	SYS_STAT,	// 10
+	SYS_FSTAT,	// 11
+	SYS_READ,	// 12
+	SYS_WRITE,	// 13
+	SYS_CHDIR,	// 14
+	SYS_CHROOT,	// 15
+	SYS_CHMOD,	// 16
+	SYS_CHOWN,	// 17
+	SYS_MKDIR,	// 19
+	SYS_COFS_DUMP_CACHE, // 20
 };
 
 #endif

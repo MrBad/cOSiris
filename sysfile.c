@@ -253,7 +253,9 @@ int sys_write(int fd, void *buf, size_t count)
 	f->offs += bytes;
 	return bytes;
 }
-
+int write(int fd, void *buf, size_t count) {
+	return sys_write(fd, buf, count);
+}
 int sys_chdir(char *path)
 {
 	fs_node_t *fs_node;

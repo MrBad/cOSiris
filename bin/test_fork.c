@@ -48,7 +48,7 @@ int main()
 		}
 	}
 	for(; i > 0; i--) {
-		if(!(i % 10)) print("-");
+		if(!(i % 10)) printf("-");
 		if((pid = wait(NULL)) < 0) {
 			printf("Wait exit early\n");
 			exit(0);

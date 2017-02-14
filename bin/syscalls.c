@@ -3,16 +3,6 @@
 #include <sys/stat.h>
 #include "sys.h"
 
-void print(char *str)
-{
-	_syscall1(SYS_PRINT, (uint32_t)str);
-}
-
-// void print_int(int n)
-// {
-// 	_syscall1(SYS_PRINT_INT, (uint32_t) n);
-// }
-
 // processes
 pid_t fork()
 {
@@ -84,6 +74,8 @@ int chown(char *filename, int mode) {
 int mkdir(const char *pathname, int mode) {
 	return _syscall2(SYS_MKDIR, (uint32_t)pathname, mode);
 }
+
+
 void lstree() {
 	_syscall0(SYS_LSTREE);
 }

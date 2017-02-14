@@ -17,6 +17,7 @@
 
 int main(int argc, char *argv[])
 {
+write(1, "test\n", 5);
 	char path[512];
 	char buf[512];
 	int fd;

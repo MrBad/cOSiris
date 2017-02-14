@@ -54,11 +54,12 @@ fdimg: bzImage
 	sudo mount fd.img mnt -oloop -tmsdos
 	sudo cp kernel mnt
 	# sudo cp bin/init mnt
-	util/mkinitrd kernel.sym bin/init bin/test_fork bin/test_sbrk \
-		bin/test_malloc bin/cosh README
-	util/mkcofs hdd.img bin/init bin/cosh bin/test_malloc bin/test_sbrk bin/test_fork bin/ls kernel.lst README
+	# util/mkinitrd kernel.sym bin/init bin/test_fork bin/test_sbrk \
+		# bin/test_malloc bin/cosh README
+	./util/mkcofs hdd.img bin/init bin/cosh bin/test_malloc bin/test_sbrk \
+		bin/test_fork bin/ls test/p kernel.lst README
 
-	sudo cp initrd.img mnt
+	# sudo cp initrd.img mnt
 	sudo umount mnt
 	sudo rm -rf mnt
 
