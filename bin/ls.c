@@ -17,7 +17,6 @@
 
 int main(int argc, char *argv[])
 {
-write(1, "test\n", 5);
 	char path[512];
 	char buf[512];
 	int fd;
@@ -43,6 +42,7 @@ write(1, "test\n", 5);
 		printf("%s %d %d %d\n", path, st.st_mode, st.st_ino, st.st_size);
 	}
 	else if(st.st_mode & FS_DIRECTORY) {
+		printf("type ino  size   name\n");
 		while(read(fd, &dir, sizeof(struct dirent))) {
 			if(dir.d_ino == 0) {
 				continue;
@@ -54,7 +54,7 @@ write(1, "test\n", 5);
 				printf("Cannot stat %s\n", buf);
 				continue;
 			}
-			printf("%c %-3d %-6d %s\n", st.st_mode==FS_DIRECTORY?'d':'-', st.st_ino, st.st_size, dir.d_name);
+			printf("%-4c %-4d %-6d %s\n", st.st_mode==FS_DIRECTORY?'d':'-', st.st_ino, st.st_size, dir.d_name);
 		}
 	}
 }

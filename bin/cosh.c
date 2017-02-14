@@ -1,67 +1,117 @@
 #include <stdio.h>
 #include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include "syscalls.h"
 
-//
-//	cOSiris primitive shell //
-//
 
-void trim(char *str, int len) {
-	while(str[len]==' ' || str[len]=='\n' || str[len]=='\r' || str[len]=='\t') {
-		str[len--] = 0;
+// buf to read in the line, max number of chars
+// return length of line //
+int read_line(char *buf, int max) {
+	int n, i;
+	n = read(0, buf, max-1);
+	if(n == 0) return n;
+	buf[n] = 0;
+	// clean left //
+	for(i = 0; i < n; i++) {
+		if(buf[i]!=' '&&buf[i]!='\t') {
+			n = n - i;
+			strncpy(buf, buf+i, n);
+			buf[n]=0;
+			break;
+		}
 	}
+	// clean right //
+	while((n > 0)&&(buf[n-1]==' '||buf[n-1]=='\t'||buf[n-1]=='\r'||buf[n-1]=='\n'))
+		buf[--n]=0;
+
+	return n;
 }
 
-bool is_file(char *file) { // todo - change to fstat when we will have it
-	struct stat st;
-	if(stat(file, &st) < 0) {
-		return false;
-	}
-	return true;
-}
-
-int main()
+// is destroying buf
+char *read_token(char *buf, char *prev_token, unsigned int len)
 {
-	char buf[256];
-	while(1) {
-		printf("# ");
-		int n = read(0, buf, sizeof(buf)-1);
-		buf[n--] = 0;
-		trim(buf, n);
-		if(!strlen(buf)) {
+	char *p;
+	if(prev_token == NULL) { // first time here
+		prev_token = buf;
+		for(p = buf; p < buf+len; p++) {
+			if(*p==' ' || *p=='\t') {
+				*p = 0;
+			}
+		}
+		return prev_token;
+	}
+	int found = 0;
+	for(p = prev_token;p < buf + len; p++) {
+		if(*p == 0) {
+			found = 1;
 			continue;
 		}
-		else if(!strcmp(buf, "ps")) {
-			ps();
+		if(found) {
+			prev_token = p;
+			return p;
 		}
-		else if (!strcmp(buf, "lstree")) {
-			lstree();
+	}
+	return NULL;
+}
+
+#define MAX_ARGC 10
+int main() {
+	printf("cOSh - cOSiris shell\n");
+	char buf[256];
+	char *argv[MAX_ARGC];
+	int argc;
+	char *token;
+	int len;
+	pid_t pid;
+	while(1) {
+		write(1, "# ", 2);
+		len = read_line(buf, sizeof(buf));
+		if(len <= 0) {	// discard empty line //
+			continue;
 		}
-		else if(!strcmp(buf, "cdc")) {
-			cofs_dump_cache();
+
+		token = NULL;
+		for(argc = 0; argc < MAX_ARGC; argc++) {
+			token = read_token(buf, token, len);
+			if(!token) {
+				break;
+			}
+			argv[argc] = token;
 		}
-		else if (!strcmp(buf, "help")) {
+		argv[argc] = 0;
+
+		if(!strcmp(argv[0], "help")) {
+			printf("Internal commands\n");
 			printf("ps - show process list\n");
-			printf("ls - show files\n");
 			printf("lstree - show files tree\n");
 			printf("cdc - show cofs dump cache\n");
 			printf("ESC - shut down\n");
 		}
-		else if(is_file(buf)) {
-			pid_t pid = fork();
-			if(pid == 0) {
-				exec(buf, NULL);
-				exit(0);
-			} else {
-				int status;
-				pid_t pid = wait(&status);
-				printf("%d exited with status %d\n", pid, status);
-			}
+		else if(!strcmp(argv[0], "ps")) {
+			ps();
+		}
+		else if (!strcmp(argv[0], "lstree")) {
+			lstree();
+		}
+		else if(!strcmp(argv[0], "cdc")) {
+			cofs_dump_cache();
 		}
 		else {
-			printf("%s: command not found - try help\n", buf);
+			// try to execute command //
+			pid = fork();
+			if(pid == 0) {
+				exit(exec(argv[0], argv));
+			} else if(pid < 0) {
+				printf("error forking\n");
+			} else {
+				int status;
+				pid = wait(&status);
+				if(status!=0) {
+					printf("cosh: error executing %s\n", argv[0]);
+				}
+			}
 		}
 	}
+	return 0;
 }

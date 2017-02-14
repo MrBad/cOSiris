@@ -241,10 +241,14 @@ void task_free(task_t *task)
 	// closing it's files //
 	for(fd = 0; fd < task->num_files; fd++) {
 		if(task->files[fd]) {
+			if(!task->files[fd]->fs_node) {
+				kprintf("fd: %d has node closed!!!\n", fd);
+				continue;
+			}
 			// kprintf("pid:%d closing %d\n",task->pid, fd);
 			task->files[fd]->fs_node->ref_count--;
 			if(task->files[fd]->fs_node->ref_count == 0){
-				fs_close(task->files[fd]->fs_node);
+				//fs_close(task->files[fd]->fs_node);
 			}
 			free(task->files[fd]);
 		}
