@@ -104,6 +104,8 @@ static void console_putc(char c)
 	} else {
 		vid_mem[pos++] = c | attr;
 	}
+	// if we reached end of vid memory - 0xC0000;
+	pos = pos % 16384; // TODO - fix memory overflow,maybe use it like a circular buffer
 	if(pos % SCR_COLS == 0) {
 		scroll2pos(pos);
 	}

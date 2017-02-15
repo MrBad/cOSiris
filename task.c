@@ -409,12 +409,13 @@ void sleep_on(void *addr)
 
 int wakeup(void *addr)
 {
-	int cnt;
+	int cnt = 0;
 	task_t * t;
 	switch_locked = true;
 	for(t = task_queue; t; t = t->next) {
 		if(t->state == TASK_SLEEPING && t->sleep_addr == addr) {
 			cnt++; t->state = TASK_READY;
+			t->sleep_addr = 0;
 		}
 	}
 	switch_locked = false;

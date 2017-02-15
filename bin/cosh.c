@@ -28,7 +28,7 @@ int read_line(char *buf, int max) {
 	return n;
 }
 
-// is destroying buf
+// read token is destroying buf //
 char *read_token(char *buf, char *prev_token, unsigned int len)
 {
 	char *p;
@@ -55,7 +55,8 @@ char *read_token(char *buf, char *prev_token, unsigned int len)
 	return NULL;
 }
 
-#define MAX_ARGC 10
+#define MAX_ARGC 16
+
 int main() {
 	printf("cOSh - cOSiris shell\n");
 	char buf[256];
@@ -80,8 +81,10 @@ int main() {
 			argv[argc] = token;
 		}
 		argv[argc] = 0;
-
-		if(!strcmp(argv[0], "help")) {
+		if(argv[0][0] == '#') { // comment
+			continue;
+		}
+		else if(!strcmp(argv[0], "help")) {
 			printf("Internal commands\n");
 			printf("ps - show process list\n");
 			printf("lstree - show files tree\n");
@@ -101,14 +104,14 @@ int main() {
 			// try to execute command //
 			pid = fork();
 			if(pid == 0) {
-				exit(exec(argv[0], argv));
+				return exec(argv[0], argv);
 			} else if(pid < 0) {
 				printf("error forking\n");
 			} else {
 				int status;
 				pid = wait(&status);
 				if(status!=0) {
-					printf("cosh: error executing %s\n", argv[0]);
+					printf("cosh: error executing %s, status: %d\n", argv[0], status);
 				}
 			}
 		}
