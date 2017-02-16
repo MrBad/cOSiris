@@ -24,10 +24,11 @@ int read(int fd, void *buf, unsigned int count);
 int write(int fd, void *buf, unsigned int count);
 int chdir(char *filename);
 int chroot(char *filename);
-int chmod(char *filename, int uid, int gid);
-int chown(char *filename, int mode);
-int mkdir(const char *pathname, int mode);
-
+//int chmod(char *filename, mode_t mode);
+int chown(char *filename, int uid, int gid);
+int mkdir(const char *pathname, mode_t mode);
+int isatty(int fd);
+off_t lseek(int fd, off_t offset, int whence);
 
 void cofs_dump_cache();
 

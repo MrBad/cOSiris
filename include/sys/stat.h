@@ -19,9 +19,9 @@ struct stat {
 
 
 //chmod; fstat; mkdir; mkfifo; stat; umask;
-int chmod(char *filename, int uid, int gid);
+int chmod(const char *filename, mode_t mode);
 int fstat(int fd, struct stat *buf);
-int mkdir(const char *pathname, int mode);
+int mkdir(const char *pathname, mode_t mode);
 int mkfifo(const char *pathname, int mode);
 int stat(const char *pathname, struct stat *buf);
 mode_t umask(mode_t mask);

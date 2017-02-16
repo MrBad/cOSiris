@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/unistd.h>
 #include "console.h"
 #include "task.h"
 #include "sysfile.h"
@@ -143,6 +144,8 @@ int sys_open(char *filename, int flags, int mode)
 
 	if((fs_open_namei(filename, flags, mode, &current_task->files[fd]->fs_node)) < 0) {
 		serial_debug("sys_open() cannot open %s\n", filename);
+		free(current_task->files[fd]);
+		current_task->files[fd] = NULL;
 		return -1;
 	}
 	if(!current_task->files[fd]->fs_node) {
@@ -352,4 +355,52 @@ int sys_mkdir(char *path, int mode)
 		return -1;
 	}
 	return 0;
+}
+
+int sys_isatty(int fd)
+{
+	struct file *f;
+	if(fd > current_task->num_files) {
+		kprintf("pid: %d, fd %d is bigger than allocated: %d\n",current_task->pid, fd, current_task->num_files);
+		return 0;
+	}
+	// File was not previously open //
+	if(!(f = current_task->files[fd])) {
+		kprintf("File %d not opened by proc %d\n", fd, current_task->files[fd]);
+		return 0;
+	}
+	if(f->fs_node && FS_CHARDEVICE) {
+		return 1;
+	}
+	return 0;
+}
+
+off_t sys_lseek(int fd, off_t offset, int whence)
+{
+	struct file *f;
+	if(fd > current_task->num_files) {
+		kprintf("pid: %d, fd %d is bigger than allocated: %d\n",current_task->pid, fd, current_task->num_files);
+		return -1;
+	}
+	// File was not previously open //
+	if(!(f = current_task->files[fd])) {
+		kprintf("File %d not opened by proc %d\n", fd, current_task->files[fd]);
+		return -1;
+	}
+	if(whence == SEEK_SET) {
+		if(offset > f->fs_node->size) {
+			kprintf("sys_lseek() offs > size\n");
+			return -1;
+		}
+		f->offs = offset;
+	} else if(whence == SEEK_CUR) {
+		if(offset + f->offs > f->fs_node->size) {
+			kprintf("sys_lseek() offs + f->offs > fs_node->size\n");
+			return -1;
+		}
+		f->offs += offset;
+	} else if(whence == SEEK_END) {
+		f->offs = offset;
+	}
+	return f->offs;
 }

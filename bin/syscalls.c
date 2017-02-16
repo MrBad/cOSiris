@@ -1,7 +1,12 @@
-#include <cosiris.h>
+#include "../include/cosiris.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "sys.h"
+
+#ifndef _uint32_t
+#define _uint32_t
+typedef unsigned int uint32_t;
+#endif
 
 // processes
 pid_t fork()
@@ -65,15 +70,23 @@ int chdir(char *filename) {
 int chroot(char *filename) {
 	return _syscall1(SYS_CHROOT, (uint32_t)filename);
 }
-int chmod(char *filename, int uid, int gid) {
-	return _syscall3(SYS_CHMOD, (uint32_t)filename, uid, gid);
+int chmod(const char *filename, mode_t mode) {
+	return _syscall2(SYS_CHMOD, (uint32_t)filename, mode);
 }
-int chown(char *filename, int mode) {
-	return _syscall2(SYS_CHOWN, (uint32_t)filename, mode);
+int chown(char *filename, int uid, int gid) {
+	return _syscall3(SYS_CHOWN, (uint32_t)filename, uid, gid);
 }
-int mkdir(const char *pathname, int mode) {
+int mkdir(const char *pathname, mode_t mode) {
 	return _syscall2(SYS_MKDIR, (uint32_t)pathname, mode);
 }
+int isatty(int fd) {
+	return _syscall1(SYS_ISATTY, fd);
+}
+off_t lseek(int fd, off_t offset, int whence) {
+	return _syscall3(SYS_LSEEK, fd, offset, whence);
+}
+
+
 
 
 void lstree() {

@@ -4,3 +4,6 @@
 bin/init*
 util/find_func
 test/
+dash/
+sh/
+libc-port/

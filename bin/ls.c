@@ -29,12 +29,12 @@ int main(int argc, char *argv[])
 	}
 
 	if((fd = open(path, O_RDONLY,0)) < 0) {
-		printf("Cannot open %s\n", path);
+		printf("ls: cannot open %s\n", path);
 		return 1;
 	}
 
 	if(fstat(fd, &st) < 0) {
-		printf("Cannot stat %s\n", path);
+		printf("ls: cannot stat %s\n", path);
 		return 1;
 	}
 
@@ -51,10 +51,11 @@ int main(int argc, char *argv[])
 			strcat(buf, "/");
 			strncat(buf, dir.d_name, sizeof(buf)-1-strlen(buf)-1);
 			if(stat(buf, &st)<0) {
-				printf("Cannot stat %s\n", buf);
+				printf("ls: cannot stat %s\n", buf);
 				continue;
 			}
-			printf("%-4c %-4d %-6d %s\n", st.st_mode==FS_DIRECTORY?'d':'-', st.st_ino, st.st_size, dir.d_name);
+			printf("%-4c %-4d %-6d %s\n", st.st_mode==FS_DIRECTORY?'d':(st.st_mode==FS_CHARDEVICE ? 'c':'-'), st.st_ino, st.st_size, dir.d_name);
 		}
 	}
+	close(fd);
 }

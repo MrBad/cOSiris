@@ -8,7 +8,10 @@ typedef unsigned long ulong_t;
 typedef unsigned char bool;
 typedef unsigned int size_t;
 
+#ifndef _uint32_t
+#define _uint32_t
 typedef unsigned int uint32_t;
+#endif
 typedef int int32_t;
 typedef unsigned short int uint16_t;
 typedef short int int16_t;

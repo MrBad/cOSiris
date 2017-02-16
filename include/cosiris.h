@@ -25,6 +25,8 @@ enum {
 	SYS_CHOWN,	// 17
 	SYS_MKDIR,	// 19
 	SYS_COFS_DUMP_CACHE, // 20
+	SYS_ISATTY,
+	SYS_LSEEK,
 };
 
 #endif

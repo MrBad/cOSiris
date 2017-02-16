@@ -44,6 +44,8 @@ static void *syscalls[] = {
 	&sys_chown,
 	&sys_mkdir,
 	&cofs_dump_cache,
+	&sys_isatty,
+	&sys_lseek,
 };
 static unsigned int num_syscalls;
 
@@ -51,7 +53,7 @@ unsigned int syscall_handler(struct iregs *r)
 {
 	// cli();
 	if(r->eax >= num_syscalls) {
-		kprintf("No such syscall: %p\n", r->eax);
+		kprintf("No such syscall: %d\n", r->eax);
 		r->eax = 0;
 		return r->eax;
 	} else {
