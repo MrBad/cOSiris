@@ -46,6 +46,12 @@ static void *syscalls[] = {
 	&cofs_dump_cache,
 	&sys_isatty,
 	&sys_lseek,
+	&sys_opendir,
+	&sys_closedir,
+	&sys_readdir,
+	&sys_lstat,
+	&sys_readlink,
+
 };
 static unsigned int num_syscalls;
 

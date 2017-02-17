@@ -27,6 +27,7 @@ all: $(OBJS)
 	$(LD) $(LDFLAGS) -o kernel.bin $(OBJS)
 	make -C util
 	make -C bin
+	make -C test
 
 lib/libc.a: lib/Makefile
 	make -C lib
@@ -46,6 +47,7 @@ distclean:
 	make -C lib clean
 	make -C util clean
 	make -C bin clean
+	make -C test clean
 	rm initrd.img include/*.gch
 
 fdimg: bzImage
@@ -57,7 +59,8 @@ fdimg: bzImage
 	# util/mkinitrd kernel.sym bin/init bin/test_fork bin/test_sbrk \
 		# bin/test_malloc bin/cosh README
 	./util/mkcofs hdd.img bin/init bin/cosh bin/test_malloc bin/test_sbrk \
-		bin/test_fork bin/ls bin/cat bin/mkdir test/p README
+		bin/test_fork bin/ls bin/cat bin/mkdir README \
+		
 
 	# sudo cp initrd.img mnt
 	sudo umount mnt

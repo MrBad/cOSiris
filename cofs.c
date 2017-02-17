@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <string.h>
 #include <stdlib.h>
+#include <dirent.h>
 #include "assert.h"
 #include "console.h"
 #include "hd.h"
@@ -418,15 +419,16 @@ struct dirent *cofs_readdir(fs_node_t *node, unsigned int index)
 	cofs_dirent_t dir;
 	KASSERT(node->lock == 0);
 	cofs_lock(node);
-skip:
+
 	offs = index * sizeof(cofs_dirent_t);
 	if((n = cofs_read(node, offs, sizeof(dir), (char *)&dir)) > 0) {
 		if(dir.inode == 0) {
 			index++;
-			goto skip;
+			cofs_unlock(node);
+			return cofs_readdir(node, index);
 		}
-		strncpy(dirent.name, dir.name, sizeof(dirent.name)-1);
-		dirent.inode = dir.inode;
+		strncpy(dirent.d_name, dir.name, sizeof(dirent.d_name)-1);
+		dirent.d_ino = dir.inode;
 	} else {
 		cofs_unlock(node);
 		return NULL;

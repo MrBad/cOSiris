@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/unistd.h>
+#include <dirent.h>
 #include "console.h"
 #include "task.h"
 #include "sysfile.h"
@@ -192,6 +193,7 @@ static void populate_stat_buf(fs_node_t *fs_node, struct stat *buf)
 	buf->st_ctime = buf->st_ctime;
 }
 
+// fixme links //
 int sys_stat(char *path, struct stat *buf)
 {
 	fs_node_t *fs_node;
@@ -203,7 +205,17 @@ int sys_stat(char *path, struct stat *buf)
 	fs_close(fs_node);
 	return 0;
 }
-
+// fix me links //
+int sys_lstat(char *path, struct stat *buf) {
+	fs_node_t *fs_node;
+	if(fs_open_namei(path, O_RDONLY, 0755, &fs_node) < 0) {
+		serial_debug("sys_stat() cannot open %s file\n", path);
+		return -1;
+	}
+	populate_stat_buf(fs_node, buf);
+	fs_close(fs_node);
+	return 0;
+}
 int sys_fstat(int fd, struct stat *buf)
 {
 	struct file *f;
@@ -262,7 +274,7 @@ int write(int fd, void *buf, size_t count) {
 int sys_chdir(char *path)
 {
 	fs_node_t *fs_node;
-	if(!fs_open_namei(path, O_RDONLY, 0777, &fs_node)) {
+	if((fs_open_namei(path, O_RDONLY, 0777, &fs_node)) < 0) {
 		serial_debug("sys_chdir() cannot open %s\n", path);
 		return -1;
 	}
@@ -277,7 +289,7 @@ int sys_chdir(char *path)
 int sys_chroot(char *path)
 {
 	fs_node_t *fs_node;
-	if(!fs_open_namei(path, O_RDONLY, 0777, &fs_node)) {
+	if((fs_open_namei(path, O_RDONLY, 0777, &fs_node)) < 0) {
 		serial_debug("sys_chroot() cannot open %s\n", path);
 		return -1;
 	}
@@ -291,10 +303,10 @@ int sys_chroot(char *path)
 }
 
 // check permissions //
-int sys_chmod(char *filename, int uid, int gid)
+int sys_chown(char *filename, int uid, int gid)
 {
 	fs_node_t *fs_node;
-	if(!fs_open_namei(filename, O_RDONLY, 0777, &fs_node)) {
+	if((fs_open_namei(filename, O_RDONLY, 0777, &fs_node)) < 0) {
 		serial_debug("sys_chmod() cannot open %s\n", filename);
 		return -1;
 	}
@@ -303,10 +315,10 @@ int sys_chmod(char *filename, int uid, int gid)
 	return 0;
 }
 
-int sys_chown(char *filename, int mode)
+int sys_chmod(char *filename, int mode)
 {
 	fs_node_t *fs_node;
-	if(!fs_open_namei(filename, O_RDONLY, 0777, &fs_node)) {
+	if((fs_open_namei(filename, O_RDONLY, 0777, &fs_node)) < 0) {
 		serial_debug("sys_chown() cannot open %s\n", filename);
 		return -1;
 	}
@@ -404,3 +416,58 @@ off_t sys_lseek(int fd, off_t offset, int whence)
 	}
 	return f->offs;
 }
+
+DIR *sys_opendir(char *dirname)
+{
+	DIR *d;
+	int fd = sys_open(dirname, O_RDONLY, 0);
+	if(!fd) {
+		return NULL;
+	}
+	d = current_task->files[fd];
+	if(!(d->fs_node->type & FS_DIRECTORY)) {
+		sys_close(fd);
+		return NULL;
+	}
+	return d;
+}
+
+int sys_closedir(DIR *dir)
+{
+	int fd;
+	for(fd = 0; fd < current_task->num_files; fd++) {
+		if(dir == current_task->files[fd]) {
+			break;
+		}
+	}
+	if(fd < current_task->num_files) {
+		sys_close(fd);
+		return 0;
+	} else {
+		return -1;
+	}
+}
+
+// i cannot return in user mode a buffer from kernel mode
+// that's why i will pass buf from user mode and populate in k mode
+int sys_readdir(DIR *dir, struct dirent *buf)
+{
+	struct dirent *d;
+	if(!(d = fs_readdir(dir->fs_node, dir->offs))) {
+		return -1;
+	}
+	strncpy(buf->d_name, d->d_name, sizeof(buf->d_name)-1);
+	buf->d_ino = d->d_ino;
+	dir->offs++;
+	return 0;
+}
+
+int sys_readlink(const char *pathname, char *buf, size_t bufsiz) {
+	kprintf("unimplemented\n");
+	return -1;
+}
+/*int readdir_r(DIR *, struct dirent *, struct dirent **);
+void rewinddir(DIR *);
+void seekdir(DIR *, long int);
+long int telldir(DIR *);
+*/

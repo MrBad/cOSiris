@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>	// malloc
 #include <sys/types.h>
+#include <dirent.h>
 #include "console.h"
 #include "serial.h"
 #include "assert.h"
@@ -75,7 +76,10 @@ fs_node_t *fs_namei(char *path)
 {
 	fs_node_t *node = NULL;
 	KASSERT(*path);
-	KASSERT(*path == '/');
+	if(*path != '/') {
+		kprintf("Path [%s] is not full path\n", path);
+		return NULL;
+	}
 	char *p; int len = strlen(path);
 	if(len == 1) {
 		return fs_root;
@@ -178,8 +182,8 @@ void lstree(fs_node_t *parent, int level)
 	if(!parent) parent = fs_root;
 	kprintf("Listing directory: %s\n", parent->name);
 	while((dir = fs_readdir(parent, i++))) {
-		if(!strcmp(dir->name, ".") || !strcmp(dir->name, "..")) continue;
-		fs_node_t *file = fs_finddir(parent, dir->name);
+		if(!strcmp(dir->d_name, ".") || !strcmp(dir->d_name, "..")) continue;
+		fs_node_t *file = fs_finddir(parent, dir->d_name);
 		for(j=0; j<level;j++) kprintf("    ");
 		kprintf("%s - inode:%d, \n", file->name, file->inode);
 		if(file->type & FS_DIRECTORY) {

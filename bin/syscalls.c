@@ -1,4 +1,6 @@
 #include "../include/cosiris.h"
+#include "../include/dirent.h"
+#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "sys.h"
@@ -85,8 +87,28 @@ int isatty(int fd) {
 off_t lseek(int fd, off_t offset, int whence) {
 	return _syscall3(SYS_LSEEK, fd, offset, whence);
 }
+DIR *opendir(const char *dirname) {
+	return (DIR *)_syscall1(SYS_OPENDIR, (uint32_t)dirname);
+}
+int closedir(DIR *dir) {
+	return _syscall1(SYS_CLOSEDIR, (uint32_t)dir);
+}
 
+// this will not be thread safe //
+struct dirent dirent;
+struct dirent *readdir(DIR *dir) {
+	_syscall2(SYS_READDIR, (uint32_t)dir, (uint32_t)&dirent);
+	if(!dirent.d_ino) return NULL;
+	return &dirent;
+}
 
+int lstat(const char *pathname, struct stat *buf) {
+	return _syscall2(SYS_LSTAT, (uint32_t) pathname, (uint32_t) buf);
+}
+
+int readlink(const char *pathname, char *buf, size_t bufsiz) {
+	return _syscall3(SYS_READLINK, (uint32_t)pathname, (uint32_t)buf, bufsiz);
+}
 
 
 void lstree() {

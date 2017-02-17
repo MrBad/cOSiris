@@ -51,10 +51,10 @@ typedef struct fs_node {
 	void *ptr;				// reserved
 } fs_node_t;
 
-struct dirent {
-	char name[256];     // Filename
-	unsigned int inode;
-};
+//struct dirent {
+//	char name[256];     // Filename
+//	unsigned int inode;
+//};
 
 
 fs_node_t *fs_root;
