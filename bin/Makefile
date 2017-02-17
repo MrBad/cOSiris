@@ -31,4 +31,4 @@ all: $(OBJS) init.o test_fork.o test_sbrk.o test_malloc.o cosh.o ls.o cat.o mkdi
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
 clean:
-	rm *.o init test_fork test_sbrk test_malloc cosh ls cat mkdir *.lst *.gch
+	rm *.o init test_fork test_sbrk test_malloc cosh ls cat mkdir

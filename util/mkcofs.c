@@ -11,8 +11,8 @@
 #include <unistd.h>
 #include <libgen.h>
 
-#define FS_FILE        0x01
-#define FS_DIRECTORY   0x02
+// #define FS_FILE        0x01
+// #define FS_DIRECTORY   0x02
 
 #include "cofs.h"
 

@@ -77,7 +77,7 @@ fs_node_t *fs_namei(char *path)
 	fs_node_t *node = NULL;
 	KASSERT(*path);
 	if(*path != '/') {
-		kprintf("Path [%s] is not full path\n", path);
+		panic("Path [%s] is not full path\n", path);
 		return NULL;
 	}
 	char *p; int len = strlen(path);

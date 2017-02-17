@@ -5,15 +5,24 @@
 #define _VFS_H
 
 // #include "x86.h"
+//
+// #define FS_FILE			0x01
+// #define FS_DIRECTORY	0x02
+// #define FS_CHARDEVICE 	0x04
+// #define FS_BLOCKDEVICE	0x08
+// #define FS_PIPE			0x10
+// #define FS_SYMLINK		0x20
+// #define FS_MOUNTPOINT	0x40 // Is the file an active mountpoint?
+// #define FS_VALID		0x80
 
-#define FS_FILE			0x01
-#define FS_DIRECTORY	0x02
-#define FS_CHARDEVICE 	0x04
-#define FS_BLOCKDEVICE	0x08
-#define FS_PIPE			0x10
-#define FS_SYMLINK		0x20
-#define FS_MOUNTPOINT	0x40 // Is the file an active mountpoint?
-#define FS_VALID		0x80
+
+#define FS_DIRECTORY	0040000
+#define FS_CHARDEVICE 	0020000
+#define FS_BLOCKDEVICE	0060000
+#define FS_PIPE			0010000
+#define FS_FILE			0100000
+#define FS_SYMLINK		0120000
+#define FS_MOUNTPOINT	0200000 // Is the file an active mountpoint?
 
 struct fs_node;
 

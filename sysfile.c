@@ -282,6 +282,7 @@ int sys_chdir(char *path)
 		serial_debug("sys_chdir() - %s is not a directory\n", path);
 		return -1;
 	}
+	kprintf("chdir %s, ref_c: %d\n", fs_node->name, fs_node->ref_count);
 	current_task->cwd = path;
 	return 0;
 }

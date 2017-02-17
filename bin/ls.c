@@ -2,18 +2,17 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <dirent.h>
+#include <unistd.h>
+#include "../include/dirent.h"
 #include "syscalls.h"
 
-#define FS_FILE			0x01
-#define FS_DIRECTORY	0x02
-#define FS_CHARDEVICE 	0x04
-#define FS_BLOCKDEVICE	0x08
-#define FS_PIPE			0x10
-#define FS_SYMLINK		0x20
-#define FS_MOUNTPOINT	0x40
-#define FS_VALID		0x80
-
+#define FS_DIRECTORY	0040000
+#define FS_CHARDEVICE	0020000
+#define FS_BLOCKDEVICE	0060000
+#define FS_PIPE			0010000
+#define FS_FILE			0100000
+#define FS_SYMLINK		0120000
+#define FS_MOUNTPOINT	0200000 // Is the file an active mountpoint?
 
 int main(int argc, char *argv[])
 {
@@ -54,7 +53,7 @@ int main(int argc, char *argv[])
 				printf("ls: cannot stat %s\n", buf);
 				continue;
 			}
-			printf("%-4c %-4d %-6d %s\n", st.st_mode==FS_DIRECTORY?'d':(st.st_mode==FS_CHARDEVICE ? 'c':'-'), st.st_ino, st.st_size, dir.d_name);
+			printf("%-4c %-4d %-6d %s\n", (st.st_mode & FS_DIRECTORY) ? 'd': (st.st_mode & FS_CHARDEVICE) ? 'c':'-', st.st_ino, st.st_size, dir.d_name);
 		}
 	}
 	close(fd);
