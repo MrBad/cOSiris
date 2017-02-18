@@ -110,7 +110,9 @@ int readlink(const char *pathname, char *buf, size_t bufsiz) {
 	return _syscall3(SYS_READLINK, (uint32_t)pathname, (uint32_t)buf, bufsiz);
 }
 
-
+int getcwd(char *buf, size_t size) {
+	return _syscall2(SYS_GETCWD, (uint32_t)buf, size);
+}
 void lstree() {
 	_syscall0(SYS_LSTREE);
 }

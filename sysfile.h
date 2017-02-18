@@ -44,4 +44,5 @@ void seekdir(DIR *, long int);
 long int telldir(DIR *);
 */
 
+char *sys_getcwd(char *buf, size_t size);
 #endif

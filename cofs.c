@@ -204,7 +204,7 @@ void cofs_lock(fs_node_t *node)
 
 	if(node == NULL)
 		panic("cofs_lock - no node\n");
-	if(node->ref_count == 0)
+	if(node->ref_count <= 0)
 		panic("ref_count for node %s is %d\n", node->name, node->ref_count);
 
 	spin_lock(&node->lock);

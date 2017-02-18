@@ -8,7 +8,7 @@
 #include "sysfile.h"
 #include "vfs.h"
 #include "serial.h"
-
+#include "canonize.h"
 
 // this belongs to sys_proc, but... //
 int sys_exec(char *path, char *argv[])
@@ -271,19 +271,25 @@ int sys_write(int fd, void *buf, size_t count)
 int write(int fd, void *buf, size_t count) {
 	return sys_write(fd, buf, count);
 }
+
 int sys_chdir(char *path)
 {
+
+	char *p = canonize_path(current_task->cwd, path);
 	fs_node_t *fs_node;
-	if((fs_open_namei(path, O_RDONLY, 0777, &fs_node)) < 0) {
-		serial_debug("sys_chdir() cannot open %s\n", path);
+	if((fs_open_namei(p, O_RDONLY, 0777, &fs_node)) < 0) {
+		kprintf("sys_chdir() cannot open %s\n", path);
+		free(p);
 		return -1;
 	}
 	if(!(fs_node->type & FS_DIRECTORY)) {
-		serial_debug("sys_chdir() - %s is not a directory\n", path);
+		kprintf("sys_chdir() - %s is not a directory\n", path);
+		free(p);
 		return -1;
 	}
 	kprintf("chdir %s, ref_c: %d\n", fs_node->name, fs_node->ref_count);
-	current_task->cwd = path;
+	free(current_task->cwd);
+	current_task->cwd = p;
 	return 0;
 }
 
@@ -472,3 +478,15 @@ void rewinddir(DIR *);
 void seekdir(DIR *, long int);
 long int telldir(DIR *);
 */
+
+char *sys_getcwd(char *buf, size_t size) 
+{
+	unsigned int len = strlen(current_task->cwd);
+	if(len+1 > size) {
+		kprintf("len: %d, size %d\n", len, size);
+		return NULL;
+	}
+	strncpy(buf, current_task->cwd, len);
+	return buf;
+}
+

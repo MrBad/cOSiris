@@ -55,6 +55,32 @@ char *read_token(char *buf, char *prev_token, unsigned int len)
 	return NULL;
 }
 
+int cd(int argc, char *argv[]) 
+{
+	int ret;
+	if(argc < 2) {
+		ret = chdir("/");
+	} 
+	else {
+		ret = chdir(argv[1]);
+	}
+	if(ret < 0) {
+		printf("cd: cannot chdir to %s\n", argv[1]);
+	}
+	return ret;
+}
+
+int pwd()
+{
+	char buf[512];
+	if(!(getcwd(buf, sizeof(buf)))) {
+		printf("pwd: cannot print current directory\n");
+		return -1;
+	}
+	printf("%s\n", buf);
+	return 0;
+}
+
 #define MAX_ARGC 16
 
 int main() {
@@ -84,12 +110,20 @@ int main() {
 		if(argv[0][0] == '#') { // comment
 			continue;
 		}
-		else if(!strcmp(argv[0], "help")) {
+		else if(!strcmp(argv[0], "help") || !strcmp(argv[0], "?")) {
 			printf("Internal commands\n");
+			printf("cd [dir] - change working directory\n");
+			printf("pwd - print working directory\n");
 			printf("ps - show process list\n");
 			printf("lstree - show files tree\n");
 			printf("cdc - show cofs dump cache\n");
 			printf("ESC - shut down\n");
+		}
+		else if(!strcmp(argv[0], "cd")) {
+			cd(argc, argv);
+		}
+		else if(!strcmp(argv[0], "pwd")) {
+			pwd();
 		}
 		else if(!strcmp(argv[0], "ps")) {
 			ps();

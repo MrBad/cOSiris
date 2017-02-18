@@ -32,6 +32,7 @@ enum {
 	SYS_READDIR,
 	SYS_LSTAT,
 	SYS_READLINK,
+	SYS_GETCWD,
 
 };
 

@@ -7,7 +7,7 @@
 #include "assert.h"
 #include "task.h"
 #include "vfs.h"
-
+#include "canonize.h"
 
 void fs_open(fs_node_t *node, unsigned int flags)
 {
@@ -156,6 +156,8 @@ int fs_mount(char *path, fs_node_t *node)
 }
 #endif
 
+
+
 // hard work here //
 // check permissions //
 // create if not exists //
@@ -163,14 +165,9 @@ int fs_mount(char *path, fs_node_t *node)
 int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
 {
 	serial_debug("fs_open_namei() not fully implemented\n");
-	char fpath[256];
-	if(*path != '/') {
-		strcpy(fpath, current_task->cwd);
-		strcat(fpath, path);
-		// kprintf("Actually opening %s\n", fpath);
-		path = fpath;
-	}
-	*node = fs_namei(path);
+	char *p = canonize_path(current_task->cwd, path);
+	*node = fs_namei(p);
+	free(p);
 	return *node ? 0 : -1;
 }
 

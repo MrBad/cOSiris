@@ -51,6 +51,7 @@ static void *syscalls[] = {
 	&sys_readdir,
 	&sys_lstat,
 	&sys_readlink,
+	&sys_getcwd,
 
 };
 static unsigned int num_syscalls;
