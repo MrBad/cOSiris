@@ -69,6 +69,16 @@ fs_node_t * fs_mkdir(fs_node_t *node, char *name, int mode)
 	return node->mkdir(node, name, mode);
 }
 
+
+fs_node_t *fs_dup(fs_node_t *node)
+{
+	spin_lock(&node->lock);
+	node->ref_count++;
+	spin_unlock(&node->lock);
+	return node;
+}
+
+
 //
 //	Simple name to vfs node find ~ namei
 //
@@ -95,7 +105,7 @@ fs_node_t *fs_namei(char *path)
 	while(len > 0) {
 		if(*p) {
 			if(node) {
-				kprintf("fs_namei - open %s, ref: %d, len: %d\n", node->name, node->ref_count, len);
+				//kprintf("fs_namei - open %s, ref: %d, len: %d\n", node->name, node->ref_count, len);
 				if(node->inode!=1) node->ref_count--;
 			}
 

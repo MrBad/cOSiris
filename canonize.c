@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include "serial.h"
 //
 //	Few functions to clean a path
 //		resolving multiple / or ./ or ../
@@ -29,11 +29,11 @@ static char *clean_path(char *path)
 					if(*p=='/' || *p==0) { // match /../ or /..$
 						if(*k=='/' && k > path) k--;
 						while(*k!='/') {
-							if(k-1 < path)	// if k points t begining of path
+							if(k < path + 1)	// if k points t begining of path
 								break;		// fail
 											// should we fail or just discard 
 											// ../ ?
-							*k-- = 0;
+							k--;
 						}
 						continue;
 					}
@@ -79,9 +79,10 @@ char *canonize_path(char *prefix, char *path)
 {
 	char *p;
 	int len;
+	serial_debug("canonize_path: prefix: [%s] path: [%s] ", prefix, path);
 	if(path[0] == '/') {
-		len = strlen(path)+10;
-		p = malloc(len);
+		len = strlen(path)+1;
+		p = calloc(1,len);
 		strcpy(p, path);
 		p[len] = 0;
 	} else {
@@ -89,8 +90,8 @@ char *canonize_path(char *prefix, char *path)
 			printf("Error - prefix should start with /\n");
 			return NULL;
 		}
-		len = strlen(prefix)+strlen(path)+20;
-		p = malloc(len);
+		len = strlen(prefix)+strlen(path)+2;
+		p = calloc(1,len);
 		strcpy(p, prefix);
 		strcat(p, "/");
 		strcat(p, path);
@@ -99,7 +100,7 @@ char *canonize_path(char *prefix, char *path)
 		printf("Cannot clean path: %s\n", p);
 		return NULL;
 	}
-//	printf("[%s]\n",p);
+serial_debug(" to [%s]\n",p);
 	return p;
 }
 

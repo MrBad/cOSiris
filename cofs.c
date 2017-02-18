@@ -251,6 +251,9 @@ void cofs_trunc(node){}
 void cofs_put_node(fs_node_t *node)
 {
 	spin_lock(&cofs_cache->lock);
+	if(node->ref_count==0) {
+		panic("already put %s\n", node->name);
+	}
 	if(node->ref_count==1 && node->type > 0 && node->num_links == 0) {
 		kprintf("Unlinking %s\n", node->name);
 		spin_unlock(&cofs_cache->lock);
@@ -259,8 +262,12 @@ void cofs_put_node(fs_node_t *node)
 		cofs_update_node(node);
 		spin_lock(&cofs_cache->lock);
 	}
-	if(node->inode!=1)
-	node->ref_count--;
+	if(node->inode==1) {
+//		kprintf("put root, count: %d\n", node->ref_count);
+		if(node->ref_count > 1)
+			node->ref_count--;
+	}  else
+		node->ref_count--;
 	spin_unlock(&cofs_cache->lock);
 }
 
@@ -559,6 +566,6 @@ fs_node_t *cofs_init()
 	cofs_put_node(dev);
 	cofs_put_node(root);
 	cofs_dup(root);
-	cofs_dump_cache();
+	//cofs_dump_cache();
 	return root;
 }

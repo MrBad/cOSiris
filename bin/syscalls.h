@@ -30,6 +30,7 @@ int mkdir(const char *pathname, mode_t mode);
 int isatty(int fd);
 off_t lseek(int fd, off_t offset, int whence);
 int getcwd(char *buf, size_t size);
+
 void cofs_dump_cache();
 
 #endif

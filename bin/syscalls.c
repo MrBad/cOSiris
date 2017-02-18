@@ -1,6 +1,5 @@
 #include "../include/cosiris.h"
 #include "../include/dirent.h"
-#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "sys.h"
@@ -97,9 +96,8 @@ int closedir(DIR *dir) {
 // this will not be thread safe //
 struct dirent dirent;
 struct dirent *readdir(DIR *dir) {
-	_syscall2(SYS_READDIR, (uint32_t)dir, (uint32_t)&dirent);
-	if(!dirent.d_ino) return NULL;
-	return &dirent;
+	int ret = _syscall2(SYS_READDIR, (uint32_t)dir, (uint32_t)&dirent);
+	return ret < 0 ? NULL : &dirent;
 }
 
 int lstat(const char *pathname, struct stat *buf) {
@@ -113,6 +111,7 @@ int readlink(const char *pathname, char *buf, size_t bufsiz) {
 int getcwd(char *buf, size_t size) {
 	return _syscall2(SYS_GETCWD, (uint32_t)buf, size);
 }
+
 void lstree() {
 	_syscall0(SYS_LSTREE);
 }

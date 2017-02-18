@@ -78,6 +78,7 @@ unsigned int fs_write(fs_node_t *node, unsigned int offset, unsigned int size, c
 fs_node_t *fs_finddir(fs_node_t *node, char *name);
 struct dirent *fs_readdir(fs_node_t *node, unsigned int index);
 fs_node_t * fs_mkdir(fs_node_t *node, char *name, int mode);
+fs_node_t *fs_dup(fs_node_t *node);
 fs_node_t *fs_namei(char *path);
 int fs_open_namei(char *path, int flag, int mode, fs_node_t **node);
 

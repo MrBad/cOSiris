@@ -15,5 +15,6 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 	}
+	printf("ok mkdir\n");
 	return 0;
 }

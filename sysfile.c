@@ -17,11 +17,16 @@ int sys_exec(char *path, char *argv[])
 	fs_node_t *fs_node;
 	char **tmp_argv = NULL;
 	int argc = 0, i;
-
+	
 	// try to open path //
 	if(fs_open_namei(path, O_RDONLY, 0755, &fs_node) < 0) {
 		serial_debug("sys_exec() cannot open %s file\n", path);
-		return -1;
+		char *t = canonize_path("/", path); // try to open from / root
+		if(fs_open_namei(t, O_RDONLY, 0, &fs_node) < 0) {
+			free(t);
+			return -1;
+		}
+		free(t);
 	}
 	if(!(fs_node->type & FS_FILE)) {
 		serial_debug("sys_exec() %s is not a file\n", path);
@@ -117,6 +122,8 @@ struct file *alloc_file()
 
 int sys_open(char *filename, int flags, int mode)
 {
+	// treat mode here!!! //
+	
 	// kprintf("opening %s\n", filename);
 	int fd;
 	for(fd = 0; fd < current_task->num_files; fd++) {
@@ -138,9 +145,8 @@ int sys_open(char *filename, int flags, int mode)
 			current_task->files[current_task->num_files] = NULL; // and null the reallocated buffer //
 		}
 		current_task->num_files = items;
-		// kprintf("reallocated to %d files\n", items);
 	}
-
+	
 	current_task->files[fd] = malloc(sizeof(struct file));
 
 	if((fs_open_namei(filename, flags, mode, &current_task->files[fd]->fs_node)) < 0) {
@@ -150,10 +156,10 @@ int sys_open(char *filename, int flags, int mode)
 		return -1;
 	}
 	if(!current_task->files[fd]->fs_node) {
+		kprintf("should not happen?!?!\n");
 		current_task->files[fd] = NULL;
 		return -1;
 	}
-	current_task->files[fd]->fs_node->ref_count++;
 	current_task->files[fd]->offs = 0;
 	current_task->files[fd]->flags = flags;
 	current_task->files[fd]->mode = mode;
@@ -168,11 +174,7 @@ int sys_close(unsigned int fd)
 	if(!current_task->files[fd]) {
 		return -1;
 	}
-	current_task->files[fd]->fs_node->ref_count--;
-	// kprintf("pid: %d closing fd: %d, ref_count: %d\n", current_task->pid, fd, current_task->files[fd]->fs_node->ref_count);
-	if(current_task->files[fd]->fs_node->ref_count == 0) {
-		fs_close(current_task->files[fd]->fs_node);
-	}
+	fs_close(current_task->files[fd]->fs_node);
 	free(current_task->files[fd]);
 	current_task->files[fd] = NULL;
 	return 0;
@@ -288,7 +290,7 @@ int sys_chdir(char *path)
 		fs_close(fs_node);
 		return -1;
 	}
-	kprintf("chdir %s, ref_c: %d\n", fs_node->name, fs_node->ref_count);
+	//kprintf("chdir %s, %s, ref_c: %d\n", p, fs_node->name, fs_node->ref_count);
 	free(current_task->cwd);
 	current_task->cwd = p;
 	fs_close(fs_node);
@@ -304,6 +306,7 @@ int sys_chroot(char *path)
 	}
 	if(!(fs_node->type & FS_DIRECTORY)) {
 		serial_debug("sys_chroot() - %s is not a directory\n", path);
+		fs_close(fs_node);
 		return -1;
 	}
 	// TODO - also check permissions //
@@ -321,6 +324,7 @@ int sys_chown(char *filename, int uid, int gid)
 	}
 	fs_node->uid = uid;
 	fs_node->gid = gid;
+	fs_close(fs_node);
 	return 0;
 }
 
@@ -332,6 +336,7 @@ int sys_chmod(char *filename, int mode)
 		return -1;
 	}
 	fs_node->mask = mode;
+	fs_close(fs_node);
 	return 0;
 }
 
@@ -341,15 +346,16 @@ int sys_mkdir(char *path, int mode)
 	int i, len;
 	char *tmp, *dirname, *basename;
 	if(!path) return -1;
-
 	if(*path != '/') { // relative path
-		tmp = calloc(1, strlen(current_task->cwd)+1 + strlen(path)+1);
+		tmp = calloc(1, strlen(current_task->cwd) + strlen(path) + 4);
 		strcat(tmp, current_task->cwd);
+		strcat(tmp, "/");
 		strcat(tmp, path);
-	} else { 			// absolute path
+	} else {			// absolute path
 		tmp = strdup(path);
 	}
 
+	//tmp = canonize_path(current_task->cwd, path);
 	while(tmp && tmp[strlen(tmp)-1] == '/') tmp[strlen(tmp)-1] = 0;
 	len = strlen(tmp);
 	for(i = len; i > 0; i--)
@@ -359,7 +365,6 @@ int sys_mkdir(char *path, int mode)
 
 	dirname = strdup(tmp); dirname[i] = 0;
 	basename = strdup(tmp); memmove(basename, basename+i+1, len-i); basename[len-i]=0;
-
 	fs_node_t *dir;
 
 	if(fs_open_namei(dirname, O_RDONLY, 0777, &dir)<0) {
@@ -369,12 +374,21 @@ int sys_mkdir(char *path, int mode)
 	fs_node_t *file;
 	if((file = fs_finddir(dir, basename))) {
 		serial_debug("Dir exists %s\n", file->name);
+		fs_close(dir);
+		fs_close(file);
 		return -1;
 	}
-	if(!fs_mkdir(dir, basename, mode)) {
+	if(!(file = fs_mkdir(dir, basename, mode))) {
 		serial_debug("Cannot create file: %s\n", basename);
+		fs_close(dir);
 		return -1;
 	}
+	fs_close(file);
+	fs_close(dir);
+	free(dirname);
+	free(basename);
+	free(tmp);
+	kprintf("after make\n");
 	return 0;
 }
 
@@ -489,6 +503,7 @@ char *sys_getcwd(char *buf, size_t size)
 		return NULL;
 	}
 	strncpy(buf, current_task->cwd, len);
+	buf[len]=0;
 	return buf;
 }
 
