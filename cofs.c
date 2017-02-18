@@ -259,6 +259,7 @@ void cofs_put_node(fs_node_t *node)
 		cofs_update_node(node);
 		spin_lock(&cofs_cache->lock);
 	}
+	if(node->inode!=1)
 	node->ref_count--;
 	spin_unlock(&cofs_cache->lock);
 }
@@ -557,7 +558,7 @@ fs_node_t *cofs_init()
 	cofs_unlock(dev);
 	cofs_put_node(dev);
 	cofs_put_node(root);
-	// cofs_dump_cache();
-
+	cofs_dup(root);
+	cofs_dump_cache();
 	return root;
 }

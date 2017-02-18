@@ -91,12 +91,14 @@ fs_node_t *fs_namei(char *path)
 		}
 	}
 	p = str;
+	
 	while(len > 0) {
 		if(*p) {
 			if(node) {
-				// kprintf("fs_namei - open %s, ref: %d, len: %d\n", node->name, node->ref_count, len);
-				node->ref_count--;
+				kprintf("fs_namei - open %s, ref: %d, len: %d\n", node->name, node->ref_count, len);
+				if(node->inode!=1) node->ref_count--;
 			}
+
 			if(!(node = fs_finddir(node ? node : fs_root, p))) {
 				break;
 			}

@@ -285,11 +285,13 @@ int sys_chdir(char *path)
 	if(!(fs_node->type & FS_DIRECTORY)) {
 		kprintf("sys_chdir() - %s is not a directory\n", path);
 		free(p);
+		fs_close(fs_node);
 		return -1;
 	}
 	kprintf("chdir %s, ref_c: %d\n", fs_node->name, fs_node->ref_count);
 	free(current_task->cwd);
 	current_task->cwd = p;
+	fs_close(fs_node);
 	return 0;
 }
 
