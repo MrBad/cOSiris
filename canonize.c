@@ -14,7 +14,7 @@
 // returns reference to path on success or NULL on failure 
 char *clean_path(char *path) 
 {
-	printf("path: %s\n",path);
+//	printf("path: %s\n",path);
 	int i,j,len;
 	len=strlen(path);
 	for(i = 0, j = 0; i < len && j < len; i++) {
@@ -64,22 +64,18 @@ char *canonize_path(char *prefix, char *path)
 	char *p;
 	int len;
 	serial_debug("canonize_path: prefix: [%s] path: [%s] ", prefix, path);
-	if(path[0] == '/') {
-		len = strlen(path)+1;
-		p = calloc(1,len);
-		strcpy(p, path);
-		p[len] = 0;
+	if(path[0]=='/') {
+		p = strdup(path);
 	} else {
 		if(prefix[0]!='/') {
-			printf("Error - prefix should start with /\n");
-			return NULL;
+			panic("canonize_path: prefix should start with /\n");
 		}
-		len = strlen(prefix)+strlen(path)+2;
-		p = calloc(1,len);
+		p = malloc(strlen(prefix)+strlen(path)+2);
 		strcpy(p, prefix);
 		strcat(p, "/");
 		strcat(p, path);
 	}
+	
 	if(!(clean_path(p))){
 		printf("Cannot clean path: %s\n", p);
 		return NULL;

@@ -192,7 +192,6 @@ int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
 		strcat(p,path);
 	}*/
 	*node = fs_namei(p);	
-	free(p);
 	return *node ? 0 : -1;
 }
 
