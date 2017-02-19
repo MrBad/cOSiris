@@ -398,7 +398,6 @@ int sys_mkdir(char *path, int mode)
 	free(dirname);
 	free(basename);
 	free(tmp);
-	kprintf("after make\n");
 	return 0;
 }
 

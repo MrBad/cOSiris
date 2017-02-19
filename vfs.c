@@ -117,6 +117,7 @@ fs_node_t *fs_namei(char *path)
 		len = len - curr_len - 1;
 		p = p + curr_len + 1;
 	}
+	serial_debug("free namei str");
 	free(str);
 	return node;
 }
@@ -176,18 +177,21 @@ int fs_mount(char *path, fs_node_t *node)
 // more to do //
 int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
 {
+	//char buf[512];
 	char *p;
-	serial_debug("fs_open_namei() not fully implemented\n");
-	//p = canonize_path(current_task->cwd, path);
-	if(path[0]=='/') {
+	serial_debug("fs_open_namei(%s)\n", path);
+	p = canonize_path(current_task->cwd, path);
+	//strncpy(buf, p, sizeof(buf)-1);
+	//free(p);
+	/*if(path[0]=='/') {
 		p = strdup(path);
 	} else {
 		p = malloc(strlen(current_task->cwd)+strlen(path)+2);
 		strcpy(p,current_task->cwd);
 		strcat(p,"/");
 		strcat(p,path);
-	}
-	*node = fs_namei(p);
+	}*/
+	*node = fs_namei(p);	
 	free(p);
 	return *node ? 0 : -1;
 }
