@@ -12,6 +12,7 @@
 // expects first character to be '/'
 // if last character is '/' and last is not first, trim it
 // returns reference to path on success or NULL on failure 
+#if 0
 static char *clean_path(char *path) 
 {
 //	printf("cleaning: %s\n", path);
@@ -64,6 +65,42 @@ static char *clean_path(char *path)
 	//printf("cleaned to: %s, len: %ld, strlen: %ld\n", path, k-path, strlen(path));
 	return path;
 }
+#endif
+char *clean_path(char *path) 
+{
+	serial_debug("path: %s\n",path);
+	int i,j,len;
+	len=strlen(path);
+	for(i = 0, j = 0; i < len && j < len; i++) {
+		if(path[i]=='/') {
+			while(i < len && path[i]=='/')
+				i++;
+			if(i < len && path[i]=='.') {
+				if(i+1==len || path[i+1]=='/') {
+					continue;
+				}
+				if(path[i+1]=='.') {
+					if(i+2==len || path[i+2]=='/') {
+						i+=2;
+						if(j > 1 && path[j]=='/') j--;
+						while(j > 1 && path[j-1]!='/') j--;
+						if(i+1==len && j > 1 && path[j-1]=='/') j--;
+						continue;
+					}
+				}
+			}
+			if(i<len || j==0) path[j++]='/';
+			if(j > i) {
+				printf("ERROR\n");
+				return NULL;
+			}
+		}
+		path[j++]=path[i];
+	}
+	if(j==0) j++;
+	path[j]=0;
+	return path;
+}
 
 //
 //	giving a prefix and path, if path is relative constructs a string 
@@ -81,7 +118,7 @@ char *canonize_path(char *prefix, char *path)
 	int len;
 	serial_debug("canonize_path: prefix: [%s] path: [%s] ", prefix, path);
 	if(path[0] == '/') {
-		len = strlen(path)+1;
+		len = strlen(path)+10;
 		p = calloc(1,len);
 		strcpy(p, path);
 		p[len] = 0;
@@ -90,7 +127,7 @@ char *canonize_path(char *prefix, char *path)
 			printf("Error - prefix should start with /\n");
 			return NULL;
 		}
-		len = strlen(prefix)+strlen(path)+2;
+		len = strlen(prefix)+strlen(path)+20;
 		p = calloc(1,len);
 		strcpy(p, prefix);
 		strcat(p, "/");
@@ -100,7 +137,7 @@ char *canonize_path(char *prefix, char *path)
 		printf("Cannot clean path: %s\n", p);
 		return NULL;
 	}
-serial_debug(" to [%s]\n",p);
+	serial_debug(" to [%s]\n",p);
 	return p;
 }
 

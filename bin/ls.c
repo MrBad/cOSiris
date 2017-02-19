@@ -30,10 +30,11 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	printf("type: %x\n", st.st_mode);
 	if((st.st_mode & FS_FILE)) {
-		printf("%s %d %d %d\n", path, st.st_mode, st.st_ino, st.st_size);
-	} 
+		printf("%s, regular, mode:%d inode:%d size:%d\n", path, st.st_mode, st.st_ino, st.st_size);
+	} else if((st.st_mode & FS_CHARDEVICE)) {
+		printf("%s, chardevice, mode:%d inode:%d size:%d\n", path, st.st_mode, st.st_ino, st.st_size);
+	}
 	else if(st.st_mode & FS_DIRECTORY) {
 		printf("type ino  size   name\n");
 		d = opendir(path);

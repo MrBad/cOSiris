@@ -277,7 +277,17 @@ int write(int fd, void *buf, size_t count) {
 int sys_chdir(char *path)
 {
 
-	char *p = canonize_path(current_task->cwd, path);
+	//char *p = canonize_path(current_task->cwd, path);
+	char *p;
+	/*if(path[0]=='/')
+		p = strdup(path);
+	else {
+		p = malloc(strlen(current_task->cwd)+strlen(path)+1+1);
+		strcpy(p,current_task->cwd);
+		strcat(p,"/");
+		strcat(p,path);
+	}*/
+	p = canonize_path(current_task->cwd, path);
 	fs_node_t *fs_node;
 	if((fs_open_namei(p, O_RDONLY, 0777, &fs_node)) < 0) {
 		kprintf("sys_chdir() cannot open %s\n", path);
