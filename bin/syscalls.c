@@ -112,6 +112,11 @@ int getcwd(char *buf, size_t size) {
 	return _syscall2(SYS_GETCWD, (uint32_t)buf, size);
 }
 
+int unlink(char *filename)
+{
+	return _syscall1(SYS_UNLINK, (uint32_t)filename);
+}
+
 void lstree() {
 	_syscall0(SYS_LSTREE);
 }

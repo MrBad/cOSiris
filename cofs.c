@@ -33,7 +33,9 @@ unsigned int cofs_write(fs_node_t *node, unsigned int offset, unsigned int size,
 fs_node_t *cofs_finddir(fs_node_t *node, char *name);
 struct dirent *cofs_readdir(fs_node_t *node, unsigned int index);
 fs_node_t *cofs_mkdir(fs_node_t *node, char *name, unsigned int mode);
-
+fs_node_t *cofs_creat(fs_node_t *node, char *name, unsigned int mode);
+int cofs_truncate(fs_node_t *node, unsigned int length);
+int cofs_unlink(fs_node_t *node, char *name);
 fs_node_t *cofs_get_node(uint32_t inum);
 
 
@@ -88,6 +90,7 @@ uint32_t block_alloc()
 // frees a block number on disk //
 void block_free(uint32_t block)
 {
+	//kprintf("blk %d ", block);
 	hd_buf_t *hdb;
 	uint32_t bitmap_block, idx, mask;
 	bitmap_block = BITMAP_BLOCK(block, superb);
@@ -129,7 +132,7 @@ fs_node_t *inode_alloc(unsigned short int type)
 void cofs_update_node(fs_node_t *node)
 {
 	KASSERT(node);
-	KASSERT(node->type);
+//	KASSERT(node->type);
 	cofs_inode_t *ino;
 	hd_buf_t *hdb = get_hd_buf(INO_BLK(node->inode, superb));
 	ino = (cofs_inode_t *) hdb->buf + node->inode % NUM_INOPB;
@@ -184,6 +187,9 @@ fs_node_t *cofs_get_node(uint32_t inum)
 	node->finddir = cofs_finddir;
 	node->readdir = cofs_readdir;
 	node->mkdir = cofs_mkdir;
+	node->creat = cofs_creat;
+	node->truncate = cofs_truncate;
+	node->unlink = cofs_unlink;
 	spin_unlock(&cofs_cache->lock);
 	return node;
 }
@@ -244,9 +250,6 @@ void cofs_unlock(fs_node_t *node)
 	spin_unlock(&node->lock);
 }
 
-// truncate the node //
-void cofs_trunc(node){}
-
 // release the node - if no num_links reference it -> truncate it //
 void cofs_put_node(fs_node_t *node)
 {
@@ -257,7 +260,7 @@ void cofs_put_node(fs_node_t *node)
 	if(node->ref_count==1 && node->type > 0 && node->num_links == 0) {
 		kprintf("Unlinking %s\n", node->name);
 		spin_unlock(&cofs_cache->lock);
-		cofs_trunc(node);
+		cofs_truncate(node, 0);
 		node->type = 0;
 		cofs_update_node(node);
 		spin_lock(&cofs_cache->lock);
@@ -323,6 +326,92 @@ uint32_t block_map(fs_node_t *node, uint32_t fbn)
 	}
 	panic("block_map out of range\n");
 	return 0;
+}
+
+int scan_block(unsigned int blockno) {
+	hd_buf_t *hdb;
+	unsigned int scan;
+	hdb = get_hd_buf(blockno);
+	int i = 0;
+	for(scan = 0; scan < BLOCK_SIZE/sizeof(uint32_t); scan++) {
+		if(((uint32_t *)hdb->buf)[scan] != 0) {
+			i++;
+		}
+	}
+	put_hd_buf(hdb);
+	return i;
+}
+
+// truncate the node //
+// deallocates nodes //
+int cofs_truncate(fs_node_t *node, unsigned int length)
+{
+	kprintf("in truncate\n");
+	unsigned int fbn, fbs, fbe; // file block num, start, end //
+	hd_buf_t *hdb;
+	uint32_t addr;
+	KASSERT(length < node->size);
+	KASSERT(length % BLOCK_SIZE == 0);
+	fbs = (length / BLOCK_SIZE);
+	fbe = (node->size / BLOCK_SIZE) + 1;
+	kprintf("fbs:%d, fbe: %d\n", fbs, fbe);
+	int i = 0;
+	int j = 0;
+
+	for(fbn = fbs; fbn < fbe; fbn++) {
+		if(fbn < NUM_DIRECT) {
+			if(node->addrs[fbn]) {
+				block_free(node->addrs[fbn]);
+				j++;
+				node->addrs[fbn] = 0;
+			}
+		} else if(fbn < NUM_DIRECT+NUM_SIND) {
+			hdb = get_hd_buf(node->addrs[SIND_IDX]);
+			addr = ((uint32_t *)hdb->buf)[fbn-NUM_DIRECT];
+			((uint32_t *)hdb->buf)[fbn-NUM_DIRECT]=0;
+			hdb->is_dirty = 1;	
+			block_free(addr);j++;
+			put_hd_buf(hdb);
+			if(scan_block(node->addrs[SIND_IDX]) == 0) {
+				block_free(node->addrs[SIND_IDX]);
+				i++;
+				node->addrs[SIND_IDX] = 0;
+			}
+		} else if(fbn < NUM_DIRECT+NUM_DIND) {
+			uint32_t midx = (fbn-NUM_DIRECT-NUM_SIND) / NUM_SIND;
+			uint32_t sidx = (fbn-NUM_DIRECT-NUM_SIND) % NUM_SIND;
+		
+			hdb = get_hd_buf(node->addrs[DIND_IDX]);
+			uint32_t mblk = ((uint32_t *) hdb->buf)[midx];
+			put_hd_buf(hdb);
+		
+			hdb = get_hd_buf(mblk);
+			addr = ((uint32_t*)hdb->buf)[sidx];
+			((uint32_t*)hdb->buf)[sidx] = 0;
+			hdb->is_dirty = true;
+			block_free(addr);j++;
+			put_hd_buf(hdb);
+			// to be tested //
+			int x;
+			if((x = scan_block(mblk)) == 0) {
+				block_free(mblk);
+				i++;
+				hdb = get_hd_buf(node->addrs[DIND_IDX]);
+				((uint32_t *) hdb->buf)[midx] = 0;
+				hdb->is_dirty = 1;
+				put_hd_buf(hdb);
+				kprintf("x: %d ", x);
+			}
+			if(scan_block(node->addrs[DIND_IDX]) == 0) {
+				block_free(node->addrs[DIND_IDX]);i++;
+				node->addrs[DIND_IDX] = 0;
+			}
+		}
+	}
+	kprintf("free - %d direct blocks and %d indirect, total: %d\n", j,i, j+i);
+	node->size = length;
+	cofs_update_node(node);
+	return length;
 }
 
 #ifndef min
@@ -427,12 +516,14 @@ struct dirent *cofs_readdir(fs_node_t *node, unsigned int index)
 	cofs_dirent_t dir;
 	KASSERT(node->lock == 0);
 	cofs_lock(node);
-
+	memset(&dirent, 0, sizeof(dirent));
 	offs = index * sizeof(cofs_dirent_t);
 	if((n = cofs_read(node, offs, sizeof(dir), (char *)&dir)) > 0) {
 		if(dir.inode == 0) {
+//			kprintf("idx %d is 0\n", index);
 			index++;
 			cofs_unlock(node);
+			return &dirent;
 			return cofs_readdir(node, index);
 		}
 		strncpy(dirent.d_name, dir.name, sizeof(dirent.d_name)-1);
@@ -497,6 +588,64 @@ fs_node_t * cofs_mkdir(fs_node_t *node, char *name, unsigned int mode)
 	cofs_unlock(node);
 
 	return new_dir;
+}
+
+fs_node_t *cofs_creat(fs_node_t *node, char *name, unsigned int mode)
+{
+	KASSERT(node->type & FS_DIRECTORY);
+	fs_node_t *new_file;
+	if((new_file = cofs_finddir(node, name)) != NULL) {
+		cofs_put_node(new_file);
+		kprintf("File exists\n");
+		return NULL;
+	}
+	new_file = inode_alloc(FS_FILE);
+	cofs_lock(new_file);
+	strncpy(new_file->name, name, sizeof(new_file->name)-1);
+	new_file->mask = mode; // and mask? //
+	new_file->num_links = 1;
+	cofs_update_node(new_file);
+	cofs_unlock(new_file);
+	cofs_lock(node);
+	cofs_dirlink(node, name, new_file->inode);
+	cofs_unlock(node);
+	return new_file;
+}
+
+int cofs_unlink(fs_node_t *parent, char *name) 
+{
+	KASSERT(parent);
+	fs_node_t *node;
+	if(!(node = cofs_finddir(parent, name)))
+		return -1;
+	cofs_lock(node);
+	int n;
+	cofs_dirent_t dir;
+	unsigned int offs = 0;
+	int found = 0;
+
+	cofs_lock(parent);
+	while((n = cofs_read(parent, offs, sizeof(dir), (char*)&dir)) > 0) {
+		if(dir.inode == node->inode) {
+			found = true;
+			break;
+		}
+		offs += n;
+	}
+	KASSERT(found);
+	dir.inode = 0; 
+	memset(dir.name, 0, sizeof(dir.name));
+	if((cofs_write(parent, offs, sizeof(dir), (char*)&dir)) != sizeof(dir)) {
+		panic("cofs_unlink");
+	}
+	cofs_update_node(parent);
+	cofs_unlock(parent);
+
+	node->num_links--; // and put will truncate it if 0 //
+	cofs_unlock(node);
+	cofs_put_node(node);
+	cofs_put_node(parent);
+	return 0;
 }
 
 void cofs_dump_cache()

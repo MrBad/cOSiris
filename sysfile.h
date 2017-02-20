@@ -27,6 +27,7 @@ int sys_chroot(char *path);
 int sys_chown(char *filename, int uid, int gid);
 int sys_chmod(char *filename, int mode);
 int sys_mkdir(char *pathname, int mode);
+int sys_unlink(char *pathname);
 int sys_isatty(int fd);
 off_t sys_lseek(int fd, off_t offset, int whence);
 

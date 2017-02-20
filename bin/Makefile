@@ -10,7 +10,7 @@ ASMFLAGS = -g -f elf
 OBJS=crt0.o sys.o syscalls.o ../lib/libc.a
 
 
-all: $(OBJS) init.o test_fork.o test_sbrk.o test_malloc.o cosh.o ls.o cat.o mkdir.o
+all: $(OBJS) init.o test_fork.o test_sbrk.o test_malloc.o cosh.o ls.o cat.o mkdir.o test_write.o truncate.o test_append.o rm.o
 	$(LD) $(LDFLAGS) -o init init.o $(OBJS)
 	$(LD) $(LDFLAGS) -o test_fork test_fork.o $(OBJS)
 	$(LD) $(LDFLAGS) -o test_sbrk test_sbrk.o $(OBJS)
@@ -19,6 +19,11 @@ all: $(OBJS) init.o test_fork.o test_sbrk.o test_malloc.o cosh.o ls.o cat.o mkdi
 	$(LD) $(LDFLAGS) -o ls ls.o $(OBJS)
 	$(LD) $(LDFLAGS) -o cat cat.o $(OBJS)
 	$(LD) $(LDFLAGS) -o mkdir mkdir.o $(OBJS)
+	$(LD) $(LDFLAGS) -o test_write test_write.o $(OBJS)
+	$(LD) $(LDFLAGS) -o truncate truncate.o $(OBJS)
+	$(LD) $(LDFLAGS) -o test_append test_append.o $(OBJS)
+	$(LD) $(LDFLAGS) -o rm rm.o $(OBJS)
+
 	# objdump -b binary -m i386 -D $(TARGET) > $(TARGET).lst
 
 ../lib/libc.a: ../lib/Makefile
@@ -31,4 +36,4 @@ all: $(OBJS) init.o test_fork.o test_sbrk.o test_malloc.o cosh.o ls.o cat.o mkdi
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
 clean:
-	rm *.o init test_fork test_sbrk test_malloc cosh ls cat mkdir pwd
+	rm *.o init test_fork test_sbrk test_malloc cosh ls cat mkdir test_write truncate test_append rm

@@ -33,6 +33,10 @@ typedef void (*close_type_t)(struct fs_node *node);
 typedef struct dirent *(*readdir_type_t)(struct fs_node *node, unsigned int index);
 typedef struct fs_node *(*finddir_type_t)(struct fs_node *node, char *name);
 typedef struct fs_node *(*mkdir_type_t)(struct fs_node *node, char *name, unsigned int mode);
+typedef struct fs_node *(*creat_type_t)(struct fs_node *node, char *name, unsigned int mode);
+typedef int(*truncate_type_t)(struct fs_node *node, unsigned int length);
+typedef int(*unlink_type_t)(struct fs_node *parent, char *name);
+
 
 typedef struct fs_node {
 	char name[256];				// this info should go ouside inode in future
@@ -57,6 +61,9 @@ typedef struct fs_node {
 	readdir_type_t readdir;
 	finddir_type_t finddir;
 	mkdir_type_t mkdir;
+	creat_type_t creat;
+	truncate_type_t truncate;
+	unlink_type_t unlink;
 	void *ptr;				// reserved
 } fs_node_t;
 
@@ -81,9 +88,10 @@ fs_node_t * fs_mkdir(fs_node_t *node, char *name, int mode);
 fs_node_t *fs_dup(fs_node_t *node);
 fs_node_t *fs_namei(char *path);
 int fs_open_namei(char *path, int flag, int mode, fs_node_t **node);
-
 int fs_mount(char *path, fs_node_t *node);
-
 void lstree(fs_node_t *parent, int level);
+int fs_unlink(char *path);
+
+
 
 #endif

@@ -44,6 +44,7 @@ char *clean_path(char *path)
 	}
 	if(j==0)j++;
 	path[j]=0;
+	if(j > 1 && path[j-1]=='/') j--;path[j]=0;
 	assert(j<=len);
 	assert(j>0);
 	return path;
@@ -62,13 +63,13 @@ char *clean_path(char *path)
 char *canonize_path(char *prefix, char *path) 
 {
 	char *p;
-	int len;
 	serial_debug("canonize_path: prefix: [%s] path: [%s] ", prefix, path);
 	if(path[0]=='/') {
 		p = strdup(path);
 	} else {
 		if(prefix[0]!='/') {
 			panic("canonize_path: prefix should start with /\n");
+			return NULL;
 		}
 		p = malloc(strlen(prefix)+strlen(path)+2);
 		strcpy(p, prefix);

@@ -33,7 +33,7 @@ enum {
 	SYS_LSTAT,
 	SYS_READLINK,
 	SYS_GETCWD,
-
+	SYS_UNLINK,
 };
 
 #endif

@@ -2,6 +2,7 @@
 #include <stdlib.h>	// malloc
 #include <sys/types.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include "console.h"
 #include "serial.h"
 #include "assert.h"
@@ -169,7 +170,79 @@ int fs_mount(char *path, fs_node_t *node)
 }
 #endif
 
+fs_node_t *fs_creat(char *path, int mode) 
+{
+	char *dirname, *filename, *p;
+	KASSERT(path[0]=='/');
+	p = dirname = strdup(path);
+	p+=strlen(p);
+	while(p > dirname && *(p-1)!='/') p--;
+	filename = strdup(p);
+	*p=0;
+	fs_node_t *parent = fs_namei(dirname);
+	if(!parent) {
+		kprintf("cannot find parent %s\n", dirname);
+		return NULL;
+	}
+	if(!parent->creat) {
+		kprintf("file system does not support creat\n");
+		return NULL;
+	}
+	return parent->creat(parent, filename, mode);
+}
 
+fs_node_t *fs_truncate(fs_node_t *node, unsigned int length) 
+{
+	KASSERT(node);
+	if(!node->truncate) {
+		kprintf("filesystem does not support truncate\n");
+		return NULL;
+	}
+	node->truncate(node, length);
+	return node;
+}
+
+int fs_unlink(char *path)	
+{
+	char *p, *filename, *dirname;
+	dirname = p = canonize_path(current_task->cwd, path);
+	p += strlen(p);
+	while(p > dirname && *(p-1)!='/') p--;
+	filename = strdup(p); 
+	*p = 0;
+	
+	fs_node_t *parent = fs_namei(dirname);
+	fs_node_t *node = fs_finddir(parent, filename);
+
+	if(!parent || parent->type != FS_DIRECTORY) {
+		kprintf("no such directory: %s\n", dirname);
+		return -1;
+	}
+	if(!node) {
+		kprintf("filename does not exists %s\n", filename);
+		return -1;
+	}
+	if(node->type == FS_DIRECTORY) {
+		struct dirent *dir;
+		bool found = false; int idx = 0;
+		while((dir = fs_readdir(node, idx++))) {
+			if(dir->d_ino > 0) {
+				found = true;
+				break;
+			}
+		}
+		if(found) {
+			kprintf("directory not empty\n");
+			return -1;
+		}
+	}
+	fs_close(node);
+	if(!parent->unlink) {
+		kprintf("%s does not support unlinking\n");
+		return -1;
+	}
+	return parent->unlink(parent, filename);
+}
 
 // hard work here //
 // check permissions //
@@ -177,21 +250,28 @@ int fs_mount(char *path, fs_node_t *node)
 // more to do //
 int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
 {
-	//char buf[512];
 	char *p;
 	serial_debug("fs_open_namei(%s)\n", path);
 	p = canonize_path(current_task->cwd, path);
-	//strncpy(buf, p, sizeof(buf)-1);
-	//free(p);
-	/*if(path[0]=='/') {
-		p = strdup(path);
+	if(flags & O_CREAT) {
+		*node = fs_namei(p);
+		if(!*node) {
+			kprintf("Creating file [%s], flags: %x, mode: %x\n", path, flags, mode);
+			*node = fs_creat(p, mode);
+		}
 	} else {
-		p = malloc(strlen(current_task->cwd)+strlen(path)+2);
-		strcpy(p,current_task->cwd);
-		strcat(p,"/");
-		strcat(p,path);
-	}*/
-	*node = fs_namei(p);	
+		*node = fs_namei(p);
+	}
+	if(node) {
+		if(flags & O_TRUNC) {
+			if(flags & O_RDWR || flags & O_WRONLY) {
+				kprintf("Truncating file[%s] to 0\n", path);
+				if(!(fs_truncate(*node, 0))) {
+					panic("cannot truncate %s\n", p);		
+				}
+			}
+		}
+	}
 	return *node ? 0 : -1;
 }
 

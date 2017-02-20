@@ -27,6 +27,7 @@ int chroot(char *filename);
 //int chmod(char *filename, mode_t mode);
 int chown(char *filename, int uid, int gid);
 int mkdir(const char *pathname, mode_t mode);
+int unlink(char *filename);
 int isatty(int fd);
 off_t lseek(int fd, off_t offset, int whence);
 int getcwd(char *buf, size_t size);

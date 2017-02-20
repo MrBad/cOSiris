@@ -52,7 +52,7 @@ static void *syscalls[] = {
 	&sys_lstat,
 	&sys_readlink,
 	&sys_getcwd,
-
+	&sys_unlink,
 };
 static unsigned int num_syscalls;
 

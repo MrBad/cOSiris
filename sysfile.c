@@ -3,13 +3,13 @@
 #include <string.h>
 #include <sys/unistd.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include "console.h"
 #include "task.h"
 #include "sysfile.h"
 #include "vfs.h"
 #include "serial.h"
 #include "canonize.h"
-
 // this belongs to sys_proc, but... //
 int sys_exec(char *path, char *argv[])
 {
@@ -17,16 +17,15 @@ int sys_exec(char *path, char *argv[])
 	fs_node_t *fs_node;
 	char **tmp_argv = NULL;
 	int argc = 0, i;
-	
 	// try to open path //
-	if(fs_open_namei(path, O_RDONLY, 0755, &fs_node) < 0) {
+	if(fs_open_namei(path, O_RDONLY, 0, &fs_node) < 0) {
 		serial_debug("sys_exec() cannot open %s file\n", path);
-		char *t = canonize_path("/", path); // try to open from / root
-		if(fs_open_namei(t, O_RDONLY, 0, &fs_node) < 0) {
-			free(t);
+		char *p = canonize_path("/", path); // try to open from / root
+		if(fs_open_namei(p, O_RDONLY, 0, &fs_node) < 0) {
+			free(p);
 			return -1;
 		}
-		free(t);
+		free(p);
 	}
 	if(!(fs_node->type & FS_FILE)) {
 		serial_debug("sys_exec() %s is not a file\n", path);
@@ -124,7 +123,8 @@ int sys_open(char *filename, int flags, int mode)
 {
 	// treat mode here!!! //
 	
-	// kprintf("opening %s\n", filename);
+	kprintf("opening %s\n", filename);
+	
 	int fd;
 	for(fd = 0; fd < current_task->num_files; fd++) {
 		if(!current_task->files[fd]) {
@@ -160,7 +160,11 @@ int sys_open(char *filename, int flags, int mode)
 		current_task->files[fd] = NULL;
 		return -1;
 	}
-	current_task->files[fd]->offs = 0;
+	if(flags & O_APPEND && (flags & O_WRONLY || flags & O_RDWR)) {
+		current_task->files[fd]->offs = current_task->files[fd]->fs_node->size;
+	} else {
+		current_task->files[fd]->offs = 0;
+	}
 	current_task->files[fd]->flags = flags;
 	current_task->files[fd]->mode = mode;
 	return fd;
@@ -516,3 +520,13 @@ char *sys_getcwd(char *buf, size_t size)
 	return buf;
 }
 
+int sys_unlink(char *path) 
+{
+	fs_node_t *node;
+	if((fs_open_namei(path, O_RDONLY, 0, &node)) < 0) {
+		serial_debug("sys_unlink() cannot open %s\n", path);
+		return -1;
+	}
+	fs_close(node);
+	return fs_unlink(path);
+}
