@@ -1,15 +1,37 @@
 cOSiris is a small kernel written in C (and some ASM) for i386, for fun.
-monolitic, multitasking, protected mode, ring 0,3 userland...
+monolitic, multitasking, protected mode, ring 0,3 userland, small shell, hard disk unix like filesystem
 
-Inspired by linux-0.01, osd, ics-os, james molloy, geekos, osdev site
+Inspired by linux-0.01, osd, ics-os, james molloy, geekos, unix v6, xv6, osdev site
 
 
 - compile - make
-- run - make run 	- require bochs
-					- for debian type # apt-get install bochs bochs-term bochsbios
+- run - make run	- require bochs
+			- for debian type # apt-get install bochs bochs-term bochsbios
 
 - make a floppy image - make fd
-						will create fd.img, to write it - dd if=fd.img of=/dev/fd0
+	will create fd.img, to write it - dd if=fd.img of=/dev/fd0
+
+Memory info
+_____
+kernel identity mapping 0x00100000	-> linked on every fork()
+USER_STACK_LOW          0x0FFEF000	// actually only 2 pages mapped
+USER_STACK_HI           0x0FFFF000	<- cloned on fork
+USER_CODE_START_ADDR 	0x10000000	-> cloned on fork, not linked yet
+			user code
+User heap starts	0x20000000 	-> cloned on fork
+User heap max		0x30000000
+
+Kernel heap starts	0xD0000000 	// kernel heap is linked for every processs
+Kernel heap max		0xE0000000	// so all dynamic kernel vars can be seen and modified on every process, when switch to ring 0
+
+KERNEL_STACK_HI         0xFF118000 	<- // after moving it up, size: 4 pages. stack is cloned / duplicated for every process
+RESV_PAGE		0xFFBFE000
+PTABLES_ADDR		0xFFC00000
+PDIR_ADDR		0xFFFFF000
+kernel stack is cloned/copy for every process.
+____
+
+
 ## bochs mmap
 size = 0x14, base_addr = 0x00, length = 0x09fc00, type = 0x1		   654336 - free
 size = 0x14, base_addr = 0x09fc00, length = 0x0400, type = 0x2		     1024 - EBDA?		                                                                                                _
