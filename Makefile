@@ -27,7 +27,6 @@ all: $(OBJS)
 	$(LD) $(LDFLAGS) -o kernel.bin $(OBJS)
 	make -C util
 	make -C bin
-	make -C test
 
 lib/libc.a: lib/Makefile
 	make -C lib
@@ -47,7 +46,6 @@ distclean:
 	make -C lib clean
 	make -C util clean
 	make -C bin clean
-	make -C test clean
 	rm initrd.img include/*.gch
 
 fdimg: bzImage
