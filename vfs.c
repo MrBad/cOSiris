@@ -227,6 +227,10 @@ int fs_unlink(char *path)
 		bool found = false; int idx = 0;
 		while((dir = fs_readdir(node, idx++))) {
 			if(dir->d_ino > 0) {
+				if(strcmp(dir->d_name,".")== 0) 
+					continue;
+				if(strcmp(dir->d_name, "..") == 0)
+					continue;
 				found = true;
 				break;
 			}
