@@ -53,6 +53,7 @@ static void *syscalls[] = {
 	&sys_readlink,
 	&sys_getcwd,
 	&sys_unlink,
+	&sys_dup,
 };
 static unsigned int num_syscalls;
 

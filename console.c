@@ -20,7 +20,7 @@
 #define BACKSPACE	0x100
 
 static uint16_t * vid_mem = (uint16_t *)VID_ADDR;
-static uint16_t attr = 0x700;
+static uint16_t attr = 0x700; 
 static spin_lock_t console_lock;
 static int scroll_pos;
 
@@ -264,6 +264,13 @@ static fs_node_t *create_console_device()
 }
 #endif
 
+void console_close(struct fs_node *node)
+{
+	// always keep console node in memory //
+	//if(node->ref_count > 1)
+		node->ref_count--;
+}
+
 void console_init()
 {
 	cons_wait_queue = list_open(NULL);
@@ -278,5 +285,7 @@ void console_init()
 	}
 	cons->read = console_read;
 	cons->write = console_write;
+	cons->close = console_close;
+	cons->open = NULL;
 	// cons->ref_count--;
 }

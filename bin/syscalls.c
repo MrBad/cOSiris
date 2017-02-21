@@ -116,7 +116,9 @@ int unlink(char *filename)
 {
 	return _syscall1(SYS_UNLINK, (uint32_t)filename);
 }
-
+int dup(int oldfd) {
+	return _syscall1(SYS_DUP, oldfd);
+}
 void lstree() {
 	_syscall0(SYS_LSTREE);
 }

@@ -4,12 +4,15 @@
 #include <sys/unistd.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include "assert.h"
 #include "console.h"
 #include "task.h"
 #include "sysfile.h"
 #include "vfs.h"
 #include "serial.h"
 #include "canonize.h"
+
+
 // this belongs to sys_proc, but... //
 int sys_exec(char *path, char *argv[])
 {
@@ -31,9 +34,11 @@ int sys_exec(char *path, char *argv[])
 		serial_debug("sys_exec() %s is not a file\n", path);
 		return -1;
 	}
-	// todo-try to see it's mask - not supported yet //
-
+	// TODO try to check it's mask, if it's exec
+	// not supported yet //
+	
 	// save argvs - we will destroy current process stack //
+	// TODO - save this args on new stack
 	int needed_mem = 0;
 	if(argv) {
 	 	tmp_argv = calloc(MAX_ARGUMENTS, sizeof(char *));
@@ -55,7 +60,6 @@ int sys_exec(char *path, char *argv[])
 			map(page, (unsigned int)frame_alloc(), P_PRESENT | P_READ_WRITE | P_USER);
 		}
 	}
-
 	// free it's stack //
 	for(i = 2; i > 0; i--) {
 		virt_t page = USER_STACK_HI-(i * PAGE_SIZE);
@@ -75,7 +79,7 @@ int sys_exec(char *path, char *argv[])
 
 	// after mapped num_pages, we have some free mem - let's use it for passing arguments //
 	// maibe in future we will use stack instead of this, pushing strings into it //
-	void *free_mem_start = (void *) buff+offset;
+	void *free_mem_start = (void *) (buff+offset);
 	unsigned int free_mem_size = num_pages*PAGE_SIZE-fs_node->size;
 	// zero the rest of alloc space //
 	memset(buff+offset, 0, free_mem_size);
@@ -112,20 +116,47 @@ int sys_exec(char *path, char *argv[])
 	return 0;
 }
 
-struct file *alloc_file()
+static struct file *alloc_file()
 {
 	struct file *f;
 	f = (struct file *) calloc(1, sizeof(struct file));
 	return f;
 }
 
+// Allocates a file descriptor pointer for current proc //
+// if it does not find a free one, enlarge the files pointer buffer //
+static int fd_alloc()
+{
+	int fd; 
+	for(fd = 0; fd < current_task->num_files; fd++) {
+		if(!current_task->files[fd]) {
+			break;
+		}
+	}
+	if(fd == current_task->num_files) {
+		// not enough available files, let's enlarge the array //
+		int items;
+		items = current_task->num_files;
+		if(items > MAX_OPEN_FILES) {
+			return -1; 
+		}
+		items = items * 2 >= MAX_OPEN_FILES ? MAX_OPEN_FILES : items * 2;
+		current_task->files = realloc(current_task->files, items * sizeof(struct file *));
+		for(; current_task->num_files < items; current_task->num_files++) {
+			current_task->files[current_task->num_files] = NULL; // and null the reallocated buffer //
+		}
+		KASSERT(current_task->num_files == items);
+	}
+	return fd;
+}
+
 int sys_open(char *filename, int flags, int mode)
 {
 	// treat mode here!!! //
 	
-	kprintf("opening %s\n", filename);
 	
 	int fd;
+	/*	
 	for(fd = 0; fd < current_task->num_files; fd++) {
 		if(!current_task->files[fd]) {
 			break;
@@ -145,10 +176,13 @@ int sys_open(char *filename, int flags, int mode)
 			current_task->files[current_task->num_files] = NULL; // and null the reallocated buffer //
 		}
 		current_task->num_files = items;
+	}*/
+	if((fd = fd_alloc()) < 0) {
+		return -1;
 	}
+	//current_task->files[fd] = malloc(sizeof(struct file));
+	current_task->files[fd] = alloc_file();
 	
-	current_task->files[fd] = malloc(sizeof(struct file));
-
 	if((fs_open_namei(filename, flags, mode, &current_task->files[fd]->fs_node)) < 0) {
 		serial_debug("sys_open() cannot open %s\n", filename);
 		free(current_task->files[fd]);
@@ -157,6 +191,7 @@ int sys_open(char *filename, int flags, int mode)
 	}
 	if(!current_task->files[fd]->fs_node) {
 		kprintf("should not happen?!?!\n");
+		free(current_task->files[fd]);
 		current_task->files[fd] = NULL;
 		return -1;
 	}
@@ -178,9 +213,19 @@ int sys_close(unsigned int fd)
 	if(!current_task->files[fd]) {
 		return -1;
 	}
+	if(current_task->files[fd]->dup_cnt < 0) {
+		kprintf("dup close error ?!\n");
+		return -1;
+	}
 	fs_close(current_task->files[fd]->fs_node);
-	free(current_task->files[fd]);
-	current_task->files[fd] = NULL;
+	if(current_task->files[fd]->dup_cnt > 0)
+		current_task->files[fd]->dup_cnt--;
+	// when dup_cnt is 0, it is safe to free the 
+	// structure
+	if(current_task->files[fd]->dup_cnt == 0) {
+		free(current_task->files[fd]);
+		current_task->files[fd] = NULL;
+	}
 	return 0;
 }
 
@@ -245,7 +290,7 @@ int sys_read(int fd, void *buf, size_t count)
 	}
 	// File was not previously open //
 	if(!(f = current_task->files[fd])) {
-		kprintf("File %d not opened by proc %d\n", fd, current_task->files[fd]);
+		kprintf("File %d not opened by proc %d\n", fd, current_task->pid);
 		return -1;
 	}
 	// EOF ? //
@@ -267,7 +312,7 @@ int sys_write(int fd, void *buf, size_t count)
 	}
 	// File was not previously open //
 	if(!(f = current_task->files[fd])) {
-		kprintf("File %d not opened by proc %d\n", fd, current_task->files[fd]);
+		kprintf("File %d not opened by proc %d\n", fd, current_task->pid);
 		return -1;
 	}
 	unsigned int bytes = fs_write(f->fs_node, f->offs, count, buf);
@@ -529,4 +574,29 @@ int sys_unlink(char *path)
 	}
 	fs_close(node);
 	return fs_unlink(path);
+}
+
+
+int sys_dup(int oldfd) 
+{
+	int fd, valid;
+	valid = 0;
+	for(fd = 0; fd < current_task->num_files; fd++) {
+		if(fd == oldfd && current_task->files[fd]) {
+			valid = 1; break;
+		}
+	}
+	if(!valid) {
+		kprintf("sys_dup: invalid file descriptor %d!", oldfd);
+		return -1;
+	}	
+	if((fd = fd_alloc()) < 0) {
+		return -1;
+	}
+	// and we link the files[oldfd] to new files[fd]
+	// increasing dup_cnt
+	current_task->files[fd] = current_task->files[oldfd];
+	fs_dup(current_task->files[fd]->fs_node);
+	current_task->files[fd]->dup_cnt++;
+	return fd;
 }

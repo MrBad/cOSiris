@@ -15,7 +15,7 @@ typedef enum {
 	TASK_EXITED,
 } task_states_t;
 
-#define TASK_INITIAL_NUM_FILES 3
+#define TASK_INITIAL_NUM_FILES 6
 #define MAX_OPEN_FILES 64
 #define MAX_ARGUMENTS 16
 

@@ -11,6 +11,8 @@ struct file {
 	unsigned short flags;
 	unsigned int offs;
 	fs_node_t *fs_node;
+	unsigned int dup_cnt; // use it in dup() to keep reference count to this file
+						  // when dup_cnt is 0, it's safe to free the struct
 };
 typedef struct file DIR;
 
@@ -28,6 +30,7 @@ int sys_chown(char *filename, int uid, int gid);
 int sys_chmod(char *filename, int mode);
 int sys_mkdir(char *pathname, int mode);
 int sys_unlink(char *pathname);
+int sys_dup(int oldfd);
 int sys_isatty(int fd);
 off_t sys_lseek(int fd, off_t offset, int whence);
 

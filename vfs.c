@@ -19,7 +19,11 @@ void fs_open(fs_node_t *node, unsigned int flags)
 
 void fs_close(fs_node_t *node)
 {
-	if (node->close != NULL) {
+	if(node==NULL) {
+		panic("fs_close\n");
+	}
+	serial_debug("closing %x\n", node);
+	if (node->close) {
 		return node->close(node);
 	}
 }

@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include "x86.h"
 #include "task.h"
 #include "mem.h"
@@ -21,14 +22,9 @@ char *task_states[] = {
 	0
 };
 
-void print_int(int x)
-{
-	kprintf("%08x", x);
-}
 
 task_t *task_new()
 {
-	// unsigned int i;
 	task_t *t = (task_t *) calloc(1, sizeof(task_t));
 	t->pid = next_pid++;
 	// t->tss_kernel_stack = (unsigned int *)KERNEL_STACK_HI;//malloc_page_aligned(PAGE_SIZE);
@@ -40,17 +36,6 @@ task_t *task_new()
 	h->readonly = h->supervisor = false;
 	t->heap = h;
 	t->name = NULL;
-	// files //
-	// t->files = (struct file **) calloc(TASK_INITIAL_NUM_FILES, sizeof(struct file *));
-	// t->num_files = TASK_INITIAL_NUM_FILES;
-	// fs_node_t *console = fs_namei("/dev/console");
-	// KASSERT(console != NULL);
-	// for(i=0; i < 3; i++) {
-	// 	t->files[i] = malloc(sizeof(struct file));
-	// 	t->files[i]->fs_node = console;
-	// 	console->ref_count++;
-	// }
-	// console->ref_count--;
 	return t;
 }
 
@@ -67,6 +52,8 @@ void idle_loop()
 
 void task_init()
 {
+	int i;
+	struct file *f;
 	cli();
 	next_pid = 1;
 	write_tss(5, 0x10, KERNEL_STACK_HI);
@@ -82,22 +69,15 @@ void task_init()
 	current_task->state = TASK_READY;
 	task_queue = current_task;
 
-	// files //
+	// alloc files for first process //
 	current_task->files = (struct file **) calloc(TASK_INITIAL_NUM_FILES, sizeof(struct file *));
 	current_task->num_files = TASK_INITIAL_NUM_FILES;
-	//fs_node_t *console = fs_namei("/dev/console");
-	//KASSERT(console != NULL);
-	int i;
 	for(i=0; i < 3; i++) {
-		current_task->files[i] = malloc(sizeof(struct file));
-		current_task->files[i]->fs_node = fs_namei("/dev/console");
-		//console->ref_count++;
+		f = calloc(1, sizeof(*f));
+		f->fs_node = fs_namei("/dev/console");
+		f->mode = (i == 0 ? O_RDONLY : O_WRONLY);
+		current_task->files[i] = f;
 	}
-	// if(fork() == 0) {
-	// 	current_task->name = strdup("idle");
-	// 	idle_task = current_task;
-	// 	idle_loop();
-	// }
 	sti();
 }
 
@@ -165,6 +145,7 @@ task_t *get_current_task()
 
 task_t *fork_inner()
 {
+	int fd;
 	switch_locked = true;
 	task_t *t = task_new();
 	t->ppid = current_task->pid;
@@ -181,7 +162,6 @@ task_t *fork_inner()
 	t->cwd = strdup(current_task->cwd);
 	// clone files //
 	t->files = (struct file **) calloc(current_task->num_files, sizeof(struct file *));
-	int fd;
 	for(fd = 0; fd < current_task->num_files; fd++) {
 		if(!current_task->files[fd]) {
 			continue;
@@ -192,8 +172,6 @@ task_t *fork_inner()
 		}
 		t->files[fd]->fs_node = fs_dup(current_task->files[fd]->fs_node);
 		t->files[fd]->offs = current_task->files[fd]->offs;
-		//current_task->files[fd]->fs_node->ref_count++;
-		// kprintf("name: %s, ref: %d\n", current_task->files[fd]->fs_node->name, current_task->files[fd]->fs_node->ref_count);
 	}
 	t->num_files = current_task->num_files;
 
@@ -227,7 +205,7 @@ void task_free(task_t *task)
 {
 	KASSERT(task);
 	task_t *p; int fd;
-	for(p = task_queue; p; p=p->next) {
+	for(p = task_queue; p; p = p->next) {
 		if(p->next == task) {
 			p->next = task->next;
 		}
@@ -240,18 +218,14 @@ void task_free(task_t *task)
 	// closing it's files //
 	for(fd = 0; fd < task->num_files; fd++) {
 		if(task->files[fd]) {
-			if(!task->files[fd]->fs_node) {
-				kprintf("fd: %d has node closed!!!\n", fd);
-				continue;
-			}
-			// kprintf("pid:%d closing %d\n",task->pid, fd);
+			KASSERT(task->files[fd]->fs_node);
 			fs_close(task->files[fd]->fs_node);
-			//task->files[fd]->fs_node->ref_count--;
-			//if(task->files[fd]->fs_node->ref_count == 0){
-			//	//fs_close(task->files[fd]->fs_node);
-			//}
-			free(task->files[fd]);
-		}
+		//	task->files[fd]->fs_node->ref_count--;
+			if(task->files[fd]->dup_cnt == 0)
+				free(task->files[fd]);
+			else
+				task->files[fd]->dup_cnt--;
+		} 
 	}
 	free(task->files);
 	free(task->heap);

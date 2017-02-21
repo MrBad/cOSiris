@@ -59,7 +59,7 @@ fdimg: bzImage
 	./util/mkcofs hdd.img bin/init bin/cosh bin/test_malloc bin/test_sbrk \
 		bin/test_fork bin/cat bin/mkdir README \
 		bin/ls bin/test_write kernel.lst bin/truncate bin/test_append \
-		bin/rm
+		bin/rm bin/tdup
 
 	# sudo cp initrd.img mnt
 	sudo umount mnt
