@@ -44,6 +44,7 @@ typedef struct fs_node {
 	unsigned int uid;			//
 	unsigned int gid;			//
 	unsigned short int type;	// type of file - FS_
+	unsigned short int flags;	// various flags -> see pipe
 	unsigned int inode;			// inode, unix
 	unsigned int size;
 	int ref_count;				// number of threads who open this file

@@ -1,160 +1,137 @@
-#include <string.h>
 #include <stdlib.h>
-#include "pipe.h"
-#include "vfs.h"
-#include "task.h"
+#include <fcntl.h>
+#include <string.h>
 #include "console.h"
+#include "vfs.h"
+#include "pipe.h"
 #include "x86.h"
+#include "task.h"
 
-
-//////////////////////////////////////////////////
-// TODO - destroy pipe, spinlock
-// Need a clean way to schedule next, wait queue,
-// put process to sleep -> some clean interface ...
-// maibe a generic queue or something
-//	NEEDS REWRITE
-//////////////////////////////////////////////////
-static void awake_list(vfs_pipe_t *pipe)
+void pipe_open(fs_node_t *node, unsigned int flags)
 {
+	vfs_pipe_t *pipe = (vfs_pipe_t *) node->ptr;
 	spin_lock(&pipe->lock);
-	node_t *n;
-	for(n = pipe->wait_queue->head; n; n = n->next) {
-		task_t *t = (task_t *) n->data;
-		t->state = TASK_READY;
-		list_del(pipe->wait_queue, n);
-		kprintf("waking up writing task:%d\n", t->pid);
+	if(flags == O_RDONLY) {
+		if(node->flags != O_RDONLY) {
+			panic("read only side of pipe\n");
+		}
+		node->ref_count++;
+		pipe->readers++;
+	} 
+	else if(flags == O_WRONLY) {
+		if(node->flags != O_WRONLY) {
+			panic("write only side of pipe\n");
+		}
+		node->ref_count++;
+		pipe->writers++;
+	}
+	else {
+		panic("pipe: unknown open mode %d\n", node->type);
 	}
 	spin_unlock(&pipe->lock);
 }
-void pipe_open(fs_node_t *node, unsigned int flags) {
-	vfs_pipe_t *pipe = (vfs_pipe_t *) node->ptr;
-	if(flags == PIPE_READ) {
-		pipe->readers++;
-	}
-	if(flags == PIPE_WRITE) {
-		pipe->writers++;
-	}
-	// kprintf("r:%d, w:%d\n", pipe->readers, pipe->writers);
-}
 
-void pipe_close(fs_node_t *node)
+void pipe_close(fs_node_t *node) 
 {
-	vfs_pipe_t *pipe = (vfs_pipe_t *) node->ptr;
-	if(node->type & PIPE_READ) {
+//	kprintf("closing node: %s\n", node->name);
+	vfs_pipe_t *pipe = (vfs_pipe_t*) node->ptr;
+	spin_lock(&pipe->lock);
+	if(node->flags == O_RDONLY) {
 		pipe->readers--;
-	}
-	if(node->type & PIPE_WRITE) {
+	} else if(node->flags == O_WRONLY) {
 		pipe->writers--;
+	} else {
+		panic("pipe: unknown open mode: %d\n", node->type);
 	}
-	if(!pipe->readers && !pipe->writers)
-	{
-		// close and destroy pipe //
-		kprintf("TODO: destroy pipe\n");
-	}
-}
+	node->ref_count--;
 
-unsigned int pipe_read(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
-{
-	vfs_pipe_t *pipe = (vfs_pipe_t *) node->ptr;
-	unsigned int bytes = 0;
-	while(bytes == 0) {
-		spin_lock(&pipe->lock);
-		if(!pipe->writers) {
-			kprintf("No writers on pipe\n");
-			buffer[bytes++] = 0;
-			spin_unlock(&pipe->lock);
-			return bytes;
-		}
-		while(pipe->write_pos > pipe->read_pos && bytes < size) {
-			buffer[bytes] = pipe->buffer[pipe->read_pos % pipe->size];
-			bytes++; pipe->read_pos++;
-		}
+	if(node->flags == O_RDONLY) 
+		wakeup(&pipe->write_pos);
+	else
+		wakeup(&pipe->read_pos);
+	
+	if(node->ref_count ==0) {
+		free(node);
+	}
+//	kprintf("r: %d, w: %d\n", pipe->readers, pipe->writers);
+	// cosh bug, sometimes i get < 0 grrrr	
+	if(pipe->readers <= 0 && pipe->writers <= 0) {
+		kprintf("FREE ALL\n");
+		free(pipe->buffer);
 		spin_unlock(&pipe->lock);
-
-		awake_list(pipe);
-
-		if(bytes == 0) {
-			// add me to the waiting q //
-			list_add(pipe->wait_queue, current_task);
-			// put me to sleep and switch task //
-
-			spin_lock(&pipe->lock);
-			kprintf("sleeping: %d on read\n", current_task->pid);
-			current_task->state = TASK_SLEEPING;
-			spin_unlock(&pipe->lock);
-
-			task_switch();
-		}
+		free(pipe);
+		return;
 	}
-	return bytes;
+	spin_unlock(&pipe->lock);
 }
 
-unsigned int pipe_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer)
+unsigned int pipe_read(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer) 
 {
+	unsigned int i;
 	vfs_pipe_t *pipe = (vfs_pipe_t *) node->ptr;
-	// kprintf("pipewrite r:%d, w:%d\n", pipe->readers, pipe->writers);
-	unsigned int bytes = 0;
-	while(bytes < size) {
+	if(node->flags != O_RDONLY) {
+		panic("pipe side not opened read only\n");
+	}
+	spin_lock(&pipe->lock);
+	while(pipe->read_pos == pipe->write_pos && pipe->writers > 0) {
+		spin_unlock(&pipe->lock);
+		sleep_on(&pipe->read_pos);
 		spin_lock(&pipe->lock);
-		if(!pipe->readers) {
-			kprintf("No readers on pipe\n");
-			while (bytes < size) {
-				pipe->buffer[pipe->write_pos % pipe->size] = buffer[bytes];
-				bytes++; pipe->write_pos++;
+	}
+	for(i=0; i<size; i++) {
+		if(pipe->read_pos == pipe->write_pos) {
+			break;
+		}
+		buffer[i] = pipe->buffer[pipe->read_pos++ % pipe->size];
+	}
+	wakeup(&pipe->write_pos);
+	spin_unlock(&pipe->lock);
+	return i;
+}
+
+unsigned int pipe_write(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer) 
+{
+	unsigned int i;
+	vfs_pipe_t *pipe = (vfs_pipe_t *) node->ptr;
+	spin_lock(&pipe->lock);
+	if(node->flags != O_WRONLY) {
+		panic("pipe side not opened write only\n");
+	}
+	for(i = 0; i < size; i++) {
+		while(pipe->write_pos == pipe->read_pos + pipe->size) { // buf full
+			if(pipe->readers == 0) {
+				spin_unlock(&pipe->lock);
+				return 0;
 			}
-		} else {
-			while((pipe->write_pos - pipe->read_pos) < pipe->size && bytes < size) {
-				pipe->buffer[pipe->write_pos % pipe->size] = ((char *)buffer)[bytes];
-        		bytes++;
-        		pipe->write_pos++;
-      		}
-		}
-		spin_unlock(&pipe->lock);
-
-		awake_list(pipe);
-
-		if(bytes < size) {
-			spin_lock(&pipe->lock);
-			// add me to the waiting q //
-			list_add(pipe->wait_queue, current_task);
-			// put me to sleep and switch task //
-
-			kprintf("sleeping: %d on write\n", current_task->pid);
-			current_task->state = TASK_SLEEPING;
+			wakeup(&pipe->read_pos);
 			spin_unlock(&pipe->lock);
-
-			task_switch();
+			sleep_on(&pipe->write_pos);
+			spin_lock(&pipe->lock);
 		}
+		pipe->buffer[pipe->write_pos++ % pipe->size] = buffer[i];
 	}
-	return bytes;
+	wakeup(&pipe->read_pos);
+	spin_unlock(&pipe->lock);
+	return size;
 }
 
-
-int new_pipe(fs_node_t **nodes)
+int pipe_new(fs_node_t *nodes[2]) 
 {
-
-	vfs_pipe_t *pipe = (vfs_pipe_t *) calloc(1, sizeof(vfs_pipe_t));
-	pipe->buffer = (char *) malloc(PIPE_BUFFER_SIZE);
+	vfs_pipe_t *pipe = calloc(1, sizeof(vfs_pipe_t));
+	pipe->buffer = malloc(PIPE_BUFFER_SIZE);
 	pipe->size = PIPE_BUFFER_SIZE;
-	pipe->wait_queue = list_open(0);
 
-	nodes[0] = (fs_node_t *)calloc(1, sizeof(fs_node_t));
-	strcpy(nodes[0]->name, "[pipe:read]");
-	nodes[0]->type = FS_PIPE | PIPE_READ;
-	nodes[0]->open = pipe_open;
-	nodes[0]->close = pipe_close;
+	nodes[0] = calloc(1, sizeof(fs_node_t));
+	nodes[1] = calloc(1, sizeof(fs_node_t));
+	strcpy(nodes[0]->name, "read_pipe");
+	strcpy(nodes[1]->name, "write_pipe");
+	nodes[0]->type = nodes[1]->type = FS_PIPE;
+	nodes[0]->flags = O_RDONLY;
+	nodes[1]->flags = O_WRONLY;
+	nodes[0]->open = nodes[1]->open = pipe_open;
+	nodes[0]->close = nodes[1]->close = pipe_close;
+	nodes[0]->ptr = nodes[1]->ptr = pipe;
 	nodes[0]->read = pipe_read;
-	nodes[0]->write = 0;
-	nodes[0]->ptr = pipe;
-
-	nodes[1] = (fs_node_t *) calloc(1, sizeof(fs_node_t));
-	strcpy(nodes[1]->name, "[pipe:write]");
-	nodes[1]->type = FS_PIPE | PIPE_WRITE;
-	nodes[1]->open = pipe_open;
-	nodes[1]->close = pipe_close;
-	nodes[1]->read = 0;
 	nodes[1]->write = pipe_write;
-	nodes[1]->ptr = pipe;
-
 	return 0;
 }

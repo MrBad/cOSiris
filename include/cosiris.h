@@ -35,6 +35,7 @@ enum {
 	SYS_GETCWD,		// 28
 	SYS_UNLINK,		// 29
 	SYS_DUP,		// 30
+	SYS_PIPE,		// 31
 };
 
 #endif

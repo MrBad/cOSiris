@@ -350,7 +350,7 @@ int cofs_truncate(fs_node_t *node, unsigned int length)
 	unsigned int fbn, fbs, fbe; // file block num, start, end //
 	hd_buf_t *hdb;
 	uint32_t addr;
-	KASSERT(length < node->size);
+	KASSERT(length <= node->size);
 	KASSERT(length % BLOCK_SIZE == 0);
 	fbs = (length / BLOCK_SIZE);
 	fbe = (node->size / BLOCK_SIZE) + 1;

@@ -10,7 +10,7 @@ ASMFLAGS = -g -f elf
 OBJS=crt0.o sys.o syscalls.o ../lib/libc.a
 
 
-all: $(OBJS) init.o test_fork.o test_sbrk.o test_malloc.o cosh.o ls.o cat.o mkdir.o test_write.o truncate.o test_append.o rm.o tdup.o
+all: $(OBJS) init.o test_fork.o test_sbrk.o test_malloc.o cosh.o ls.o cat.o mkdir.o test_write.o truncate.o test_append.o rm.o tdup.o pwd.o tpipe.o ps.o cdc.o
 	$(LD) $(LDFLAGS) -o init init.o $(OBJS)
 	$(LD) $(LDFLAGS) -o test_fork test_fork.o $(OBJS)
 	$(LD) $(LDFLAGS) -o test_sbrk test_sbrk.o $(OBJS)
@@ -24,6 +24,10 @@ all: $(OBJS) init.o test_fork.o test_sbrk.o test_malloc.o cosh.o ls.o cat.o mkdi
 	$(LD) $(LDFLAGS) -o test_append test_append.o $(OBJS)
 	$(LD) $(LDFLAGS) -o rm rm.o $(OBJS)
 	$(LD) $(LDFLAGS) -o tdup tdup.o $(OBJS)
+	$(LD) $(LDFLAGS) -o pwd pwd.o $(OBJS)
+	$(LD) $(LDFLAGS) -o tpipe tpipe.o $(OBJS)
+	$(LD) $(LDFLAGS) -o ps ps.o $(OBJS)
+	$(LD) $(LDFLAGS) -o cdc cdc.o $(OBJS)
 	
 
 	# objdump -b binary -m i386 -D $(TARGET) > $(TARGET).lst
@@ -38,4 +42,4 @@ all: $(OBJS) init.o test_fork.o test_sbrk.o test_malloc.o cosh.o ls.o cat.o mkdi
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
 clean:
-	rm *.o init test_fork test_sbrk test_malloc cosh ls cat mkdir test_write truncate test_append rm
+	rm *.o init test_fork test_sbrk test_malloc cosh ls cat mkdir test_write truncate test_append rm tdup pwd tpipe ps cdc

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include "assert.h"
 #include "x86.h"
 #include "task.h"
 #include "mem.h"
@@ -10,6 +11,7 @@
 #include "gdt.h"
 #include "assert.h"
 #include "vfs.h"
+#include "pipe.h"
 #include "cofs.h"
 
 bool switch_locked = false;
@@ -171,6 +173,18 @@ task_t *fork_inner()
 			panic("task fork: pid: %d, fd: %d fs_node does not exists\n", current_task->pid, fd);
 		}
 		t->files[fd]->fs_node = fs_dup(current_task->files[fd]->fs_node);
+		
+		if(t->files[fd]->fs_node->type & FS_PIPE) {
+			vfs_pipe_t *pipe = (vfs_pipe_t*) t->files[fd]->fs_node->ptr;
+			if(t->files[fd]->fs_node->flags == O_RDONLY) {
+				pipe->readers++;
+			} else {
+				pipe->writers++;
+			}
+
+		//	kprintf("fork: pipe: readers: %d, writers: %d, nodecnt: %d\n", pipe->readers, pipe->writers, current_task->files[fd]->fs_node->ref_count);
+		}
+		
 		t->files[fd]->offs = current_task->files[fd]->offs;
 	}
 	t->num_files = current_task->num_files;
@@ -225,7 +239,7 @@ void task_free(task_t *task)
 				free(task->files[fd]);
 			else
 				task->files[fd]->dup_cnt--;
-		} 
+		}
 	}
 	free(task->files);
 	free(task->heap);
@@ -249,7 +263,7 @@ pid_t task_wait(int *status)
 		}
 		if(! found) {
 			switch_locked = false;
-			kprintf("no childs\n");
+//			kprintf("no childs\n");
 			return -1;
 		}
 		if(current_task->pid == 1) {

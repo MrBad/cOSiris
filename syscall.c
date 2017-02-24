@@ -54,6 +54,7 @@ static void *syscalls[] = {
 	&sys_getcwd,
 	&sys_unlink,
 	&sys_dup,
+	&sys_pipe,
 };
 static unsigned int num_syscalls;
 

@@ -1,154 +1,308 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdlib.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 #include "syscalls.h"
+//
+//  Simple shell intended for my hobby osdev - cOSiris
+//      supports multiple commands, pipes and redirections
+//		TODO:	some builtins: cd is a must
+//				some history, env and maybe variables
+//
+#define MAX_ARGV 16
+#define MAX_TOKEN_SZ 512
+
+typedef struct cmd {
+	int argc;					// number of arguments
+	char *argv[MAX_ARGV];		// arguments
+	char *outfile, *infile;		// file names used in redirects
+	int fdin, fdout;			// file descriptors
+	int append;					// if fdout should be opened in append mode
+	int do_pipe;				// if we have a pipe after command
+	pid_t pid;					// pid of this cmd
+	struct cmd *next;			// link to next struct
+} cmd_t;
+
+void print_prompt();
+int parse(char *buf, cmd_t **head);
+int read_line(char *buf, size_t size);
+void print_commands(cmd_t *head);
+int exec_commands(cmd_t *head);
 
 
-// buf to read in the line, max number of chars
-// return length of line //
-int read_line(char *buf, int max) {
-	int n, i;
-	n = read(0, buf, max-1);
-	if(n == 0) return n;
-	buf[n] = 0;
-	// clean left //
-	for(i = 0; i < n; i++) {
-		if(buf[i]!=' '&&buf[i]!='\t') {
-			n = n - i;
-			strncpy(buf, buf+i, n);
-			buf[n]=0;
-			break;
-		}
+void clean_cmd(cmd_t *cmd) 
+{
+	cmd_t *c;
+	int i;
+	while (cmd) {
+		if (cmd->infile)
+			free(cmd->infile);
+		if (cmd->outfile)
+			free(cmd->outfile);
+		for (i = 0; i < cmd->argc; i++)
+			free(cmd->argv[i]);
+		c = cmd;
+		cmd = cmd->next;
+		free(c);
 	}
-	// clean right //
-	while((n > 0)&&(buf[n-1]==' '||buf[n-1]=='\t'||buf[n-1]=='\r'||buf[n-1]=='\n'))
-		buf[--n]=0;
-
-	return n;
 }
 
-// read token is destroying buf //
-char *read_token(char *buf, char *prev_token, unsigned int len)
+// from where we read -> stdin for now //
+int fd;
+
+int main() 
 {
-	char *p;
-	if(prev_token == NULL) { // first time here
-		prev_token = buf;
-		for(p = buf; p < buf+len; p++) {
-			if(*p==' ' || *p=='\t') {
-				*p = 0;
-			}
-		}
-		return prev_token;
-	}
-	int found = 0;
-	for(p = prev_token;p < buf + len; p++) {
-		if(*p == 0) {
-			found = 1;
+	char line[512];
+	fd = 0;
+	cmd_t *head;
+	while (1) {
+		head = NULL;
+		print_prompt();
+		read_line(line, sizeof(line));
+		if (parse(line, &head) < 0) {
+			clean_cmd(head);
 			continue;
 		}
-		if(found) {
-			prev_token = p;
-			return p;
-		}
+		exec_commands(head);
+		clean_cmd(head);
 	}
-	return NULL;
 }
 
-int cd(int argc, char *argv[]) 
+void print_prompt() 
 {
-	int ret;
-	if(argc < 2) {
-		ret = chdir("/");
-	} 
-	else {
-		ret = chdir(argv[1]);
+	write(1, "# ", 2);
+}
+
+int read_line(char *buf, size_t size) 
+{
+	ssize_t n = 0;
+	n = read(fd, buf, size);
+	buf[n] = 0;
+	return (int) n;
+}
+
+#define is_space(p) (p==' '||p=='\t'||p=='\r'||p=='\n')
+#define is_symbol(p) (p=='<'||p=='>'||p=='|'||p==';'||p=='"')
+
+int get_token(char **buf, char *tok, char *end) 
+{
+	char *p;
+	p = *buf;
+
+	while (*p && is_space(*p))
+		p++;
+	if (!*p) return -1;
+	if (is_symbol(*p)) {
+		if (*p == '>') {
+			*tok++ = *p++;
+			if (*p == '>')
+				*tok++ = *p++;
+		} else if (*p == '"') {
+			*tok++ = *p++;
+			while (*p && *p != '"') {
+				if (tok == end)
+					return -1;
+				*tok++ = *p++;
+			}
+			if (tok == end)
+				return -1;
+			*tok++ = *p++;
+		} else {
+			*tok++ = *p++;
+		}
+		*tok = 0;
 	}
+	else {
+		while (*p && !is_space(*p) && !is_symbol(*p)) {
+			*tok++ = *p++;
+			if (tok == end)
+				return -1;
+		}
+		*tok = 0;
+	}
+	*buf = p;
+	return *p ? 0 : -1;
+}
+
+cmd_t *cmd_new() 
+{
+	cmd_t *cmd;
+	cmd = calloc(1, sizeof(cmd_t));
+	cmd->fdin = cmd->fdout = -1;
+	return cmd;
+}
+
+int parse(char *buf, cmd_t **h) 
+{
+	char token[MAX_TOKEN_SZ];
+	char *end = token + MAX_TOKEN_SZ;
+	char *ptr = buf;
+	cmd_t *cmd, *head;
+	head = cmd = *h;
+
+	while (get_token(&ptr, token, token + MAX_TOKEN_SZ) == 0) {
+		if (is_symbol(token[0])) {
+			if (!cmd) {
+				printf("invalid command\n");
+				return -1;
+			}
+			if (token[0] == '>') {
+				if (token[1] == '>')
+					cmd->append = 1;
+				if (get_token(&ptr, token, end) < 0) {
+					printf("redir: no such file\n");
+					return -1;
+				}
+				cmd->outfile = strdup(token);
+				continue;
+			}
+			else if (token[0] == '<') {
+				if (get_token(&ptr, token, end) < 0) {
+					printf("redir <: no such file\n");
+					return -1;
+				}
+				cmd->infile = strdup(token);
+				continue;
+			}
+			else if (token[0] == '|') {
+				char *sptr = ptr;
+				if (get_token(&ptr, token, end) < 0) {
+					printf("invalid pipe\n");
+					return -1;
+				}
+				cmd->do_pipe = 1;
+				ptr = sptr;
+			}
+
+			cmd->argv[cmd->argc] = 0;
+			cmd_t *c;
+			cmd = cmd_new();
+			for (c = head; c->next; c = c->next);
+			c->next = cmd;
+		}
+		else {
+			if (!head) {
+				head = cmd = *h = cmd_new();
+			}
+			if (cmd->argc + 1 >= MAX_ARGV) {
+				printf("too many arguments\n");
+				return -1;
+			}
+			cmd->argv[cmd->argc++] = strdup(token);
+		}
+	}
+	return 0;
+}
+
+void print_commands(cmd_t *head) 
+{
+	cmd_t *cmd;
+	
+	for (cmd = head; cmd; cmd = cmd->next) {
+		printf("cmd: %s, argc: %d\n", cmd->argv[0], cmd->argc);
+		if (cmd->do_pipe) {
+			printf("\tdo pipe ");
+			if (!cmd->next) {
+				printf("no next command\n");
+				return;
+			}
+			printf(" | %s\n", cmd->next->argv[0]);
+		} else {
+			if (cmd->outfile) {
+				printf("\twrite to %s\n", cmd->outfile);
+			}
+		}
+		if (cmd->infile) {
+			printf("\tread from %s\n", cmd->infile);
+		}
+
+	}
+}
+
+int cd(char *dir) {
+	int ret;
+	if(dir)
+		ret = chdir(dir);
+	else 
+		ret = chdir("/");
 	if(ret < 0) {
-		printf("cd: cannot chdir to %s\n", argv[1]);
+		printf("cd: cannot change to %s\n", dir);
 	}
 	return ret;
 }
 
-int pwd()
+int exec_commands(cmd_t *head) 
 {
-	char buf[512];
-	if(!(getcwd(buf, sizeof(buf)))) {
-		printf("pwd: cannot print current directory\n");
-		return -1;
-	}
-	printf("%s\n", buf);
-	return 0;
-}
-
-#define MAX_ARGC 16
-
-int main() {
-	printf("cOSh - cOSiris shell\n");
-	char buf[256];
-	char *argv[MAX_ARGC];
-	int argc;
-	char *token;
-	int len;
+	cmd_t *cmd, *prev;
+	int fd[2];
 	pid_t pid;
-	while(1) {
-		write(1, "# ", 2);
-		len = read_line(buf, sizeof(buf));
-		if(len <= 0) {	// discard empty line //
+	int status;
+
+	for (cmd = head; cmd; cmd = cmd->next) {
+		if(strcmp(cmd->argv[0], "cd") == 0) {
+			cd(cmd->argv[1]);
 			continue;
+		}
+		if (cmd->do_pipe) {
+			pipe(fd);
+			cmd->fdout = fd[1];
+		} else {
+			if (cmd->outfile) {
+				int flags = O_WRONLY;
+				flags |= cmd->append ? O_APPEND : O_CREAT | O_TRUNC;
+				cmd->fdout = open(cmd->outfile, flags, 0666);
+			}
+		}
+		if (cmd->infile) {
+			cmd->fdin = open(cmd->infile, O_RDONLY, 0666);
 		}
 
-		token = NULL;
-		for(argc = 0; argc < MAX_ARGC; argc++) {
-			token = read_token(buf, token, len);
-			if(!token) {
-				break;
+		pid = fork();
+		if (pid == 0) {
+			if(cmd->do_pipe) {
+				close(fd[0]);
 			}
-			argv[argc] = token;
-		}
-		argv[argc] = 0;
-		if(argv[0][0] == '#') { // comment
-			continue;
-		}
-		else if(!strcmp(argv[0], "help") || !strcmp(argv[0], "?")) {
-			printf("Internal commands\n");
-			printf("cd [dir] - change working directory\n");
-			printf("pwd - print working directory\n");
-			printf("ps - show process list\n");
-			printf("lstree - show files tree\n");
-			printf("cdc - show cofs dump cache\n");
-			printf("ESC - shut down\n");
-		}
-		else if(!strcmp(argv[0], "cd")) {
-			cd(argc, argv);
-		}
-		else if(!strcmp(argv[0], "pwd")) {
-			pwd();
-		}
-		else if(!strcmp(argv[0], "ps")) {
-			ps();
-		}
-		else if (!strcmp(argv[0], "lstree")) {
-			lstree();
-		}
-		else if(!strcmp(argv[0], "cdc")) {
-			cofs_dump_cache();
-		}
-		else {
-			// try to execute command //
-			pid = fork();
-			if(pid == 0) {
-				return exec(argv[0], argv);
-			} else if(pid < 0) {
-				printf("error forking\n");
-			} else {
-				int status;
-				pid = wait(&status);
-				if(status!=0) {
-					printf("cosh: error executing %s, status: %d\n", argv[0], status);
+			if (cmd->fdout > 0) {
+				close(1);
+				if (dup(cmd->fdout) != 1) {
+					printf("error in dup() stdout\n");
+				}
+			} 
+			if (cmd->fdin > 0) {
+				close(0);
+				if (dup(cmd->fdin) != 0)
+					printf("error in dup() stdin\n");
+			}
+			execvp(cmd->argv[0], cmd->argv);
+			printf("error executing: %s\n", cmd->argv[0]);
+			exit(1);
+		} else {
+		if(cmd->do_pipe) {
+			cmd->next->fdin = fd[0];
+			close(fd[1]);
+		}}
+		
+		prev = cmd;
+	}
+
+	pid_t p;
+	int err = 0;
+	while((p = wait(&status)) > 0) {
+		cmd_t *cm;
+/*		for(cm = head; cm; cm = cm->next) {
+			if(p == cm->pid) {
+				if(cmd->fdin != -1)
+					close(cmd->fdin);
+				if(cmd->fdout != -1)
+					close(cmd->fdout);
+				if(status != 0) {
+					printf("%s exited with status %d\n", cmd->argv[0], status);
+					err++;
 				}
 			}
 		}
-	}
-	return 0;
+*/	}
+	return err;
 }

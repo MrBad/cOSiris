@@ -1,0 +1,154 @@
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include "syscalls.h"
+
+
+// buf to read in the line, max number of chars
+// return length of line //
+int read_line(char *buf, int max) {
+	int n, i;
+	n = read(0, buf, max-1);
+	if(n == 0) return n;
+	buf[n] = 0;
+	// clean left //
+	for(i = 0; i < n; i++) {
+		if(buf[i]!=' '&&buf[i]!='\t') {
+			n = n - i;
+			strncpy(buf, buf+i, n);
+			buf[n]=0;
+			break;
+		}
+	}
+	// clean right //
+	while((n > 0)&&(buf[n-1]==' '||buf[n-1]=='\t'||buf[n-1]=='\r'||buf[n-1]=='\n'))
+		buf[--n]=0;
+
+	return n;
+}
+
+// read token is destroying buf //
+char *read_token(char *buf, char *prev_token, unsigned int len)
+{
+	char *p;
+	if(prev_token == NULL) { // first time here
+		prev_token = buf;
+		for(p = buf; p < buf+len; p++) {
+			if(*p==' ' || *p=='\t') {
+				*p = 0;
+			}
+		}
+		return prev_token;
+	}
+	int found = 0;
+	for(p = prev_token;p < buf + len; p++) {
+		if(*p == 0) {
+			found = 1;
+			continue;
+		}
+		if(found) {
+			prev_token = p;
+			return p;
+		}
+	}
+	return NULL;
+}
+
+int cd(int argc, char *argv[]) 
+{
+	int ret;
+	if(argc < 2) {
+		ret = chdir("/");
+	} 
+	else {
+		ret = chdir(argv[1]);
+	}
+	if(ret < 0) {
+		printf("cd: cannot chdir to %s\n", argv[1]);
+	}
+	return ret;
+}
+
+int pwd()
+{
+	char buf[512];
+	if(!(getcwd(buf, sizeof(buf)))) {
+		printf("pwd: cannot print current directory\n");
+		return -1;
+	}
+	printf("%s\n", buf);
+	return 0;
+}
+
+#define MAX_ARGC 16
+
+int main() {
+	printf("cOSh - cOSiris shell\n");
+	char buf[256];
+	char *argv[MAX_ARGC];
+	int argc;
+	char *token;
+	int len;
+	pid_t pid;
+	while(1) {
+		write(1, "# ", 2);
+		len = read_line(buf, sizeof(buf));
+		if(len <= 0) {	// discard empty line //
+			continue;
+		}
+
+		token = NULL;
+		for(argc = 0; argc < MAX_ARGC; argc++) {
+			token = read_token(buf, token, len);
+			if(!token) {
+				break;
+			}
+			argv[argc] = token;
+		}
+		argv[argc] = 0;
+		if(argv[0][0] == '#') { // comment
+			continue;
+		}
+		else if(!strcmp(argv[0], "help") || !strcmp(argv[0], "?")) {
+			printf("Internal commands\n");
+			printf("cd [dir] - change working directory\n");
+			printf("pwd - print working directory\n");
+			printf("ps - show process list\n");
+			printf("lstree - show files tree\n");
+			printf("cdc - show cofs dump cache\n");
+			printf("ESC - shut down\n");
+		}
+		else if(!strcmp(argv[0], "cd")) {
+			cd(argc, argv);
+		}
+		else if(!strcmp(argv[0], "pwd")) {
+			pwd();
+		}
+		else if(!strcmp(argv[0], "ps")) {
+			ps();
+		}
+		else if (!strcmp(argv[0], "lstree")) {
+			lstree();
+		}
+		else if(!strcmp(argv[0], "cdc")) {
+			cofs_dump_cache();
+		}
+		else {
+			// try to execute command //
+			pid = fork();
+			if(pid == 0) {
+				return exec(argv[0], argv);
+			} else if(pid < 0) {
+				printf("error forking\n");
+			} else {
+				int status;
+				pid = wait(&status);
+				if(status!=0) {
+					printf("cosh: error executing %s, status: %d\n", argv[0], status);
+				}
+			}
+		}
+	}
+	return 0;
+}

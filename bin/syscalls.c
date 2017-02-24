@@ -34,6 +34,9 @@ int exec(char *path, char **argv)
 {
 	return _syscall2(SYS_EXEC, (uint32_t) path, (uint32_t) argv);
 }
+int execvp(char *path, char **argv) {
+	return exec(path, argv);
+}
 void ps()
 {
 	_syscall0(SYS_PS);
@@ -125,4 +128,8 @@ void lstree() {
 void cofs_dump_cache()
 {
 	_syscall0(SYS_COFS_DUMP_CACHE);
+}
+
+int pipe(int fd[2]) {
+	return _syscall1(SYS_PIPE, (uint32_t)fd);
 }

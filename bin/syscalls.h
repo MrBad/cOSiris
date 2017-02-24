@@ -10,6 +10,7 @@ pid_t wait(int *status);
 void exit(int status);
 pid_t getpid();
 int exec(char *path, char **argv);
+int execvp(char *path, char **argv);	   
 void ps();
 void lstree();
 
@@ -34,5 +35,5 @@ off_t lseek(int fd, off_t offset, int whence);
 int getcwd(char *buf, size_t size);
 
 void cofs_dump_cache();
-
+int pipe(int fd[2]);
 #endif

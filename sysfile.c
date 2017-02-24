@@ -9,6 +9,7 @@
 #include "task.h"
 #include "sysfile.h"
 #include "vfs.h"
+#include "pipe.h"
 #include "serial.h"
 #include "canonize.h"
 
@@ -153,36 +154,11 @@ static int fd_alloc()
 int sys_open(char *filename, int flags, int mode)
 {
 	// treat mode here!!! //
-	
-	
 	int fd;
-	/*	
-	for(fd = 0; fd < current_task->num_files; fd++) {
-		if(!current_task->files[fd]) {
-			break;
-		}
-	}
-	if(fd == current_task->num_files) {
-		// not enough available files, let's enlarge the array //
-		int items;
-		items = current_task->num_files;
-		if(items > MAX_OPEN_FILES) {
-			return -1;
-		}
-		items = items * 2 >= MAX_OPEN_FILES ? MAX_OPEN_FILES : items * 2;
-		current_task->files = realloc(current_task->files, items * sizeof(struct file *));
-
-		for(; current_task->num_files < items; current_task->num_files++) {
-			current_task->files[current_task->num_files] = NULL; // and null the reallocated buffer //
-		}
-		current_task->num_files = items;
-	}*/
 	if((fd = fd_alloc()) < 0) {
 		return -1;
 	}
-	//current_task->files[fd] = malloc(sizeof(struct file));
 	current_task->files[fd] = alloc_file();
-	
 	if((fs_open_namei(filename, flags, mode, &current_task->files[fd]->fs_node)) < 0) {
 		serial_debug("sys_open() cannot open %s\n", filename);
 		free(current_task->files[fd]);
@@ -231,14 +207,14 @@ int sys_close(unsigned int fd)
 
 static void populate_stat_buf(fs_node_t *fs_node, struct stat *buf)
 {
-	buf->st_dev = 0;									// the device id where it reside
+	buf->st_dev = 0;						// the device id where it reside
 	buf->st_ino = fs_node->inode;
 	buf->st_size = fs_node->size;
 	buf->st_mode = fs_node->type;
-	buf->st_nlink = fs_node->num_links;					// not implemented yet -> number of links
+	buf->st_nlink = fs_node->num_links;		// not implemented yet -> number of links
 	buf->st_uid = fs_node->uid;
 	buf->st_gid = fs_node->gid;
-	buf->st_rdev = 0;									// the device id of..?!
+	buf->st_rdev = 0;						// the device id of..?!
 	buf->st_atime = fs_node->atime;
 	buf->st_mtime = buf->st_mtime;
 	buf->st_ctime = buf->st_ctime;
@@ -256,8 +232,10 @@ int sys_stat(char *path, struct stat *buf)
 	fs_close(fs_node);
 	return 0;
 }
+
 // fix me links //
-int sys_lstat(char *path, struct stat *buf) {
+int sys_lstat(char *path, struct stat *buf) 
+{
 	fs_node_t *fs_node;
 	if(fs_open_namei(path, O_RDONLY, 0755, &fs_node) < 0) {
 		serial_debug("sys_stat() cannot open %s file\n", path);
@@ -267,6 +245,8 @@ int sys_lstat(char *path, struct stat *buf) {
 	fs_close(fs_node);
 	return 0;
 }
+
+
 int sys_fstat(int fd, struct stat *buf)
 {
 	struct file *f;
@@ -294,8 +274,7 @@ int sys_read(int fd, void *buf, size_t count)
 		return -1;
 	}
 	// EOF ? //
-	if(f->offs >= f->fs_node->size && f->fs_node->type != FS_CHARDEVICE) {
-		// serial_debug("eof on file: fd: %d, %s, offs: %d size: %d\n", fd, f->fs_node->name, f->offs, f->fs_node->size);
+	if(f->offs >= f->fs_node->size && f->fs_node->type != FS_CHARDEVICE && f->fs_node->type != FS_PIPE) {
 		return 0; // at EOF
 	}
 	unsigned int bytes = fs_read(f->fs_node, f->offs, count, buf);
@@ -319,23 +298,14 @@ int sys_write(int fd, void *buf, size_t count)
 	f->offs += bytes;
 	return bytes;
 }
+// alias //
 int write(int fd, void *buf, size_t count) {
 	return sys_write(fd, buf, count);
 }
 
 int sys_chdir(char *path)
 {
-
-	//char *p = canonize_path(current_task->cwd, path);
 	char *p;
-	/*if(path[0]=='/')
-		p = strdup(path);
-	else {
-		p = malloc(strlen(current_task->cwd)+strlen(path)+1+1);
-		strcpy(p,current_task->cwd);
-		strcat(p,"/");
-		strcat(p,path);
-	}*/
 	p = canonize_path(current_task->cwd, path);
 	fs_node_t *fs_node;
 	if((fs_open_namei(p, O_RDONLY, 0777, &fs_node)) < 0) {
@@ -349,7 +319,6 @@ int sys_chdir(char *path)
 		fs_close(fs_node);
 		return -1;
 	}
-	//kprintf("chdir %s, %s, ref_c: %d\n", p, fs_node->name, fs_node->ref_count);
 	free(current_task->cwd);
 	current_task->cwd = p;
 	fs_close(fs_node);
@@ -398,7 +367,6 @@ int sys_chmod(char *filename, int mode)
 	fs_close(fs_node);
 	return 0;
 }
-
 
 int sys_mkdir(char *path, int mode)
 {
@@ -599,4 +567,26 @@ int sys_dup(int oldfd)
 	fs_dup(current_task->files[fd]->fs_node);
 	current_task->files[fd]->dup_cnt++;
 	return fd;
+}
+
+int sys_pipe(int fd[2])
+{
+	int in, out;
+	struct file *fin, *fout;
+	fs_node_t *nodes[2];
+	pipe_new(nodes);
+	fin = alloc_file();
+	fout = alloc_file();
+	fin->flags = O_RDONLY;
+	fin->fs_node = nodes[0];
+	fout->flags = O_WRONLY;
+	fout->fs_node = nodes[1];
+	out = fd_alloc();
+	fd[0] = in = fd_alloc();
+	current_task->files[in] = fin;
+	fd[1] = out = fd_alloc();
+	current_task->files[out] = fout;
+	nodes[0]->open(nodes[0], O_RDONLY);
+	nodes[1]->open(nodes[1], O_WRONLY);
+	return 0;
 }

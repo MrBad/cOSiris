@@ -6,11 +6,11 @@
 #include "task.h"
 #include "list.h"
 
-#define PIPE_BUFFER_SIZE 512
+#define PIPE_BUFFER_SIZE 1024
 typedef struct vfs_pipe {
 	char *buffer;
 	unsigned int size;
-	unsigned int flags;
+//	unsigned int flags;
 	unsigned int readers;
 	unsigned int writers;
 	unsigned int read_pos;
@@ -23,6 +23,6 @@ typedef struct vfs_pipe {
 #define PIPE_WRITE 2
 
 
-int new_pipe(fs_node_t *nodes[2]);
+int pipe_new(fs_node_t *nodes[2]);
 
 #endif

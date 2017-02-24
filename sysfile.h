@@ -49,4 +49,6 @@ long int telldir(DIR *);
 */
 
 char *sys_getcwd(char *buf, size_t size);
+
+int sys_pipe(int fd[2]);
 #endif
