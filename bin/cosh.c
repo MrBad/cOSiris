@@ -100,7 +100,7 @@ int get_token(char **buf, char *tok, char *end)
 			if (*p == '>')
 				*tok++ = *p++;
 		} else if (*p == '"') {
-			*tok++ = *p++;
+			p++;
 			while (*p && *p != '"') {
 				if (tok == end)
 					return -1;
@@ -108,7 +108,7 @@ int get_token(char **buf, char *tok, char *end)
 			}
 			if (tok == end)
 				return -1;
-			*tok++ = *p++;
+			p++;
 		} else {
 			*tok++ = *p++;
 		}
@@ -294,18 +294,18 @@ int exec_commands(cmd_t *head)
 	while((p = wait(&status)) > 0) {
 		cmd_t *cm;
 		// kernel is closing this //
-/*		for(cm = head; cm; cm = cm->next) {
+		for(cm = head; cm; cm = cm->next) {
 			if(p == cm->pid) {
-				if(cmd->fdin != -1)
+/*				if(cmd->fdin != -1)
 					close(cmd->fdin);
 				if(cmd->fdout != -1)
 					close(cmd->fdout);
-				if(status != 0) {
+*/				if(status != 0) {
 					printf("%s exited with status %d\n", cmd->argv[0], status);
 					err++;
 				}
 			}
 		}
-*/	}
+	}
 	return err;
 }
