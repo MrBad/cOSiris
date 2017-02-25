@@ -41,7 +41,7 @@ int page_fault(struct iregs *r)
 	}
 	kprintf("____\nFAULT: %s addr: %p, ", r->err_code & P_PRESENT ? "page violation" : "not present", fault_addr);
 	kprintf("stack: 0x%X\n", get_esp());
-	kprintf("task: %d\n", current_task->pid);
+	kprintf("task: %s pid %d\n", current_task->name, current_task->pid);
 	if(fault_addr < USER_CODE_START_ADDR && fault_addr > USER_STACK_HI) {
 		kprintf("User stack overflowed!\n");
 	}

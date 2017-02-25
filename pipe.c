@@ -53,7 +53,7 @@ void pipe_close(fs_node_t *node)
 	if(node->ref_count ==0) {
 		free(node);
 	}
-//	kprintf("r: %d, w: %d\n", pipe->readers, pipe->writers);
+	kprintf("r: %d, w: %d\n", pipe->readers, pipe->writers);
 	// cosh bug, sometimes i get < 0 grrrr	
 	if(pipe->readers <= 0 && pipe->writers <= 0) {
 		kprintf("FREE ALL\n");

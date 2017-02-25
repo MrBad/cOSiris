@@ -133,3 +133,8 @@ void cofs_dump_cache()
 int pipe(int fd[2]) {
 	return _syscall1(SYS_PIPE, (uint32_t)fd);
 }
+
+void clrscr()
+{
+	_syscall0(SYS_CLRSCR);
+}

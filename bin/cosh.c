@@ -245,6 +245,8 @@ int exec_commands(cmd_t *head)
 			cd(cmd->argv[1]);
 			continue;
 		}
+		// BUG - somehow i do not close a fd[0] when it should be
+		// and gets replicated on fork... grrr....
 		if (cmd->do_pipe) {
 			pipe(fd);
 			cmd->fdout = fd[1];
@@ -291,6 +293,7 @@ int exec_commands(cmd_t *head)
 	int err = 0;
 	while((p = wait(&status)) > 0) {
 		cmd_t *cm;
+		// kernel is closing this //
 /*		for(cm = head; cm; cm = cm->next) {
 			if(p == cm->pid) {
 				if(cmd->fdin != -1)

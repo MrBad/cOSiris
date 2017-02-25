@@ -346,7 +346,7 @@ int scan_block(unsigned int blockno) {
 // deallocates nodes //
 int cofs_truncate(fs_node_t *node, unsigned int length)
 {
-	kprintf("in truncate\n");
+///	kprintf("in truncate\n");
 	unsigned int fbn, fbs, fbe; // file block num, start, end //
 	hd_buf_t *hdb;
 	uint32_t addr;
@@ -354,7 +354,7 @@ int cofs_truncate(fs_node_t *node, unsigned int length)
 	KASSERT(length % BLOCK_SIZE == 0);
 	fbs = (length / BLOCK_SIZE);
 	fbe = (node->size / BLOCK_SIZE) + 1;
-	kprintf("fbs:%d, fbe: %d\n", fbs, fbe);
+//	kprintf("fbs:%d, fbe: %d\n", fbs, fbe);
 	int i = 0;
 	int j = 0;
 
@@ -400,7 +400,7 @@ int cofs_truncate(fs_node_t *node, unsigned int length)
 				((uint32_t *) hdb->buf)[midx] = 0;
 				hdb->is_dirty = 1;
 				put_hd_buf(hdb);
-				kprintf("x: %d ", x);
+//				kprintf("x: %d ", x);
 			}
 			if(scan_block(node->addrs[DIND_IDX]) == 0) {
 				block_free(node->addrs[DIND_IDX]);i++;
@@ -408,7 +408,7 @@ int cofs_truncate(fs_node_t *node, unsigned int length)
 			}
 		}
 	}
-	kprintf("free - %d direct blocks and %d indirect, total: %d\n", j,i, j+i);
+//	kprintf("free - %d direct blocks and %d indirect, total: %d\n", j,i, j+i);
 	node->size = length;
 	cofs_update_node(node);
 	return length;

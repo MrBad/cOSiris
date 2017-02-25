@@ -122,7 +122,6 @@ fs_node_t *fs_namei(char *path)
 		len = len - curr_len - 1;
 		p = p + curr_len + 1;
 	}
-	serial_debug("free namei str");
 	free(str);
 	return node;
 }
@@ -259,12 +258,12 @@ int fs_unlink(char *path)
 int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
 {
 	char *p;
-	serial_debug("fs_open_namei(%s)\n", path);
+//	serial_debug("fs_open_namei(%s)\n", path);
 	p = canonize_path(current_task->cwd, path);
 	if(flags & O_CREAT) {
 		*node = fs_namei(p);
 		if(!*node) {
-			kprintf("Creating file [%s], flags: %x, mode: %x\n", path, flags, mode);
+	//		kprintf("Creating file [%s], flags: %x, mode: %x\n", path, flags, mode);
 			*node = fs_creat(p, mode);
 		}
 	} else {
@@ -273,7 +272,7 @@ int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
 	if(node) {
 		if(flags & O_TRUNC) {
 			if(flags & O_RDWR || flags & O_WRONLY) {
-				kprintf("Truncating file[%s] to 0\n", path);
+//				kprintf("Truncating file[%s] to 0\n", path);
 				if(!(fs_truncate(*node, 0))) {
 					panic("cannot truncate %s\n", p);		
 				}

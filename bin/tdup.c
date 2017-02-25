@@ -2,7 +2,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include "syscalls.h"
-
+// dup() test
 int main()
 {
 	int fd;

@@ -3,6 +3,9 @@
 #include <fcntl.h>
 #include "syscalls.h"
 
+//
+// Testing pipes
+//
 
 int main()
 {
@@ -20,7 +23,7 @@ int main()
 			buf2[n] = 0;
 			printf("read %d bytes from pipe:\n\t%s", n, buf2);
 		}
-//		close(fd[0]);
+		close(fd[0]);
 	} 
 	else {
 		close(fd[0]);

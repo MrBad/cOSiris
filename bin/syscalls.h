@@ -36,4 +36,5 @@ int getcwd(char *buf, size_t size);
 
 void cofs_dump_cache();
 int pipe(int fd[2]);
+void clrscr();
 #endif

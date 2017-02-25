@@ -31,6 +31,7 @@ int sys_exec(char *path, char *argv[])
 		}
 		free(p);
 	}
+
 	if(!(fs_node->type & FS_FILE)) {
 		serial_debug("sys_exec() %s is not a file\n", path);
 		return -1;
@@ -49,6 +50,7 @@ int sys_exec(char *path, char *argv[])
 			needed_mem += strlen(argv[argc]) + sizeof(char) + sizeof(uint32_t);
 		}
 	}
+
 	// change name //
 	if(current_task->name) free(current_task->name);
 	current_task->name = strdup(fs_node->name);
@@ -94,11 +96,12 @@ int sys_exec(char *path, char *argv[])
 	uint32_t *new_argv = (uint32_t *)free_mem_start;
 	p = (char *)(new_argv + argc);
 	for(i = 0; i < argc; i++) {
+		//kprintf("[%s]\n", tmp_argv[i]);
 		strcpy(p, tmp_argv[i]);
 		new_argv[i] = (uint32_t)p;
 		int len = strlen(tmp_argv[i]);
 		p[len]=0;
-		p+=len;
+		p+=len+1;
 		free(tmp_argv[i]);
 	}
 	if(tmp_argv) free(tmp_argv);

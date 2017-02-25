@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "console.h"
 #include "serial.h"
 //
 //	Few functions to clean a path

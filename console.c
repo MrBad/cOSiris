@@ -113,6 +113,13 @@ static void console_putc(char c)
 	set_cursor_pos(pos);
 }
 
+void clrscr() {
+	int i;
+	for(i = 0; i < 16384; i++) {
+		vid_mem[i] = ' '|attr;
+	}
+	set_cursor_pos(0);
+}
 
 void panic(char * str, ...)
 {
