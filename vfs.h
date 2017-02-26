@@ -36,6 +36,7 @@ typedef struct fs_node *(*mkdir_type_t)(struct fs_node *node, char *name, unsign
 typedef struct fs_node *(*creat_type_t)(struct fs_node *node, char *name, unsigned int mode);
 typedef int(*truncate_type_t)(struct fs_node *node, unsigned int length);
 typedef int(*unlink_type_t)(struct fs_node *parent, char *name);
+typedef int(*link_type_t)(struct fs_node *parent, struct fs_node *node, char *name);
 
 
 typedef struct fs_node {
@@ -65,6 +66,7 @@ typedef struct fs_node {
 	creat_type_t creat;
 	truncate_type_t truncate;
 	unlink_type_t unlink;
+	link_type_t link;
 	void *ptr;				// reserved
 } fs_node_t;
 
@@ -92,7 +94,7 @@ int fs_open_namei(char *path, int flag, int mode, fs_node_t **node);
 int fs_mount(char *path, fs_node_t *node);
 void lstree(fs_node_t *parent, int level);
 int fs_unlink(char *path);
-
-
+int fs_rename(char *oldpath, char *newpath);
+int fs_link(fs_node_t *parent, fs_node_t *node, char *basename);
 
 #endif

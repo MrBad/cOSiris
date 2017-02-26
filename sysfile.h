@@ -51,4 +51,6 @@ long int telldir(DIR *);
 char *sys_getcwd(char *buf, size_t size);
 
 int sys_pipe(int fd[2]);
+int sys_link(char *oldpath, char *newpath);
+int sys_rename(char *oldpath, char *newpath);
 #endif

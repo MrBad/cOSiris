@@ -12,6 +12,7 @@
 #include "cofs.h"
 #include "list.h"
 #include "vfs.h"
+#include "bname.h"
 
 struct cofs_superblock superb;
 #define MAX_CACHED_NODES 100
@@ -35,10 +36,9 @@ struct dirent *cofs_readdir(fs_node_t *node, unsigned int index);
 fs_node_t *cofs_mkdir(fs_node_t *node, char *name, unsigned int mode);
 fs_node_t *cofs_creat(fs_node_t *node, char *name, unsigned int mode);
 int cofs_truncate(fs_node_t *node, unsigned int length);
+int cofs_link(fs_node_t *parent, fs_node_t *node, char *name);
 int cofs_unlink(fs_node_t *node, char *name);
 fs_node_t *cofs_get_node(uint32_t inum);
-
-
 
 void get_superblock(cofs_superblock_t *sb)
 {
@@ -189,6 +189,7 @@ fs_node_t *cofs_get_node(uint32_t inum)
 	node->mkdir = cofs_mkdir;
 	node->creat = cofs_creat;
 	node->truncate = cofs_truncate;
+	node->link = cofs_link;
 	node->unlink = cofs_unlink;
 	spin_unlock(&cofs_cache->lock);
 	return node;
@@ -562,6 +563,19 @@ int cofs_dirlink(fs_node_t *node, char *name, unsigned int inum)
 	return 0;
 }
 
+int cofs_link(fs_node_t *parent, fs_node_t *node, char *name) {
+	int ret;
+	cofs_lock(node);
+	node->num_links++;
+	cofs_update_node(node);
+	cofs_lock(parent);
+	ret = cofs_dirlink(parent, name, node->inode);
+	cofs_unlock(parent);
+	cofs_unlock(node);
+	//kprintf("node reco: %d, parent refco: %d, num_links: %d\n", node->ref_count, parent->ref_count, node->num_links);
+	return ret;
+}
+
 // creates a directory in node
 // increments ref_count
 fs_node_t * cofs_mkdir(fs_node_t *node, char *name, unsigned int mode)
@@ -616,17 +630,16 @@ int cofs_unlink(fs_node_t *parent, char *name)
 {
 	KASSERT(parent);
 	fs_node_t *node;
+	int n, found = 0;
+	cofs_dirent_t dir;
+	unsigned int offs = 0;
+
 	if(!(node = cofs_finddir(parent, name)))
 		return -1;
 	cofs_lock(node);
-	int n;
-	cofs_dirent_t dir;
-	unsigned int offs = 0;
-	int found = 0;
-
 	cofs_lock(parent);
 	while((n = cofs_read(parent, offs, sizeof(dir), (char*)&dir)) > 0) {
-		if(dir.inode == node->inode) {
+		if(strcmp(dir.name, node->name)==0) {
 			found = true;
 			break;
 		}
@@ -641,12 +654,15 @@ int cofs_unlink(fs_node_t *parent, char *name)
 	cofs_update_node(parent);
 	cofs_unlock(parent);
 
+	//kprintf("num lnk: %d\n", node->num_links);
 	node->num_links--; // and put will truncate it if 0 //
+	cofs_update_node(node);
 	cofs_unlock(node);
 	cofs_put_node(node);
 	cofs_put_node(parent);
 	return 0;
 }
+
 
 void cofs_dump_cache()
 {

@@ -138,3 +138,11 @@ void clrscr()
 {
 	_syscall0(SYS_CLRSCR);
 }
+
+
+int link(char *oldpath, char *newpath) {
+	return _syscall2(SYS_LINK, (uint32_t) oldpath, (uint32_t) newpath);
+}
+int rename(char *oldpath, char *newpath) {
+	return _syscall2(SYS_RENAME, (uint32_t) oldpath, (uint32_t) newpath);
+}

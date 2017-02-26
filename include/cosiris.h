@@ -36,8 +36,9 @@ enum {
 	SYS_UNLINK,		// 29
 	SYS_DUP,		// 30
 	SYS_PIPE,		// 31
-	SYS_CLRSCR,
-
+	SYS_CLRSCR,		// 32
+	SYS_LINK,		// 33
+	SYS_RENAME		// 34
 };
 
 #endif

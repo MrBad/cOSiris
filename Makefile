@@ -13,7 +13,7 @@ LDFLAGS	= -g -melf_i386 -T ldscript.ld #-Map System.map
 OBJS =	x86.o console.o kernel.o startup.o multiboot.o gdt.o idt.o isr.o irq.o \
 		timer.o kbd.o serial.o delay.o mem.o kheap.o vfs.o \
 		task.o sched.o syscall.o sys.o pipe.o list.o \
-		sysfile.o canonize.o hd.o hd_queue.o cofs.o \
+		sysfile.o canonize.o bname.o hd.o hd_queue.o cofs.o \
 		lib/libc.a
 
 bzImage: all
@@ -59,7 +59,8 @@ fdimg: bzImage
 	./util/mkcofs hdd.img bin/init bin/cosh bin/test_malloc bin/test_sbrk \
 		bin/test_fork bin/cat bin/mkdir README \
 		bin/ls bin/test_write kernel.lst bin/truncate bin/test_append \
-		bin/rm bin/tdup bin/pwd bin/tpipe bin/ps bin/cdc bin/reset bin/echo
+		bin/rm bin/tdup bin/pwd bin/tpipe bin/ps bin/cdc bin/reset bin/echo \
+		bin/cp bin/mv bin/ln
 
 	# sudo cp initrd.img mnt
 	sudo umount mnt

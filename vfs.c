@@ -9,6 +9,7 @@
 #include "task.h"
 #include "vfs.h"
 #include "canonize.h"
+#include "bname.h"
 
 void fs_open(fs_node_t *node, unsigned int flags)
 {
@@ -207,16 +208,11 @@ fs_node_t *fs_truncate(fs_node_t *node, unsigned int length)
 
 int fs_unlink(char *path)	
 {
-	char *p, *filename, *dirname;
-	dirname = p = canonize_path(current_task->cwd, path);
-	p += strlen(p);
-	while(p > dirname && *(p-1)!='/') p--;
-	filename = strdup(p); 
-	*p = 0;
-	
+	char *p, filename[MAX_PATH_LEN], dirname[MAX_PATH_LEN];
+	p = canonize_path(current_task->cwd, path);
+	bname(p, dirname, filename);	
 	fs_node_t *parent = fs_namei(dirname);
 	fs_node_t *node = fs_finddir(parent, filename);
-
 	if(!parent || parent->type != FS_DIRECTORY) {
 		kprintf("no such directory: %s\n", dirname);
 		return -1;
@@ -249,6 +245,51 @@ int fs_unlink(char *path)
 		return -1;
 	}
 	return parent->unlink(parent, filename);
+}
+
+
+int fs_link(fs_node_t *parent, fs_node_t *node, char *name) 
+{
+	if(! parent->link) {
+		serial_debug("node: %s does not support linking\n", parent->name);
+	}
+	return parent->link(parent, node, name);
+}
+
+
+/// dep
+int fs_rename(char *oldname, char *newname) 
+{
+	return -1;
+	/*
+	int ret = 0;
+	fs_node_t *oldp, *newp;
+	fs_node_t *node;
+	char oldb[MAX_PATH_LEN],	// old base name
+		 newb[MAX_PATH_LEN],	// new base name
+		 oldd[MAX_PATH_LEN],	// old dir name
+		 newd[MAX_PATH_LEN];	// new dir name
+	bname(oldname, oldd, oldb);
+	bname(newname, newd, newb);
+	
+	if(!(oldp = fs_namei(oldd))) {
+		serial_debug("fs_rename: cannot find old dir parent\n");
+		return -1;
+	}
+	if(!(newp = fs_namei(newd))) {
+		serial_debug("fs_rename: cannot find new dir parent\n");
+		return -1;
+	}
+	if(!(node = fs_finddir(oldp, oldb))) {
+		serial_debug("fs_rename: cannot find old node\n");
+		return -1;
+	}
+	ret = node->rename(oldp, oldb, newp, newb);
+	fs_close(node);
+	fs_close(oldp);
+	fs_close(newp);
+	return ret;
+	*/
 }
 
 // hard work here //

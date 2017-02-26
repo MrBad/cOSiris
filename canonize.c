@@ -64,7 +64,7 @@ char *clean_path(char *path)
 char *canonize_path(char *prefix, char *path) 
 {
 	char *p;
-	serial_debug("canonize_path: prefix: [%s] path: [%s] ", prefix, path);
+//	serial_debug("canonize_path: prefix: [%s] path: [%s] ", prefix, path);
 	if(path[0]=='/') {
 		p = strdup(path);
 	} else {
@@ -82,7 +82,7 @@ char *canonize_path(char *prefix, char *path)
 		printf("Cannot clean path: %s\n", p);
 		return NULL;
 	}
-	serial_debug(" to [%s]\n",p);
+//	serial_debug(" to [%s]\n",p);
 	return p;
 }
 

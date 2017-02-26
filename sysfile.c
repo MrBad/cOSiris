@@ -12,7 +12,7 @@
 #include "pipe.h"
 #include "serial.h"
 #include "canonize.h"
-
+#include "bname.h"
 
 // this belongs to sys_proc, but... //
 int sys_exec(char *path, char *argv[])
@@ -547,7 +547,6 @@ int sys_unlink(char *path)
 	return fs_unlink(path);
 }
 
-
 int sys_dup(int oldfd) 
 {
 	int fd, valid;
@@ -592,4 +591,118 @@ int sys_pipe(int fd[2])
 	nodes[0]->open(nodes[0], O_RDONLY);
 	nodes[1]->open(nodes[1], O_WRONLY);
 	return 0;
+}
+
+int sys_link(char *oldpath, char *newpath) 
+{	
+	char *old, *new, 
+		 old_dir[MAX_PATH_LEN],
+		 new_dir[MAX_PATH_LEN], 
+		 file[MAX_PATH_LEN];
+	fs_node_t *node, *parent;
+	int ret;
+
+	old = canonize_path(current_task->cwd, oldpath);
+	new = canonize_path(current_task->cwd, newpath);
+	
+	if(fs_open_namei(new, O_RDONLY, 0, &node) == 0) {
+		if(!(node->type & FS_DIRECTORY)) {
+			kprintf("sys_link: dest path %s already exist\n", newpath);
+			fs_close(node);
+			free(old); 
+			free(new); 
+			return -1;
+		} else { // dest is a directory, we will link into it //
+			parent = node;
+		}
+	}
+	if(fs_open_namei(old, O_RDWR, 0, &node) < 0) {
+		kprintf("sys_link: path %s does not exist\n", oldpath);
+		free(old); 
+		free(new);
+		return -1;
+	}
+	if(!parent) {
+		bname(newpath, new_dir, file);
+		if(fs_open_namei(new_dir, O_RDWR, 0, &parent) < 0) {
+			kprintf("sys_link: destination dir %s does not exist\n", new_dir);
+			fs_close(node);
+			free(old); 
+			free(new);
+			return -1;
+		}
+		if(!(parent->type & FS_DIRECTORY)) {
+			kprintf("sys_link: dest %s is not a directory\n", new_dir);
+			fs_close(parent);fs_close(node);
+			free(old); free(new);
+			return -1;
+		}
+	}
+	// if newpath does not contain a filename == is a directory, 
+	// get file name from oldpath //
+	if(file[0] == 0) {
+		bname(oldpath, old_dir, file);	
+	}
+	ret = fs_link(parent, node, file);
+	fs_close(parent);
+	fs_close(node);
+	free(old);
+	free(new);
+	return ret;
+}
+
+
+// do some checkings and call fs_rename which calls file system specific 
+// implementation
+int sys_rename(char *oldpath, char *newpath) 
+{
+	char *old, *new,
+		 dir[MAX_PATH_LEN],
+		 file[MAX_PATH_LEN];
+
+	fs_node_t *node, *parent, *tnode = NULL;
+	int ret = -1;
+	int inode;
+
+	old = canonize_path(current_task->cwd, oldpath);
+	new = canonize_path(current_task->cwd, newpath);
+	if(strcmp(old, new) == 0) {
+		goto cln1;	
+	}
+	bname(new, dir, file);
+	if(fs_open_namei(old, O_RDWR, 0, &node) < 0) {
+		kprintf("sys_rename: cannot open oldpath %s\n", oldpath);
+		goto cln1;
+	}
+	if(fs_open_namei(dir, O_RDWR, 0, &parent) < 0) {
+		kprintf("sys_rename: cannot open dest dir %s\n", dir);
+		goto cln2;
+	}
+	if(fs_open_namei(new, O_RDWR, 0, &tnode) == 0) {
+		inode = tnode->inode;
+		fs_unlink(new);
+	}
+	ret = fs_link(parent, node, file);
+	if(ret < 0) {
+		kprintf("Lost inode %d! trying to repair\n", inode);
+		// lost both nodes!! //
+		if(fs_link(parent, tnode, tnode->name) == 0) {
+			kprintf("repaired inode %d\n", inode);
+		} else {
+			kprintf("inode %d lost\n", inode);
+		}
+		goto cln2;
+	} else {
+		fs_unlink(old);
+	}
+
+	if(tnode)
+		fs_close(tnode);
+	fs_close(parent);
+cln2:
+	fs_close(node);
+cln1:
+	free(old);
+	free(new);
+	return ret;
 }
