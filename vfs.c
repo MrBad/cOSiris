@@ -206,6 +206,7 @@ fs_node_t *fs_truncate(fs_node_t *node, unsigned int length)
 	return node;
 }
 
+// move part of this code to sysfile.c //
 int fs_unlink(char *path)	
 {
 	char *p, filename[MAX_PATH_LEN], dirname[MAX_PATH_LEN];
