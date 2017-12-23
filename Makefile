@@ -5,7 +5,7 @@ ASM = nasm
 ASMFLAGS = -g -f elf
 LD = ld
 RM = rm -f
-BOCHS=/usr/local/bochs-term/bin/bochs
+BOCHS=bochs
 
 BOOTFLAGS = -f bin
 LDFLAGS	= -g -melf_i386 -T ldscript.ld #-Map System.map
