@@ -4,6 +4,7 @@ entry = 0x00100000;
 SECTIONS {
 	.text entry : AT (entry) {
 		code = .;
+	    /* *(.multiboot_header) */
 		*(.text)
 		. = ALIGN(4096);
 	}

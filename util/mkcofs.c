@@ -18,6 +18,10 @@
 
 #define BLOCK_SIZE 512
 
+// right now I do not read the partition table
+// we will hardcode this sector as the start of COFS 
+// partition.
+#define PARTITION_OFFSET 204801
 
 int fsfd;
 struct cofs_superblock superb;
@@ -27,6 +31,7 @@ unsigned int free_block = 0;
 
 void write_sector(unsigned int sector, void *buf)
 {
+    sector += PARTITION_OFFSET;
 	if(lseek(fsfd, sector * BLOCK_SIZE, 0) < 0) {
 		perror("lseek");
 		exit(1);
@@ -39,6 +44,7 @@ void write_sector(unsigned int sector, void *buf)
 
 void read_sector(unsigned int sector, void *buf)
 {
+    sector += PARTITION_OFFSET;
 	if(lseek(fsfd, sector * BLOCK_SIZE, 0) < 0) {
 		perror("lseek");
 		exit(1);
@@ -187,6 +193,7 @@ int main(int argc, char *argv[])
 	}
 
 	cofs_size = fstat.st_size / BLOCK_SIZE;
+	cofs_size -= PARTITION_OFFSET;
 	num_inodes = cofs_size * BLOCK_SIZE / 4096; // let's assume one inode for every 4096 bytes...
 	bitmap_size = cofs_size / (BLOCK_SIZE * 8) + 1;
 	inodes_size = num_inodes / NUM_INOPB + 1;

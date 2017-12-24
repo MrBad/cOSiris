@@ -33,8 +33,11 @@
 #define ATA_DRVSEL	6
 #define ATA_STATUS	7
 
-////
-
+// COFS partition offset, in sectors
+// I am hardcoding this for now,
+// but in the future we will autodetect partitions
+// and read partition table, maybe pass kernel parameter
+#define PARTITION_OFFSET 204801
 
 static int disk = 0;
 static int base_port = ATA0_BASE_IO;
@@ -131,12 +134,12 @@ void hd_rw(hd_buf_t *hdb)
 #endif
 
 
-
 spin_lock_t hd_lock;
 void hd_rw(hd_buf_t *hdb) {
 	KASSERT(hdb->lock==1);
 	spin_lock(&hd_lock);
-	int sector = hdb->block_no;
+	int sector = hdb->block_no; // add partition offset
+	sector += PARTITION_OFFSET;
 	int ret = 0;
 	hd_wait_ready(0);
 	outb(0x1f2, 1);
