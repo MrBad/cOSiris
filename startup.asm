@@ -6,24 +6,36 @@
 	MULTIBOOT_HEADER_FLAGS	equ MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO	; grub, flags
 	CHECKSUM equ -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)				; grub, checksum
 
-
-
 	GLOBAL start						; punct de intrare, unde va sari dupa ce grub incarca tot
 	EXTERN main							; c main file
 	EXTERN code, bss, end, data			; pasate de linker, vezi lscript.txt
 	; functii scrise in asm, apelabile din c
 	STACKSIZE equ 0x4000				; stack size
 
+; this is for multiboot2, WIP
+[SECTION .multiboot_header]
+header_start:
+    dd 0xe85250d6                ; magic number (multiboot 2)
+    dd 0                         ; architecture 0 (protected mode i386)
+    dd header_end - header_start ; header length
+    ; checksum
+    dd 0x100000000 - (0xe85250d6 + 0 + (header_end - header_start))
+
+    ; insert optional multiboot tags here
+
+    ; required end tag
+    dw 0    ; type
+    dw 0    ; flags
+    dd 8    ; size
+header_end:
+
 
 [SECTION .text]
-
-	align 4
-
+    align 4
 	dd MULTIBOOT_HEADER_MAGIC
 	dd MULTIBOOT_HEADER_FLAGS
 	dd CHECKSUM
 	; multiboot header, pt grub, tre sa fie in primii 8k
-
 
 align 8
 start:

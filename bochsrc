@@ -206,8 +206,8 @@ vga: extension=none
 #floppya: 1_44=a.img, status=inserted
 #floppya: 1_44=/dev/rfd0a, status=inserted
 #floppya: 1_44=/root//ics-os-032409/ics-os-floppy.img, status=inserted
-floppya: 1_44=fd.img, status=inserted
-floppyb: 1_44=grub.img, status=inserted
+#floppya: 1_44=fd.img, status=inserted
+#floppyb: 1_44=grub.img, status=inserted
 
 
 #=======================================================================
@@ -310,7 +310,7 @@ ata0-slave: type=disk, mode=flat, path="hdd.img"
 #   boot: cdrom, floppy, disk
 #=======================================================================
 boot: floppy
-#boot: disk
+boot: disk
 
 #=======================================================================
 # CLOCK:
