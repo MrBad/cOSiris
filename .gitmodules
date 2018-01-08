@@ -1,0 +1,3 @@
+[submodule "util/cofs"]
+	path = util/cofs
+	url = https://github.com/MrBad/cofs.git
