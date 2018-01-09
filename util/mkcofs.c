@@ -11,9 +11,6 @@
 #include <unistd.h>
 #include <libgen.h>
 
-// #define FS_FILE        0x01
-// #define FS_DIRECTORY   0x02
-
 #include "cofs.h"
 
 #define BLOCK_SIZE 512
@@ -65,6 +62,7 @@ void write_inode(unsigned int inum, cofs_inode_t *ino)
 	*dino = *ino; //
 	write_sector(sec, buffer);
 }
+
 void read_inode(unsigned int inum, cofs_inode_t *ino)
 {
 	char buffer[BLOCK_SIZE];
@@ -234,7 +232,7 @@ int main(int argc, char *argv[])
 
 	// check if we already have cofs fs //
 	read_sector(1, buf);
-	if(((unsigned int*)buf)[0] == COFS_MAGIC){
+	if(((unsigned int*)buf)[0] == COFS_MAGIC) {
 		printf("Already formated\n");
 		// exit(0);
 	}

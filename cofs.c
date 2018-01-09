@@ -60,24 +60,24 @@ void block_zero(uint32_t block)
 uint32_t block_alloc()
 {
 	hd_buf_t *hdb;
-	uint32_t block, scan, idx, mask, iterations=0;
+	uint32_t block, scan, idx, mask;
 	for(block = 0; block < superb.size; block+=BITS_PER_BLOCK) {
 		hdb = get_hd_buf(BITMAP_BLOCK(block, superb));
 		// fast farword using big index until find a non full int //
-		for(scan = 0; scan < BLOCK_SIZE/sizeof(uint32_t); scan++,iterations++) {
+		for(scan = 0; scan < BLOCK_SIZE/sizeof(uint32_t); scan++) {
 			if(((uint32_t *)hdb->buf)[scan] != 0xFFFFFFFF) {
 				break;
 			}
 		}
 		if(scan != BLOCK_SIZE/sizeof(uint32_t)) {
-			for(idx=scan*32; idx < (scan+1)*32; idx++,iterations++) {
+			for(idx=scan*32; idx < (scan+1)*32; idx++) {
 				mask = 1 << (idx % 8);
 				if((hdb->buf[idx / 8] & mask) == 0) {
 					hdb->buf[idx / 8] |= mask;
 					hdb->is_dirty = true;
 					put_hd_buf(hdb);
-					block_zero(idx);
-					return (block+idx);
+					block_zero(block + idx);
+					return block + idx;
 				}
 			}
 		}
@@ -309,6 +309,9 @@ uint32_t block_map(fs_node_t *node, uint32_t fbn)
 		// kprintf("double indirect\n");
 		uint32_t midx = (fbn-NUM_DIRECT-NUM_SIND) / NUM_SIND;
 		uint32_t sidx = (fbn-NUM_DIRECT-NUM_SIND) % NUM_SIND;
+		if (node->addrs[DIND_IDX] == 0) {
+		    node->addrs[DIND_IDX] = block_alloc();
+		}
 		hdb = get_hd_buf(node->addrs[DIND_IDX]);
 		if(((uint32_t*)hdb->buf)[midx] == 0) {
 			((uint32_t*)hdb->buf)[midx] = block_alloc();
@@ -378,7 +381,7 @@ int cofs_truncate(fs_node_t *node, unsigned int length)
 				i++;
 				node->addrs[SIND_IDX] = 0;
 			}
-		} else if(fbn < NUM_DIRECT+NUM_DIND) {
+		} else if(fbn < NUM_DIRECT+NUM_SIND+NUM_DIND) {
 			uint32_t midx = (fbn-NUM_DIRECT-NUM_SIND) / NUM_SIND;
 			uint32_t sidx = (fbn-NUM_DIRECT-NUM_SIND) % NUM_SIND;
 		
