@@ -309,7 +309,7 @@ ata0-slave: type=disk, mode=flat, path="hdd.img"
 #   boot: network, disk
 #   boot: cdrom, floppy, disk
 #=======================================================================
-boot: floppy
+#boot: floppy
 boot: disk
 
 #=======================================================================

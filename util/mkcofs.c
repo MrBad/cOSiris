@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
 		write_sector(i, buf);
 	}
 	// write superblock //
-	memcpy(buf, (void *)&superb, BLOCK_SIZE);
+	memcpy(buf, (void *)&superb, sizeof(superb));
 	write_sector(1, buf);
 
 	// root inode //

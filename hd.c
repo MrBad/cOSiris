@@ -38,6 +38,7 @@
 // but in the future we will autodetect partitions
 // and read partition table, maybe pass kernel parameter
 #define PARTITION_OFFSET 204801
+//#define PARTITION_OFFSET 1845248
 
 static int disk = 0;
 static int base_port = ATA0_BASE_IO;

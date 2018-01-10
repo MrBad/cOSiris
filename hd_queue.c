@@ -115,6 +115,7 @@ int hd_queue_init()
 	if(!(buf_queue = malloc(sizeof(struct buf_queue)))) {
 		panic("malloc");
 	}
+	buf_queue->lock = 0;
 	if(!(buf_queue->list = list_open(free_hd_buf))) {
 		panic("list_open");
 	}
