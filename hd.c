@@ -1,9 +1,10 @@
-//
-//	Hard disk low level functions - PIO mode
-//		I will not use interrupts for now, because of some strange errors on qemu
-//			Anyway, maybe i will rewrite this for using DMA later,
-//			performance is not important on this point
-//
+/**
+ * Hard disk low level functions - PIO mode
+ *  I will not use interrupts for now, because of some strange errors on qemu
+ *  Anyway, maybe i will rewrite this for using DMA later,
+ *  performance is not important at this point
+ */
+#include <string.h>
 #include <sys/types.h>
 #include <stdlib.h>
 #include "assert.h"
@@ -15,6 +16,7 @@
 #include "list.h"
 #include "task.h"
 #include "serial.h"
+#include "cofs.h"
 
 #define ATA_ERR 0x01
 #define ATA_DRQ 0x08
@@ -33,16 +35,15 @@
 #define ATA_DRVSEL	6
 #define ATA_STATUS	7
 
-// COFS partition offset, in sectors
-// I am hardcoding this for now,
-// but in the future we will autodetect partitions
-// and read partition table, maybe pass kernel parameter
-#define PARTITION_OFFSET 204801
-//#define PARTITION_OFFSET 1845248
+#define P0_OFFS 446/2   // first primary partition table entry in  mbr
+#define REL_SEC 8/2     // offs in entry to partition start, in sectors
+#define TOT_SEC 12/2    // offs in entry to partition size, in sectors
 
 static int disk = 0;
 static int base_port = ATA0_BASE_IO;
 static int base2_port = ATA0_BASE2_IO;
+// cofs partition offset //
+static uint32_t p_offs = 0;
 
 #if 0
 typedef struct cmd {
@@ -71,8 +72,9 @@ void free_cmd(void *data) {
 int hd_wait_ready(bool check_error)
 {
 	int s;
-	while(((s = inb(base_port|ATA_STATUS)) & (ATA_RDY|ATA_BSY)) != ATA_RDY); // waits until ata ready
-	if(check_error && (s & (ATA_DF|ATA_ERR)) != 0) // if error... //
+	// waits until ata is ready - TODO, have a timeout
+	while(((s = inb(base_port|ATA_STATUS)) & (ATA_RDY|ATA_BSY)) != ATA_RDY);
+	if(check_error && (s & (ATA_DF|ATA_ERR)) != 0) // if error
 		return -1;
 	return 0;
 }
@@ -134,13 +136,17 @@ void hd_rw(hd_buf_t *hdb)
 }
 #endif
 
-
-spin_lock_t hd_lock;
-void hd_rw(hd_buf_t *hdb) {
+// spin lock to assure only one thread is using disk
+spin_lock_t hd_lock = 0;
+/**
+ * Reads or writes (if is dirty) the buffer from/to disk.
+ */
+void hd_rw(hd_buf_t *hdb) 
+{
 	KASSERT(hdb->lock==1);
 	spin_lock(&hd_lock);
 	int sector = hdb->block_no; // add partition offset
-	sector += PARTITION_OFFSET;
+	sector += p_offs;
 	int ret = 0;
 	hd_wait_ready(0);
 	outb(0x1f2, 1);
@@ -153,7 +159,6 @@ void hd_rw(hd_buf_t *hdb) {
 		if((ret = hd_wait_ready(1)) < 0) {
 			panic("hd_wait_ready, write\n");
 		}
-		// kprintf("port_write %d\n", hdb->block_no);
 		port_write(0x1f0, hdb->buf, 256);
 	} else {
 		outb(0x1f7, 0x20);
@@ -161,22 +166,24 @@ void hd_rw(hd_buf_t *hdb) {
 			panic("hd_wait_ready, read\n");
 		}
 		port_read(0x1f0, hdb->buf, 256);
-		// kprintf("port_read %d\n", hdb->block_no);
 	}
 	spin_unlock(&hd_lock);
 }
 
-
+/**
+ * Check for disk presence
+ */
 static bool check_disk(int disk_num)
 {
 	int i;
 	bool found = false;
-	if(disk_num > 3) return false;
+	KASSERT(disk_num < 4);
 
 	base_port = disk_num < 2 ? ATA0_BASE_IO : ATA1_BASE_IO;
 	base2_port = disk_num < 2 ? ATA0_BASE2_IO : ATA1_BASE2_IO;
 	disk = disk_num;
-	outb(base_port|ATA_DRVSEL,  0xE0|((disk_num % 2) << 4) ); // check master on primary bus
+	// check master on primary bus
+	outb(base_port|ATA_DRVSEL,  0xE0|((disk_num % 2) << 4) ); 
 	for(i = 0; i < 500; i++) {
 		if(inb(base_port|ATA_STATUS) != 0) {
 			kprintf("Found disk [hd%c]\n", disk_num+'a');
@@ -185,6 +192,60 @@ static bool check_disk(int disk_num)
 		}
 	}
 	return found;
+}
+
+/**
+ * indian, little indian, big indian, amerindian conversion
+ */
+static uint32_t u_ind(uint16_t *p) 
+{
+    return *p + (*(p+1) << 16);
+}
+
+/**
+ * Finds the COFS partition
+ * Load the master boot record of the drive, find primary partitions [1-4],
+ * and try to load sector 1 of the partition.
+ * Tests if the partition is a COFS type (has COFS_MAGIC number) and save 
+ * it's offset if it founds it
+ * This will become our root partition.
+ * Note: the locking does not makes much sense here, but hd_rw expects the 
+ * buffer to be locked.
+ */
+static bool find_cofs_part()
+{
+    uint16_t *p, i;
+    uint32_t p_start, p_size, *m;
+    hd_buf_t hdb = {0};
+    spin_lock(&hdb.lock);
+    hd_rw(&hdb); // read sector 0 of disk //
+    for (i = 0; i < 4; i++) {
+        p = (uint16_t *) hdb.buf + P0_OFFS + i * 8 + REL_SEC;
+        p_start = u_ind(p);
+        p_size = u_ind(p + 2);
+        if (p_size == 0) {
+            continue;
+        }
+        hd_buf_t sb = {0};
+        sb.block_no = p_start + 1;
+        spin_lock(&sb.lock);
+        hd_rw(&sb);
+        m = (uint32_t *)sb.buf;
+        if(*m == COFS_MAGIC) {
+            p_offs = p_start;
+            spin_unlock(&sb.lock);
+            break;
+        }
+        spin_unlock(&sb.lock);
+    }
+    spin_unlock(&hdb.lock);
+    if (i == 4) {
+        return false;
+    }
+    kprintf("Found cofs partition %u, at offset %u, size %u sectors\n",
+            i+1, p_start, p_size);
+
+    return true;
 }
 
 void hd_init()
@@ -202,6 +263,9 @@ void hd_init()
 	if(!found) {
 		panic("Cannot find any disk\n");
 	}
+    if (!find_cofs_part()) {
+        panic("Cannot find any cofs partition\n");
+    }
 	// irq_install_handler(14, hd_handler);
 #if 0
 	cmd_queue = calloc(1, sizeof(*cmd_queue));

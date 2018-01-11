@@ -17,7 +17,7 @@ typedef struct cofs_superblock
 	unsigned int num_inodes;		// number of inodes
 	unsigned int bitmap_start;		// where free bitmap starts
 	unsigned int inode_start;		// where inodes starts
-
+    unsigned int data_block;        // where free blocks starts
 } cofs_superblock_t;
 
 #define NUM_DIRECT	6		// number of direct blocks

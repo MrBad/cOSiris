@@ -687,17 +687,25 @@ fs_node_t *cofs_init()
 
 	KASSERT(BLOCK_SIZE % sizeof(struct cofs_inode) == 0);
 	KASSERT(BLOCK_SIZE % sizeof(cofs_dirent_t) == 0);
-	kprintf("sizeof inode: %d\n",sizeof(cofs_inode_t));
 
 	hd_queue_init();
 
 	get_superblock(&superb);
 	if(superb.magic != COFS_MAGIC) {
-		panic("Invalid file system, cannot find COFS_MAGIC\n");
+		panic("Invalid file system, cannot find COFS_MAGIC, got: %u\n", superb.magic);
 	}
 
-	kprintf("size: %d, data: %d, num_inodes:%d, bitmap_start: %d, ino_start: %d\n", superb.size, superb.num_blocks, superb.num_inodes,
-		superb.bitmap_start, superb.inode_start);
+	kprintf("Loaded COFS superblock:\n"
+	        " size: %u blocks, %luMB\n"
+	        " data: %u blocks\n"
+	        " num_inodes:%u\n"
+	        " bitmap_start: %u\n"
+	        " ino_start: %u\n"
+	        " data_block: %u\n", 
+	        superb.size, superb.size*BLOCK_SIZE/1024/1024,
+	        superb.num_blocks, superb.num_inodes,
+		    superb.bitmap_start, superb.inode_start, superb.data_block);
+
 	kprintf("Max file size: %d KB\n", MAX_FILE_SIZE * 512 / 1024);
 
 	cofs_cache = calloc(1, sizeof(*cofs_cache));
