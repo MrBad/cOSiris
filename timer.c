@@ -12,31 +12,26 @@
 #define pit_data3 0x42		// data channel 3 register - speaker
 #define pit_cmmnd 0x43		// command register
 
-
-void timer_phase (int hz) {
+static void set_timer_phase (int hz) 
+{
 	int divisor = 1193180 / hz;		// compute divisor //
 	outb(pit_cmmnd, 0x36);
 	outb(pit_data1, divisor & 0xFF); // set low byte of divisor
 	outb(pit_data1, divisor >> 8);	// high byte of divisor
 }
 
-void timer_handler(struct iregs *r) {
+void timer_handler(struct iregs *r) 
+{
 	timer_ticks++;
-	// if(timer_ticks % 1000 == 0) {
-		task_switch(r);
-	// }
-	if(timer_ticks % 1000 == 0) {
-		// kprintf(".");
-	}
+	task_switch(r);
 }
 
-
-void timer_install(void) {
+void timer_install(void) 
+{
 	timer_ticks = 0;
-	timer_phase(100); // o intrerupere la a suta parte din secunda
-	irq_install_handler(0, timer_handler); // seteaza timerul pe intreruperea 0
+	set_timer_phase(1000 / MS_PER_TICK); // one interrupt every 10ms
+	irq_install_handler(0, timer_handler); // set PIT to generate irq0
 }
-
 
 void timer_wait(int ms)
 {

@@ -14,6 +14,7 @@ OBJS =	x86.o console.o kernel.o startup.o gdt.o idt.o isr.o irq.o \
 		timer.o kbd.o serial.o delay.o mem.o kheap.o vfs.o \
 		task.o sched.o syscall.o sys.o pipe.o list.o \
 		sysfile.o canonize.o bname.o hd.o hd_queue.o cofs.o \
+		rtc.o \
 		lib/libc.a
 
 bzImage: all

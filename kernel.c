@@ -11,6 +11,7 @@
 #include "timer.h"
 #include "delay.h"
 #include "kbd.h"
+#include "rtc.h"
 #include "mem.h"
 #include "kheap.h"
 #include "vfs.h"
@@ -59,6 +60,8 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	kprintf("Setup timer\n");
 	timer_install();
 
+    rtc_init();
+
 	kprintf("Calibrating delay loop: %d loops/ms\n", calibrate_delay_loop());
 
 	kprintf("Setup keyboard\n");
@@ -79,6 +82,11 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	console_init();
 	task_init();
 	syscall_init();
+	// wait for the rtc interrupt to fire //
+	while (!system_time)
+	    ;
+	kprintf("Unix time: %u\n", system_time);
+
 	sys_exec("/init", NULL);
 
 	// ps();

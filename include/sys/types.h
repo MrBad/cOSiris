@@ -19,6 +19,9 @@ typedef short int int16_t;
 typedef unsigned char uint8_t;
 typedef char int8_t;
 
+typedef unsigned long long int uint64_t;
+typedef long long int int64_t;
+
 typedef int pid_t;
 typedef unsigned int off_t;
 typedef unsigned int time_t;

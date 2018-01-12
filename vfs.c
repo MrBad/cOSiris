@@ -23,7 +23,7 @@ void fs_close(fs_node_t *node)
 	if(node==NULL) {
 		panic("fs_close\n");
 	}
-	serial_debug("closing %x\n", node);
+	//serial_debug("closing %x\n", node);
 	if (node->close) {
 		return node->close(node);
 	}

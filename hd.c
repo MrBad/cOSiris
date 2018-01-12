@@ -252,7 +252,6 @@ void hd_init()
 {
 	int i;
 	bool found;
-	kprintf("hd_init()\n");
 	found = false;
 	for(i = 0; i < 4; i++) {
 		if(check_disk(i)) {
