@@ -12,7 +12,6 @@
 #include "pipe.h"
 #include "initrd.h"
 
-
 #define CRTC_PORT	0x3D4
 #define SCR_COLS	80
 #define SCR_ROWS	24
@@ -183,18 +182,23 @@ struct {
 extern bool ctrl_pressed;
 
 list_t * cons_wait_queue;
-void console_handler()
+
+void console_handler(struct iregs *r)
 {
 	unsigned char c;
 	static int chr_count = 0; // number of characters in a input row
-	// spin_lock(&console_lock);
-	c = kbdgetc();
+    // spin_lock(&console_lock);
+    if (r->eax == 2)
+        c = r->ebx;
+    else 
+	    c = kbdgetc();
 	if(!c) return;
 	if(c == '\b') { // if backspace - for now is hardcoded to erase previously char
 		if(chr_count > 0) {
 			kbd_buff.e--;
 			chr_count--;
 			console_putc(c);
+			serial_putc(c); serial_putc(' '); serial_putc(c);
 		}
 		return;
 	}
@@ -202,6 +206,7 @@ void console_handler()
 		c = (c=='\r') ? '\n' : c;
 		kbd_buff.buff[kbd_buff.e++ % KBD_BUFF_SIZE] = c;
 		console_putc(c);
+		serial_putc(c);
 		chr_count++;
 		if(c == '\n' || kbd_buff.e == kbd_buff.r + KBD_BUFF_SIZE) {
 			kbd_buff.w = kbd_buff.e;

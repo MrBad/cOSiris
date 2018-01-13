@@ -1,6 +1,7 @@
 #ifndef _CONSOLE_H
 #define _CONSOLE_H
 
+#include "isr.h"
 #include "vfs.h"
 
 #define VID_ADDR	0xB8000
@@ -17,5 +18,7 @@ unsigned int console_write(fs_node_t *node, unsigned int offset, unsigned int si
 unsigned int console_read(fs_node_t *node, unsigned int offset, unsigned int size, char *buffer);
 
 void clrscr();
+
+void console_handler(struct iregs *r);
 
 #endif

@@ -252,7 +252,7 @@ int fs_unlink(char *path)
 int fs_link(fs_node_t *parent, fs_node_t *node, char *name) 
 {
 	if(! parent->link) {
-		serial_debug("node: %s does not support linking\n", parent->name);
+		//serial_debug("node: %s does not support linking\n", parent->name);
 	}
 	return parent->link(parent, node, name);
 }
@@ -274,15 +274,15 @@ int fs_rename(char *oldname, char *newname)
 	bname(newname, newd, newb);
 	
 	if(!(oldp = fs_namei(oldd))) {
-		serial_debug("fs_rename: cannot find old dir parent\n");
+		//serial_debug("fs_rename: cannot find old dir parent\n");
 		return -1;
 	}
 	if(!(newp = fs_namei(newd))) {
-		serial_debug("fs_rename: cannot find new dir parent\n");
+		//serial_debug("fs_rename: cannot find new dir parent\n");
 		return -1;
 	}
 	if(!(node = fs_finddir(oldp, oldb))) {
-		serial_debug("fs_rename: cannot find old node\n");
+		//serial_debug("fs_rename: cannot find old node\n");
 		return -1;
 	}
 	ret = node->rename(oldp, oldb, newp, newb);

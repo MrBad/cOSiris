@@ -32,11 +32,8 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	stack_ptr = sptr;
 	stack_size = ssize;
 
-	serial_init();
-
-
 	// multiboot_parse(magic, mboot);
-	kprintf("cOSiris\n");
+	kprintf("\ncOSiris...\n");
 
 	get_kernel_info(&kinfo);
 	kprintf("Kernel info:\n");
@@ -55,6 +52,7 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	kprintf("Setup irq\n");
 	irq_install();
 
+	serial_init();
 	sti();
 
 	kprintf("Setup timer\n");
@@ -78,7 +76,6 @@ void main(unsigned int magic, multiboot_header *mboot, unsigned int ssize, unsig
 	// fs_root = initrd_init(initrd_location);
 
 	fs_root = cofs_init();
-	// zero_init();
 	console_init();
 	task_init();
 	syscall_init();

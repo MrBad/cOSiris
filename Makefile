@@ -84,7 +84,9 @@ diskimg: all
 		bin/rm bin/tdup bin/pwd bin/tpipe bin/ps bin/cdc bin/reset bin/echo \
 		bin/cp bin/mv bin/ln
 
-run: diskimg
+runb: diskimg
 	$(BOCHS) -f bochsrc -q
-runq: fdimg
-	qemu-system-i386 -kernel kernel.bin -curses -drive file=hdd.img,index=0,media=disk,format=raw
+rung:
+	qemu-system-i386 -kernel kernel.bin -drive file=hdd.img,index=0,media=disk,format=raw -serial stdio
+run: diskimg
+	qemu-system-i386 -display none -kernel kernel.bin -drive file=hdd.img,index=0,media=disk,format=raw -serial stdio

@@ -23,7 +23,7 @@ int sys_exec(char *path, char *argv[])
 	int argc = 0, i;
 	// try to open path //
 	if(fs_open_namei(path, O_RDONLY, 0, &fs_node) < 0) {
-		serial_debug("sys_exec() cannot open %s file\n", path);
+		//serial_debug("sys_exec() cannot open %s file\n", path);
 		char *p = canonize_path("/", path); // try to open from / root
 		if(fs_open_namei(p, O_RDONLY, 0, &fs_node) < 0) {
 			free(p);
@@ -33,7 +33,7 @@ int sys_exec(char *path, char *argv[])
 	}
 
 	if(!(fs_node->type & FS_FILE)) {
-		serial_debug("sys_exec() %s is not a file\n", path);
+		//serial_debug("sys_exec() %s is not a file\n", path);
 		return -1;
 	}
 	// TODO try to check it's mask, if it's exec
@@ -163,7 +163,7 @@ int sys_open(char *filename, int flags, int mode)
 	}
 	current_task->files[fd] = alloc_file();
 	if((fs_open_namei(filename, flags, mode, &current_task->files[fd]->fs_node)) < 0) {
-		serial_debug("sys_open() cannot open %s\n", filename);
+		//serial_debug("sys_open() cannot open %s\n", filename);
 		free(current_task->files[fd]);
 		current_task->files[fd] = NULL;
 		return -1;
@@ -228,7 +228,7 @@ int sys_stat(char *path, struct stat *buf)
 {
 	fs_node_t *fs_node;
 	if(fs_open_namei(path, O_RDONLY, 0755, &fs_node) < 0) {
-		serial_debug("sys_stat() cannot open %s file\n", path);
+		//serial_debug("sys_stat() cannot open %s file\n", path);
 		return -1;
 	}
 	populate_stat_buf(fs_node, buf);
@@ -241,7 +241,7 @@ int sys_lstat(char *path, struct stat *buf)
 {
 	fs_node_t *fs_node;
 	if(fs_open_namei(path, O_RDONLY, 0755, &fs_node) < 0) {
-		serial_debug("sys_stat() cannot open %s file\n", path);
+		//serial_debug("sys_stat() cannot open %s file\n", path);
 		return -1;
 	}
 	populate_stat_buf(fs_node, buf);
@@ -332,11 +332,11 @@ int sys_chroot(char *path)
 {
 	fs_node_t *fs_node;
 	if((fs_open_namei(path, O_RDONLY, 0777, &fs_node)) < 0) {
-		serial_debug("sys_chroot() cannot open %s\n", path);
+		//serial_debug("sys_chroot() cannot open %s\n", path);
 		return -1;
 	}
 	if(!(fs_node->type & FS_DIRECTORY)) {
-		serial_debug("sys_chroot() - %s is not a directory\n", path);
+		//serial_debug("sys_chroot() - %s is not a directory\n", path);
 		fs_close(fs_node);
 		return -1;
 	}
@@ -350,7 +350,7 @@ int sys_chown(char *filename, int uid, int gid)
 {
 	fs_node_t *fs_node;
 	if((fs_open_namei(filename, O_RDONLY, 0777, &fs_node)) < 0) {
-		serial_debug("sys_chmod() cannot open %s\n", filename);
+		//serial_debug("sys_chmod() cannot open %s\n", filename);
 		return -1;
 	}
 	fs_node->uid = uid;
@@ -363,7 +363,7 @@ int sys_chmod(char *filename, int mode)
 {
 	fs_node_t *fs_node;
 	if((fs_open_namei(filename, O_RDONLY, 0777, &fs_node)) < 0) {
-		serial_debug("sys_chown() cannot open %s\n", filename);
+		//serial_debug("sys_chown() cannot open %s\n", filename);
 		return -1;
 	}
 	fs_node->mask = mode;
@@ -398,18 +398,18 @@ int sys_mkdir(char *path, int mode)
 	fs_node_t *dir;
 
 	if(fs_open_namei(dirname, O_RDONLY, 0777, &dir)<0) {
-		serial_debug("Cannot open dirname %s\n", dirname);
+		//serial_debug("Cannot open dirname %s\n", dirname);
 		return -1;
 	}
 	fs_node_t *file;
 	if((file = fs_finddir(dir, basename))) {
-		serial_debug("Dir exists %s\n", file->name);
+		//serial_debug("Dir exists %s\n", file->name);
 		fs_close(dir);
 		fs_close(file);
 		return -1;
 	}
 	if(!(file = fs_mkdir(dir, basename, mode))) {
-		serial_debug("Cannot create file: %s\n", basename);
+		//serial_debug("Cannot create file: %s\n", basename);
 		fs_close(dir);
 		return -1;
 	}
@@ -540,7 +540,7 @@ int sys_unlink(char *path)
 {
 	fs_node_t *node;
 	if((fs_open_namei(path, O_RDONLY, 0, &node)) < 0) {
-		serial_debug("sys_unlink() cannot open %s\n", path);
+		//serial_debug("sys_unlink() cannot open %s\n", path);
 		return -1;
 	}
 	fs_close(node);

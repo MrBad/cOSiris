@@ -1,52 +1,85 @@
-#include "include/stdarg.h"
+#include <stdarg.h>
+#include "x86.h"
+#include "irq.h"
+#include "console.h"
 #include "serial.h"
-#define PORT 0x3f8   /* COM1 */
 
+// COM ports //
+#define COM1 0x3F8
+#define COM2 0x2F8  
 
-
-int serial_received() {
-	return inb(PORT + 5) & 1;
+/**
+ * Transmit a character
+ */
+void serial_putc(char a)
+{
+    while ((inb(COM1 + 5) & 0x20) == 0)
+        ;
+    outb(COM1, a);
 }
 
-char serial_read() {
-	while (serial_received() == 0);
-	return inb(PORT);
+/**
+ * Raw write the buffer, as it is, to serial line
+ */
+void serial_write(char *buf)
+{
+    while(*buf) {
+        serial_putc(*buf++);
+    }
 }
 
-int is_transmit_empty() {
-	return inb(PORT + 5) & 0x20;
+/**
+ * Like kprintf, printf, but send the text to serial line
+ */
+void serial_debug(char *fmt, ...)
+{
+    char buf[1024];
+    va_list args;
+    va_start(args, fmt);
+    vsprintf(buf, fmt, args);
+    va_end(args);
+    serial_write(buf);
 }
 
-void serial_putc(char a) {
-	while (is_transmit_empty() == 0);
-	outb(PORT, a);
-}
-void serial_write(char *buf) {
-	for (;;) {
-		if(*buf == 0) {
-			break;
-		}
-		serial_putc(*buf++);
-	}
-}
-
-void serial_debug(char *fmt, ...) {
-	char buf[1024];
-	va_list args;
-	va_start(args, fmt);
-	vsprintf(buf, fmt, args);
-	va_end(args);
-	serial_write(buf);
-	return;
+/**
+ * Serial interrupt handler (int 4).
+ * This is called when there is a characted in the serial buffer to be read.
+ * Here will read the character, and push it to console handler.
+ * The pass of the char is hacky right now - TODO - clean this.
+ */
+static void serial_handler(struct iregs *r)
+{
+    char c;
+    if(!(inb(COM1+5) & 0x01))
+        return;
+    c = inb(COM1);
+    r->eax = 2;
+    r->ebx = c;
+    console_handler(r);
 }
 
+/**
+ * Initialize the serial lines - COM1 right now.
+ * COM1 is set at 38400 baud, 8 bits, one stop bit, no parity
+ * I plan to use COM2 for general write, in the early stages, when 
+ *   there is not irq installed, or to use it for gdb...
+ */
+void serial_init() 
+{
+    cli();
+    irq_install_handler(0x04, serial_handler);
+    outb(COM1 + 2, 0x02);         // Turn off FIFO.
+    outb(COM1 + 3, 0x80);         // Unlock divisor (DLAB = 1)
+    outb(COM1 + 0, 115200/38400); // Set 38400 baud, low byte
+    outb(COM1 + 1, 0);            //                 high byte
+    outb(COM1 + 3, 0x03);   // Lock divisor, 8 bits, no parity, one stop bit
+    outb(COM1 + 4, 0);
+    outb(COM1 + 1, 0x01);   // Enable interrupts
 
-void serial_init() {
-	outb(PORT + 1, 0x00);    // Disable all interrupts
-	outb(PORT + 3, 0x80);    // Enable DLAB (set baud rate divisor)
-	outb(PORT + 0, 0x03);    // Set divisor to 3 (lo byte) 38400 baud
-	outb(PORT + 1, 0x00);    //                  (hi byte)
-	outb(PORT + 3, 0x03);    // 8 bits, no parity, one stop bit
-	outb(PORT + 2, 0xC7);    // Enable FIFO, clear them, with 14-byte threshold
-	outb(PORT + 4, 0x0B);    // IRQs enabled, RTS/DSR set
+    if(inb(COM1 + 5) == 0xFF)
+        return;
+    inb(COM1+2);
+    inb(COM1+0);
+    serial_write("Serial is up\n");
+    sti();
 }
