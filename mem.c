@@ -3,7 +3,7 @@
 #include "console.h"	// kprint, panic//
 #include "isr.h" 		// iregs //
 #include "multiboot.h"	// multiboot_header //
-#include "kernel.h" 	// kinfo_t //
+#include "kernel.h" 	// kinfo //
 #include "kheap.h"		// HEAP defs //
 #include "assert.h"		// KASSERT /
 #include "mem.h"
@@ -122,22 +122,19 @@ static phys_t round_page_up(phys_t addr) {
 	return ((addr/PAGE_SIZE)+1) * PAGE_SIZE;
 }
 
-
-static void reserve_region(phys_t addr, size_t length, multiboot_header *mb)
+static void reserve_region(phys_t addr, size_t length)
 {
-	struct	kinfo_t kinfo;
 	phys_t	ptr;
 	phys_t	initrd_location = 0,
 			initrd_end = 0;
-
+#if 0
 	if (mb && mb->mods_count > 0) {
 		initrd_location = *((unsigned int *) mb->mods_addr);
 		initrd_end = *(unsigned int *) (mb->mods_addr + 4);
 		initrd_end = round_page_up(initrd_end);
 	}
-
-	get_kernel_info(&kinfo);
-
+#endif
+	
 	for(ptr = addr; ptr - addr < length; ptr+=PAGE_SIZE) {
 		// we will not use first frame //
 		if(ptr == 0) {
@@ -159,21 +156,16 @@ static void reserve_region(phys_t addr, size_t length, multiboot_header *mb)
 	}
 }
 
-
-static void reserve_memory(multiboot_header *mb)
+static void reserve_memory()
 {
-	memory_map *mm;
-	mm = (memory_map *) mb->mmap_addr;
-	do {
-		if(mm->type == 1) {
-			phys_t addr;
-			size_t length;
-			addr = (mm->base_addr_high << 16) + mm->base_addr_low;
-			length = (mm->length_high << 16) + mm->length_low;
-			reserve_region(addr, length, mb);
-		}
-		mm = (memory_map *) ((unsigned long) mm + mm->size + sizeof(mm->size));
-	} while((unsigned long) mm < mb->mmap_addr + mb->mmap_length);
+    int i, len = sizeof(kinfo.minfo) / sizeof(*kinfo.minfo);
+    struct minfo *minfo;
+    for (i = 0; i < len; i++) {
+        minfo = kinfo.minfo + i;
+        if (minfo->type == MEM_USABLE) {
+            reserve_region(minfo->base, minfo->length);
+        }
+    }
 }
 
 static void recursively_map_page_directory(dir_t *dir)
@@ -432,31 +424,35 @@ void free_directory(dir_t *dir)
 }
 
 
-// Moving stack up in memory (KERNEL_STACK_HI)
-// so clone_directory() will clone it instead of linking it
+/**
+ * Moving stack up in memory (KERNEL_STACK_HI)
+ * so clone_directory() will clone it instead of linking it
+ * Also it patches the stack values, to refer to the new location
+ */
 void move_stack_up()
 {
 	KASSERT(pg_on);
 	cli();
 	phys_t *frame;
-	extern unsigned int stack_ptr, stack_size;
-	unsigned int *p, *k, i;
-	unsigned int offset = KERNEL_STACK_HI - stack_ptr;
+	uint32_t *p, *k, i;
+	uint32_t offset = KERNEL_STACK_HI - kinfo.stack;
 
-	for(i = stack_size / PAGE_SIZE; i; i--) {
+	for(i = kinfo.stack_size / PAGE_SIZE; i; i--) {
 		frame = frame_calloc();
-		map(KERNEL_STACK_HI - PAGE_SIZE * i, (unsigned int)frame, P_PRESENT | P_READ_WRITE);
-		for(p = (unsigned int *)(stack_ptr-PAGE_SIZE*i); (unsigned int)p < stack_ptr-PAGE_SIZE*(i-1); p++) {
-			k = (unsigned int*)((unsigned int)p+offset);
-			if(*p < stack_ptr && *p >= stack_ptr-stack_size) {
-				*k = (unsigned int)*p + offset;
+		map(KERNEL_STACK_HI - PAGE_SIZE * i, (uint32_t)frame, P_PRESENT | P_READ_WRITE);
+		// Copy this PAGE of stack //
+		for(p = (uint32_t *)(kinfo.stack-PAGE_SIZE*i); (uint32_t)p < kinfo.stack-PAGE_SIZE*(i-1); p++) {
+			k = (uint32_t*)((uint32_t)p+offset);
+			if(*p < kinfo.stack && *p >= kinfo.stack - kinfo.stack_size) {
+			    // patch the values on stack that reffers to stack :D
+				*k = (uint32_t)*p + offset;
 			} else {
 				*k = *p;
 			}
 		}
 	}
 
-	unsigned int old_esp, old_ebp, new_esp, new_ebp;
+	uint32_t old_esp, old_ebp, new_esp, new_ebp;
 	asm volatile("movl %%esp, %0" : "=r"(old_esp));
 	asm volatile("movl %%ebp, %0" : "=r"(old_ebp));
 	new_esp = old_esp + offset;
@@ -561,7 +557,7 @@ clean:
 // Ok, trick is that sbrk will be called directly when compiling libc in kernel mode
 //	but in usermode, sys_sbrk will be called instead
 //	Based on that, we switch the heap where we want to sbrk and can use same malloc
-//	in bouth places
+//	in both places
 //
 void * sbrk(int increment)
 {
@@ -574,7 +570,7 @@ void * sys_sbrk(int increment)
 
 void mem_init(multiboot_header *mb)
 {
-	reserve_memory(mb);
+	reserve_memory();
 	total_pages = num_pages;
 	kprintf("Available memory: %d pages, %d MB\n", num_pages, num_pages * 4/1024);
 	kernel_dir = frame_calloc();

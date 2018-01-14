@@ -1,28 +1,28 @@
 export CFLAGS="-j 4"
 CC = gcc
-CFLAGS = -g -m32 -Wall -nostdlib -fno-builtin -ffreestanding -c -I include
+DFLAGS=
+INCLUDE=include
+CFLAGS = -g3 -m32 -Wall -Wextra -std=gnu90 -nostdlib -fno-builtin\
+		 -ffreestanding -c -I$(INCLUDE) $(DFLAGS)
 ASM = nasm
-ASMFLAGS = -g -f elf
-LD = ld
+ASMFLAGS = -g3 -f elf
 RM = rm -f
-BOCHS=bochs
-
+BOCHS = bochs
+QEMU = qemu-system-i386
+QEMU_PARAMS = -kernel kernel.bin \
+			  -drive file=hdd.img,index=0,media=disk,format=raw \
+			  -serial stdio
 BOOTFLAGS = -f bin
-LDFLAGS	= -g -n -melf_i386 -T ldscript.ld #-Map System.map
+LD = ld
+LDFLAGS	= -g -n -melf_i386 -T ldscript.ld -Map System.map
 
-OBJS =	x86.o console.o kernel.o startup.o gdt.o idt.o isr.o irq.o \
-		timer.o kbd.o serial.o delay.o mem.o kheap.o vfs.o \
-		task.o sched.o syscall.o sys.o pipe.o list.o \
-		sysfile.o canonize.o bname.o hd.o hd_queue.o cofs.o \
-		rtc.o \
-		lib/libc.a
+OBJS = x86.o console.o kernel.o kinfo.o startup.o gdt.o idt.o isr.o irq.o \
+	   timer.o kbd.o serial.o delay.o mem.o kheap.o vfs.o \
+	   task.o sched.o syscall.o sys.o pipe.o list.o \
+	   sysfile.o canonize.o bname.o hd.o hd_queue.o cofs.o \
+	   rtc.o \
+	   lib/libc.a
 
-bzImage: all
-	objdump --source kernel.bin > kernel.lst
-	#objcopy --only-keep-debug kernel.bin kernel.sym
-	nm kernel.bin | sort > kernel.sym
-	strip -s kernel.bin
-	gzip -c -9 kernel.bin > kernel
 all: $(OBJS)
 	$(LD) $(LDFLAGS) -o kernel.bin $(OBJS)
 	make -C util
@@ -38,8 +38,8 @@ lib/libc.a: lib/Makefile
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
 clean:
-	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt parport.out System.map debugger.out serial.out *.gch initrd.img
-
+	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt\
+		parport.out System.map debugger.out serial.out *.gch initrd.img
 
 distclean:
 	make clean
@@ -48,12 +48,18 @@ distclean:
 	make -C bin clean
 	rm initrd.img include/*.gch
 
+bzImage: all
+	objdump --source kernel.bin > kernel.lst
+	#objcopy --only-keep-debug kernel.bin kernel.sym
+	nm kernel.bin | sort > kernel.sym
+	#strip -s kernel.bin
+	gzip -c -9 kernel.bin > kernel
+
 fdimg: bzImage
 	cp grub.img fd.img
 	if [ ! -d mnt ]; then mkdir mnt; fi
 	sudo mount fd.img mnt -oloop -tmsdos
 	sudo cp kernel mnt
-	# sudo cp bin/init mnt
 	# util/mkinitrd kernel.sym bin/init bin/test_fork bin/test_sbrk \
 		# bin/test_malloc bin/cosh README
 	./util/mkcofs hdd.img bin/init bin/cosh bin/test_malloc bin/test_sbrk \
@@ -61,8 +67,6 @@ fdimg: bzImage
 		bin/ls bin/test_write kernel.lst bin/truncate bin/test_append \
 		bin/rm bin/tdup bin/pwd bin/tpipe bin/ps bin/cdc bin/reset bin/echo \
 		bin/cp bin/mv bin/ln
-
-	# sudo cp initrd.img mnt
 	sudo umount mnt
 	sudo rm -rf mnt
 
@@ -86,7 +90,13 @@ diskimg: all
 
 runb: diskimg
 	$(BOCHS) -f bochsrc -q
-rung:
-	qemu-system-i386 -kernel kernel.bin -drive file=hdd.img,index=0,media=disk,format=raw -serial stdio
+
+rung: all
+	$(QEMU) $(QEMU_PARAMS)
+
+debug: all
+	$(QEMU) $(QEMU_PARAMS) -display none -s -S
+
 run: diskimg
-	qemu-system-i386 -display none -kernel kernel.bin -drive file=hdd.img,index=0,media=disk,format=raw -serial stdio
+	$(QEMU) $(QEMU_PARAMS) -display none
+

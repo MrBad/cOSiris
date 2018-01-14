@@ -3,10 +3,18 @@ monolitic, multitasking, protected mode, ring 0,3 userland, small shell, hard di
 
 Inspired by linux-0.01, osd, ics-os, james molloy, geekos, unix v6, xv6, osdev site
 
+How to compile it:
+In order to compile it, you will need gcc installed on your system; 
+
+How to run it:
+You can run cOSiris in an emulator (recomended) bochs, qemu or VirtualBox
+ or on real hardware, although I do not recommend it.
+
 
 - compile - make
-- run - make run	- require bochs
-			- for debian type # apt-get install bochs bochs-term bochsbios
+- to run it inside qemu - type make run (require qemu-system-i386)
+- to run it with gdb attached - type make debug and attach
+- to run it inside bochs - type make runb (require bochs bochs-term bochsbios)
 
 - make a floppy image - make fd
 	will create fd.img, to write it - dd if=fd.img of=/dev/fd0

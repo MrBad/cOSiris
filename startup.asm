@@ -1,9 +1,10 @@
 [BITS 32]
 
 	MULTIBOOT_PAGE_ALIGN	equ 1<<0		; page align
-	MULTIBOOT_MEMORY_INFO	equ 1<<1		; grub, paseaza mem info
+	MULTIBOOT_MEMORY_INFO	equ 1<<1		; pass me infos about memory
+	MULTIBOOT_VBE_INFO      equ 1<<2		; pass me infos about video
 	MULTIBOOT_HEADER_MAGIC	equ 0x1BADB002	; grub, magic - one bad boot?
-	MULTIBOOT_HEADER_FLAGS	equ MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO	; grub, flags
+	MULTIBOOT_HEADER_FLAGS	equ MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO; grub, flags
 	CHECKSUM equ -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)				; grub, checksum
 
 	GLOBAL start						; punct de intrare, unde va sari dupa ce grub incarca tot
@@ -82,8 +83,8 @@ bochs_magic_break:
     xchg bx, bx
     ret
 
-GLOBAL get_kernel_info
-get_kernel_info:
+GLOBAL get_kinfo
+get_kinfo:
 	push ebp
 	mov ebp, esp
 	mov edx, end
@@ -93,8 +94,10 @@ get_kernel_info:
 	mov dword [eax+4], start
 	mov dword [eax+8], data
 	mov dword [eax+12], bss
-	mov dword [eax+16], end
-	mov dword [eax+20], edx
+	mov dword [eax+16], end     ; kernel end
+	mov dword [eax+20], edx     ; kernel size(end - code) 
+	mov dword [eax+24], stack+STACKSIZE
+	mov dword [eax+28], STACKSIZE
 	pop ebp
 	ret
 

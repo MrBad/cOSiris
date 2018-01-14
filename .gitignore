@@ -9,4 +9,6 @@ sh/
 libc-port/
 core
 hdd.img
+.gdb_history
+tags
 
