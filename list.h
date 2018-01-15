@@ -3,8 +3,8 @@
 
 // a node definition
 typedef struct node_t {
-	struct node_t *prev, *next;
-	void *data;
+    struct node_t *prev, *next;
+    void *data;
 } node_t;
 
 
@@ -20,10 +20,10 @@ typedef int (*compare_function_t) (void *data, void *what);
 
 // a list of nodes definition
 typedef struct {
-	node_t *head;
-	node_t *tail;
-	unsigned int num_items;
-	free_function_t free_function;
+    node_t *head;
+    node_t *tail;
+    unsigned int num_items;
+    free_function_t free_function;
 } list_t;
 
 

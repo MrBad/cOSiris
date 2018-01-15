@@ -23,10 +23,10 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	char *file = "../kernel.sym";
+	char *file = "kernel.sym";
 	FILE *fp = fopen(file, "r");
 	if(!fp) {
-		perror("file");
+		printf("Cannot open %s\n", file);
 		return 1;
 	}
 

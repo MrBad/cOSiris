@@ -1,3 +1,6 @@
+/**
+ * DEPRECATED
+ */
 #include <stdlib.h>
 #include "include/string.h"
 #include "x86.h"

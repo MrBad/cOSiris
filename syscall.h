@@ -1,8 +1,14 @@
 #ifndef _SYSCALL_H
 #define _SYSCALL_H
 
-
-extern void switch_to_user_mode();
+/**
+ * Initialize system calls
+ */
 void syscall_init();
+
+/**
+ * task_exit alias
+ */
+void exit(int status);
 
 #endif

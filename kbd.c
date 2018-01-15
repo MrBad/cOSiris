@@ -1,9 +1,8 @@
 #include <sys/types.h>
 #include "serial.h"
 #include "console.h"
-#include "x86.h"
+#include "i386.h"
 #include "irq.h"
-
 
 // whatta mess, i need to rewrite this //
 
@@ -11,65 +10,65 @@ char kbd_buff[256];
 unsigned int kbd_buff_ptr = 0;
 
 unsigned char kbd_map[128] = {
-		0, 27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
-		'\t', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
-		0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',
-		0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0,
-		'*',
-		'0',
-		' ',
-		0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		'-',
-		0,
-		0,
-		0,
-		'+',
-		0,
-		0,
-		0,
-		0,
-		0,
-		0, 0, 0,
-		0,
-		0,
-		0
+    0, 27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
+    '\t', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
+    0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',
+    0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0,
+    '*',
+    '0',
+    ' ',
+    0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    '-',
+    0,
+    0,
+    0,
+    '+',
+    0,
+    0,
+    0,
+    0,
+    0,
+    0, 0, 0,
+    0,
+    0,
+    0
 };
 
 unsigned char kbd_map_shift[128] = {
-		0, 27, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b',
-		'\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n',
-		0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~',
-		0, '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0,
-		'*',
-		'0',
-		' ',
-		0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		'-',
-		0,
-		0,
-		0,
-		'+',
-		0,
-		0,
-		0,
-		0,
-		0,
-		0, 0, 0,
-		0,
-		0,
-		0
+    0, 27, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b',
+    '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n',
+    0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~',
+    0, '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0,
+    '*',
+    '0',
+    ' ',
+    0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    '-',
+    0,
+    0,
+    0,
+    '+',
+    0,
+    0,
+    0,
+    0,
+    0,
+    0, 0, 0,
+    0,
+    0,
+    0
 };
 
 bool shift_pressed = false;
@@ -77,85 +76,81 @@ bool ctrl_pressed = false;
 
 char kbdgetc() {
 
-	unsigned char scancode = 0;
-	if(inb(0x64) & 1)
-		scancode = inb(0x60);
-	// kprintf("%X ", scancode);
-//	return;
-	if(scancode & 0x80) {
-		// kprintf("[%x]", scancode);
-		// when key release //
-		if(scancode==(0x2A|0x80) || scancode == 0x36) {
-			shift_pressed = false;
-			return 0;
-		}
-		if(scancode == (0x1d|0x80)) {
-			ctrl_pressed = false;
-			return 0;
-		}
-		// serial_debug("[%x] ", scancode);
-	} else {
-		scancode = scancode & 0x7F;
-		// 0x0E -> backspace
-		// 0x49 -> page up
-		// 0x48 -> a up
-		// 0x4B -> a left
-		// 0x4D -> a right
-		// 0x50 -> a down
-		// 0x51 -> page down
-		// 0x47 -> home
-		// 0x4F -> end
-		// serial_debug("%X ", scancode);
-		if(scancode == 0x48) {
-			scroll_line_up();
-			return 0;
-		}
-		if(scancode == 0x49) {
-			scroll_page_up();
-			return 0;
-		}
-		if (scancode == 0x51) {
-			scroll_page_down();
-			return 0;
-		}
-		if(scancode == 0x50) {
-			scroll_line_down();
-			return 0;
-		}
-		if (scancode == 0x1) {
-			kprintf("Shut down\n");
-			char *c = "Shutdown";
-			while (*c) {
-				outb(0x8900, *c++);
-			}
-		}
-		// kprintf("%c", scancode);
-		// when key pressed //
-		if(scancode == 0x2A || scancode == 0x36) {
-			shift_pressed = true;
-			return 0;
-		}
-		if (scancode == 0x1d) {
-			ctrl_pressed = true;
-			return 0;
-		}
-		if(shift_pressed) {
-			return kbd_map_shift[scancode];
-			// kprintf("%c", kbd_map_shift[scancode]);
-		}
-		// else if (ctrl_pressed) {
-			// kprintf("[%c]", kbd_map[scancode]);
-			// return kbd_map[scancode];
-		// }
-		else {
-			return kbd_map[scancode];
-			// kprintf("%c", kbd_map[scancode]);
-		}
-	}
-	return 0;
+    unsigned char scancode = 0;
+    if (inb(0x64) & 1)
+        scancode = inb(0x60);
+    if (scancode & 0x80) {
+        // when key release //
+        if (scancode==(0x2A|0x80) || scancode == 0x36) {
+            shift_pressed = false;
+            return 0;
+        }
+        if (scancode == (0x1d|0x80)) {
+            ctrl_pressed = false;
+            return 0;
+        }
+        // serial_debug("[%x] ", scancode);
+    } else {
+        scancode = scancode & 0x7F;
+        // 0x0E -> backspace
+        // 0x49 -> page up
+        // 0x48 -> a up
+        // 0x4B -> a left
+        // 0x4D -> a right
+        // 0x50 -> a down
+        // 0x51 -> page down
+        // 0x47 -> home
+        // 0x4F -> end
+        // serial_debug("%X ", scancode);
+        if (scancode == 0x48) {
+            scroll_line_up();
+            return 0;
+        }
+        if (scancode == 0x49) {
+            scroll_page_up();
+            return 0;
+        }
+        if (scancode == 0x51) {
+            scroll_page_down();
+            return 0;
+        }
+        if (scancode == 0x50) {
+            scroll_line_down();
+            return 0;
+        }
+        if (scancode == 0x1) {
+            kprintf("Shut down\n");
+            char *c = "Shutdown";
+            while (*c) {
+                outb(0x8900, *c++);
+            }
+        }
+        // when key pressed //
+        if (scancode == 0x2A || scancode == 0x36) {
+            shift_pressed = true;
+            return 0;
+        }
+        if (scancode == 0x1d) {
+            ctrl_pressed = true;
+            return 0;
+        }
+        if (shift_pressed) {
+            return kbd_map_shift[scancode];
+            // kprintf("%c", kbd_map_shift[scancode]);
+        }
+        // else if (ctrl_pressed) {
+        // kprintf("[%c]", kbd_map[scancode]);
+        // return kbd_map[scancode];
+        // }
+        else {
+            return kbd_map[scancode];
+            // kprintf("%c", kbd_map[scancode]);
+        }
+    }
+    return 0;
 }
 
 void kbd_install() {
-	// irq_install_handler(0x1, kbd_handler); // seteaza timerul pe intreruperea 0
-	return;
+    // irq_install_handler(0x1, kbd_handler); // seteaza timerul pe intreruperea 0
+    return;
 }

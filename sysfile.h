@@ -6,19 +6,21 @@
 
 #define PROC_MAX_OPEN_FILES 256 // maximum number of open files //
 
+// file type structure //
 struct file {
-	unsigned short mode;
-	unsigned short flags;
-	unsigned int offs;
-	fs_node_t *fs_node;
-	unsigned int dup_cnt; // use it in dup() to keep reference count to this file
-						  // when dup_cnt is 0, it's safe to free the struct
+    unsigned short mode;
+    unsigned short flags; 
+    unsigned int offs;
+    fs_node_t *fs_node;
+    int dup_cnt; // use it in dup() to keep reference count 
+                          // to this file
+                          // when dup_cnt is 0, it's safe to free the struct
 };
 typedef struct file DIR;
 
 int sys_exec(char *path, char *argv[]);
 int sys_open(char *path, int flag, int mode);
-int sys_close(unsigned int fd);
+int sys_close(int fd);
 int sys_stat(char *path, struct stat *buf);
 int sys_fstat(int fd, struct stat *buf);
 int sys_lstat(char *path, struct stat *buf);
@@ -41,16 +43,17 @@ int sys_readdir(DIR *dir, struct dirent *buf);
 int lstat(const char *pathname, struct stat *buf);
 int sys_readlink(const char *pathname, char *buf, size_t bufsiz);
 
-/*
-int readdir_r(DIR *, struct dirent *, struct dirent **);
-void rewinddir(DIR *);
-void seekdir(DIR *, long int);
-long int telldir(DIR *);
-*/
+/**
+ * To be implemented...
+ * int readdir_r(DIR *, struct dirent *, struct dirent **);
+ * void rewinddir(DIR *);
+ * void seekdir(DIR *, long int);
+ * long int telldir(DIR *);
+ */
 
 char *sys_getcwd(char *buf, size_t size);
-
 int sys_pipe(int fd[2]);
 int sys_link(char *oldpath, char *newpath);
 int sys_rename(char *oldpath, char *newpath);
+
 #endif

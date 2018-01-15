@@ -1,9 +1,9 @@
 export CFLAGS="-j 4"
 CC = gcc
-DFLAGS=
-INCLUDE=include
-CFLAGS = -g3 -m32 -Wall -Wextra -std=gnu90 -nostdlib -fno-builtin\
-		 -ffreestanding -c -I$(INCLUDE) $(DFLAGS)
+DFLAGS= -DKERNEL
+INCLUDE= -Iinclude
+CFLAGS = -g3 -m32 -Wall -Wextra -std=c99 -nostdlib -fno-builtin\
+		 -ffreestanding -c $(INCLUDE) $(DFLAGS)
 ASM = nasm
 ASMFLAGS = -g3 -f elf
 RM = rm -f
@@ -16,7 +16,8 @@ BOOTFLAGS = -f bin
 LD = ld
 LDFLAGS	= -g -n -melf_i386 -T ldscript.ld -Map System.map
 
-OBJS = x86.o console.o kernel.o kinfo.o startup.o gdt.o idt.o isr.o irq.o \
+OBJS = i386.o port.o console.o kernel.o kinfo.o startup.o \
+	   gdt.o idt.o isr.o irq.o \
 	   timer.o kbd.o serial.o delay.o mem.o kheap.o vfs.o \
 	   task.o sched.o syscall.o sys.o pipe.o list.o \
 	   sysfile.o canonize.o bname.o hd.o hd_queue.o cofs.o \
@@ -25,6 +26,8 @@ OBJS = x86.o console.o kernel.o kinfo.o startup.o gdt.o idt.o isr.o irq.o \
 
 all: $(OBJS)
 	$(LD) $(LDFLAGS) -o kernel.bin $(OBJS)
+	objdump --source kernel.bin > kernel.lst
+	nm kernel.bin | sort > kernel.sym
 	make -C util
 	make -C bin
 
@@ -32,21 +35,25 @@ lib/libc.a: lib/Makefile
 	make -C lib
 
 %.o: %.c Makefile *.h
-	$(CC) $(CFLAGS) $(OFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) -o $@ $<
 
 %.o: %.asm
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
+util/cofs/mkfs:
+	cd util/cofs && make && cd ../../
 clean:
 	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt\
-		parport.out System.map debugger.out serial.out *.gch initrd.img
+		parport.out System.map debugger.out serial.out *.gch initrd.img core
 
 distclean:
 	make clean
 	make -C lib clean
-	make -C util clean
-	make -C bin clean
-	rm initrd.img include/*.gch
+	make -C util clean || true
+	make -C bin clean || true
+	cd util/cofs && make clean || true && cd ../../
+	rm initrd.img include/*.gch || true
+	rm hdd.img
 
 bzImage: all
 	objdump --source kernel.bin > kernel.lst
@@ -61,9 +68,9 @@ fdimg: bzImage
 	sudo mount fd.img mnt -oloop -tmsdos
 	sudo cp kernel mnt
 	# util/mkinitrd kernel.sym bin/init bin/test_fork bin/test_sbrk \
-		# bin/test_malloc bin/cosh README
+		# bin/test_malloc bin/cosh README.txt
 	./util/mkcofs hdd.img bin/init bin/cosh bin/test_malloc bin/test_sbrk \
-		bin/test_fork bin/cat bin/mkdir README \
+		bin/test_fork bin/cat bin/mkdir README.txt \
 		bin/ls bin/test_write kernel.lst bin/truncate bin/test_append \
 		bin/rm bin/tdup bin/pwd bin/tpipe bin/ps bin/cdc bin/reset bin/echo \
 		bin/cp bin/mv bin/ln
@@ -77,24 +84,19 @@ fd:
 	umount mnt
 	rm -rf mnt
 
-diskimg: all
+diskimg: all util/cofs/mkfs
 	cp kernel.bin kernel
 	objdump --source kernel.bin > kernel.lst
 	nm kernel.bin | sort > kernel.sym
 	./util/mkdisk.sh
-	./util/mkcofs hdd.img bin/init bin/cosh bin/test_malloc bin/test_sbrk \
-		bin/test_fork bin/cat bin/mkdir README \
-		bin/ls bin/test_write kernel.lst bin/truncate bin/test_append \
-		bin/rm bin/tdup bin/pwd bin/tpipe bin/ps bin/cdc bin/reset bin/echo \
-		bin/cp bin/mv bin/ln
 
 runb: diskimg
 	$(BOCHS) -f bochsrc -q
 
-rung: all
+rung: diskimg
 	$(QEMU) $(QEMU_PARAMS)
 
-debug: all
+debug: diskimg
 	$(QEMU) $(QEMU_PARAMS) -display none -s -S
 
 run: diskimg

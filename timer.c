@@ -1,4 +1,4 @@
-#include "x86.h"
+#include "i386.h"
 #include "isr.h"
 #include "irq.h"
 #include "console.h"
@@ -12,33 +12,31 @@
 #define pit_data3 0x42		// data channel 3 register - speaker
 #define pit_cmmnd 0x43		// command register
 
-static void set_timer_phase (int hz) 
+static void set_timer_phase(int hz) 
 {
-	int divisor = 1193180 / hz;		// compute divisor //
-	outb(pit_cmmnd, 0x36);
-	outb(pit_data1, divisor & 0xFF); // set low byte of divisor
-	outb(pit_data1, divisor >> 8);	// high byte of divisor
+    int divisor = 1193180 / hz;		// compute divisor //
+    outb(pit_cmmnd, 0x36);
+    outb(pit_data1, divisor & 0xFF); // set low byte of divisor
+    outb(pit_data1, divisor >> 8);	 // high byte of divisor
 }
 
+/**
+ * Timer interrupt handler
+ * This will also call the scheduller
+ */
 void timer_handler(struct iregs *r) 
 {
-	timer_ticks++;
-	task_switch(r);
+    timer_ticks++;
+    task_switch(r);
 }
 
+/**
+ * 100 interrupts per second
+ */
 void timer_install(void) 
 {
-	timer_ticks = 0;
-	set_timer_phase(1000 / MS_PER_TICK); // one interrupt every 10ms
-	irq_install_handler(0, timer_handler); // set PIT to generate irq0
+    timer_ticks = 0;
+    set_timer_phase(1000 / MS_PER_TICK);    // one interrupt every 10ms
+    irq_install_handler(0, timer_handler);  // set PIT to generate irq0
 }
 
-void timer_wait(int ms)
-{
-	ms = ms / 10;
-	unsigned long eticks;
-	eticks = timer_ticks + ms;
-	while(timer_ticks < eticks) {
-		nop();
-	}
-}

@@ -1,7 +1,6 @@
 #include "kernel.h"
 #include <sys/types.h>
 #include <string.h>
-#include "x86.h"
 #include "console.h"
 #include "multiboot.h"
 #include "kinfo.h"
@@ -29,18 +28,15 @@ uint32_t initrd_location, initrd_end;
 
 void main(uint32_t magic, multiboot_header *mboot)
 {
-    (void) magic;
-    
     // multiboot_parse(magic, mboot);
     kprintf("\ncOSiris...\n");
-
     get_kernel_info(magic, mboot, &kinfo);
     kprintf("Kernel info:\n");
-    kprintf(" code start: 0x%p, start entry: 0x%p, data start: 0x%p\n", 
+    kprintf(" code start: 0x%p, start entry: 0x%p, data start: 0x%p\n",
             kinfo.code, kinfo.start, kinfo.data);
-    kprintf(" bss start: 0x%p, end: 0x%p, total size: %dKB\n", 
+    kprintf(" bss start: 0x%p, end: 0x%p, total size: %dKB\n",
             kinfo.bss, kinfo.end, kinfo.size/1024);
-    kprintf(" stack (low/end): 0x%p, size: 0x%p\n", 
+    kprintf(" stack (hi/start): 0x%p, size: 0x%p\n",
             kinfo.stack, kinfo.stack_size);
 
     kprintf("Setup gdt entries\n");
@@ -75,7 +71,8 @@ void main(uint32_t magic, multiboot_header *mboot)
     }
 
     kprintf("Setup paging\n");
-    mem_init(mboot);
+    mem_init();
+    heap_init();
     // fs_root = initrd_init(initrd_location);
 
     fs_root = cofs_init();
@@ -85,7 +82,7 @@ void main(uint32_t magic, multiboot_header *mboot)
     // wait for the rtc interrupt to fire //
     while (!system_time)
         ;
-    kprintf("Unix time: %u\n", system_time);
+    kprintf("Unix time is: %u\n", system_time);
 
     sys_exec("/init", NULL);
 

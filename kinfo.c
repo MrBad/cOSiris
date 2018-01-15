@@ -23,6 +23,8 @@ void get_kernel_info(uint32_t magic, multiboot_header *mb, struct kinfo *kinfo)
     if (mb->flags && (1 << MBOOTF_MMAP)) {
         mm = (memory_map *) mb->mmap_addr;
         do {
+            if (!(mm->type & (MEM_USABLE|MEM_ACPI|MEM_ACPI_NVS)))
+                continue;
             minfo = kinfo->minfo + i;
             minfo->base = (mm->base_addr_high << 16) + mm->base_addr_low;
             minfo->length = (mm->length_high << 16) + mm->length_low;

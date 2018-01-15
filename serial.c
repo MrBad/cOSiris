@@ -1,5 +1,5 @@
 #include <stdarg.h>
-#include "x86.h"
+#include "i386.h"
 #include "irq.h"
 #include "console.h"
 #include "serial.h"

@@ -1,3 +1,8 @@
+/**
+ * A read only, in memory file system.
+ * This was the first file system of cOSiris.
+ * DEPRECATED
+ */
 #ifndef _INITRD_H
 #define _INITRD_H
 #include "vfs.h"

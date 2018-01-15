@@ -28,7 +28,12 @@ int main()
 	else {
 		close(fd[0]);
 		strcpy(buf1, "This is a message from parent to child\n");
-		int f = open("README", O_RDONLY, 0);
+		int f = open("README.txt", O_RDONLY, 0);
+		if (f < 0) {
+		    printf("Cannot open README.txt\n");
+		    close(fd[1]);
+		    exit(1);
+		}
 		while((n = read(f, buf1, sizeof(buf1))) > 0) {
 			write(fd[1], buf1, n);
 		}

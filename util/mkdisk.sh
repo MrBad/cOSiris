@@ -3,6 +3,12 @@
 IMAGE=hdd.img
 SIZE=308224       # size of the image in sectors, 512/sector = 150MB
 
+
+if [ ! -f kernel.bin ]; then
+    echo "Cannot find kernel.bin. Did you forgot to 'make'?"
+    exit 2
+fi
+
 mkdir mnt
 
 if [ ! -f $IMAGE ]; then
@@ -32,7 +38,10 @@ if [ ! -f $IMAGE ]; then
 
     echo "(hd0,msdos1) /dev/loop0" > device.map
 
-    sudo grub-install --grub-mkdevicemap=device.map --root-directory=mnt --boot-directory=mnt/boot  --no-floppy --modules="normal part_msdos ext2 multiboot configfile biosdisk" /dev/loop0
+    sudo grub-install --grub-mkdevicemap=device.map --root-directory=mnt \
+        --boot-directory=mnt/boot  --no-floppy \
+        --modules="normal part_msdos ext2 multiboot configfile biosdisk" \
+        /dev/loop0
 
     cat << EOM | sudo tee mnt/boot/grub/grub.cfg
 set timeout=3
@@ -45,7 +54,6 @@ menuentry "cOSiris" {
 EOM
 
 
-    sync
 else 
     # mount it at offset 1M, aka first partition, to store /boot
     sudo losetup /dev/loop1 -o 1048576 $IMAGE
@@ -53,10 +61,21 @@ else
     sudo cp kernel.bin mnt/boot/kernel
 fi
 
+sync
+
 sudo umount -l mnt
 sudo losetup -d /dev/loop0
 sudo losetup -d /dev/loop1
 rm device.map
+
+# Format the cofs partition and copy files 
+sudo losetup /dev/loop1 -o 104858112 $IMAGE
+sudo ./util/cofs/mkfs /dev/loop1 \
+    bin/cat bin/cdc bin/cosh bin/cp bin/echo bin/init kernel.sym bin/ln \
+    bin/ls bin/mkdir bin/mv bin/ps bin/pwd README.txt bin/reset bin/rm \
+    bin/tdup bin/test_append bin/test_fork bin/test_malloc bin/test_sbrk \
+    bin/test_write bin/tpipe bin/truncate
+    sudo losetup -d /dev/loop1
 rm -rf mnt
 
 #rm sda.vdi

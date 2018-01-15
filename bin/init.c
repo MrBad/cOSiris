@@ -7,6 +7,9 @@
 
 int main()
 {
+    printf("INIT started, in userland.\n"
+            "Forking cosh, the interactive shell :D\n");
+
 	pid_t pid = fork();
 	if(pid == 0) {
 		char *margv[] = {"cO sh", "this", 0};

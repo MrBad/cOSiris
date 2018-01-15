@@ -1,20 +1,20 @@
 #include "console.h"
-#include "x86.h"
+#include "i386.h"
 #include "irq.h"
 #include "rtc.h"
 
 #define CTC_RATE 0x0E // 4 bits, 32768 >> CTC_RATE
 #define UTC_DIFF -2
 
-static void set_system_time(y, m, d, h, i, s)
-    uint16_t y;
-    uint8_t m, d, h, i, s;
+static void set_system_time(uint16_t y, uint8_t m, uint8_t d, uint8_t h,
+                            uint8_t i, uint8_t s)
 {
     uint8_t mon_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     uint32_t leaps, days, j;
     y -= 1970;
     leaps = (y + 2) / 4;
-    for (j = 0, days = 0; j < m - 1; j++)
+    m--;
+    for (j = 0, days = 0; j < m; j++)
         days += mon_days[j];
     days += d - 1;
     days = days + (y * 365) + leaps;
@@ -40,6 +40,8 @@ static uint8_t rtc_get_reg(uint8_t reg)
 void rtc_handler(struct iregs *r)
 {
     uint8_t c, y, m, d, h, i, s, type, b;
+    (void) type;
+    (void) r;
     // 0x0C (type of interrupt) must be read, otherwise no int will be fired
     rtc_get_reg(0x0C);
     b = rtc_get_reg(0x0B);
