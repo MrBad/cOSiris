@@ -134,12 +134,6 @@ int pipe(int fd[2]) {
 	return _syscall1(SYS_PIPE, (uint32_t)fd);
 }
 
-void clrscr()
-{
-	_syscall0(SYS_CLRSCR);
-}
-
-
 int link(char *oldpath, char *newpath) {
 	return _syscall2(SYS_LINK, (uint32_t) oldpath, (uint32_t) newpath);
 }

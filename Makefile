@@ -9,19 +9,21 @@ ASMFLAGS = -g3 -f elf
 RM = rm -f
 BOCHS = bochs
 QEMU = qemu-system-i386
-QEMU_PARAMS = -kernel kernel.bin \
+QEMU_SKIP_GRUB= -kernel kernel.bin
+QEMU_PARAMS = \
 			  -drive file=hdd.img,index=0,media=disk,format=raw \
 			  -serial stdio
 BOOTFLAGS = -f bin
 LD = ld
 LDFLAGS	= -g -n -melf_i386 -T ldscript.ld -Map System.map
 
-OBJS = i386.o port.o console.o kernel.o kinfo.o startup.o \
-	   gdt.o idt.o isr.o irq.o \
-	   timer.o kbd.o serial.o delay.o mem.o kheap.o vfs.o \
-	   task.o sched.o syscall.o sys.o pipe.o list.o \
-	   sysfile.o canonize.o bname.o hd.o hd_queue.o cofs.o \
-	   rtc.o \
+OBJS = startup.o kernel.o i386.o port.o kinfo.o \
+	   gdt.o idt.o isr.o irq.o delay.o timer.o rtc.o \
+	   ansi.o kbd.o crt.o serial.o console.o \
+	   mem.o kheap.o \
+	   task.o sched.o sys.o syscall.o \
+	   list.o bname.o canonize.o \
+	   hd.o hd_queue.o cofs.o vfs.o pipe.o sysfile.o \
 	   lib/libc.a
 
 all: $(OBJS)
@@ -97,8 +99,8 @@ rung: diskimg
 	$(QEMU) $(QEMU_PARAMS)
 
 debug: diskimg
-	$(QEMU) $(QEMU_PARAMS) -display none -s -S
+	$(QEMU) $(QEMU_SKIP_GRUB) $(QEMU_PARAMS) -display none -s -S
 
 run: diskimg
-	$(QEMU) $(QEMU_PARAMS) -display none
+	$(QEMU) $(QEMU_PARAMS)
 

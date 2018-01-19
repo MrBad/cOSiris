@@ -1,5 +1,8 @@
+#include <stdlib.h>
 #include "syscalls.h"
 
-int main() {
-	clrscr();
+int main()
+{
+    char *buf = "\033c";
+    write(1, buf, 3);
 }

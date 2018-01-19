@@ -33,6 +33,9 @@ bin/test_sbrk
 bin/test_write
 bin/tpipe
 bin/truncate
+bin/test_loop
+bin/fault
+bin/ansi
 util/mkcofs
 util/mkinitrd
 util/find_func

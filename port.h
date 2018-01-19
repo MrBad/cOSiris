@@ -7,12 +7,12 @@
 #include <sys/types.h>
 
 /**
- * Reads count words from port into buf
+ * Reads count words from physical port into buf
  */
 int port_read(uint16_t port, void *buf, int count);
 
 /**
- * Writes count words from buf to port
+ * Writes count words from buf to physical port
  */
 int port_write(uint16_t port, void *buf, int count);
 

@@ -4,7 +4,6 @@
 #include <fcntl.h>
 #include "assert.h"
 #include "i386.h"
-#include "task.h"
 #include "mem.h"
 #include "isr.h"
 #include "console.h"
@@ -13,6 +12,7 @@
 #include "vfs.h"
 #include "pipe.h"
 #include "cofs.h"
+#include "task.h"
 
 bool switch_locked = false;
 char *task_states[] = {
@@ -96,7 +96,7 @@ void ps()
     task_t *t = task_queue;
     while (t) {
         // no eip, esp - assumes we are already in kernel mode //
-        kprintf("%s, pid: %d, ppid: %d, state: %s, ring: %d\n", 
+        kprintf("%10s, pid: %2d, ppid: %2d, state: %2s, ring: %2d\n", 
                 t->name ? t->name : "[unnamed]", t->pid, t->ppid, 
                 task_states[t->state], t->ring);
         t = t->next;
@@ -130,7 +130,7 @@ task_t *task_switch_inner()
         if (!n) {
             n = task_queue;
         }
-        if(n->state == TASK_READY) {
+        if (n->state == TASK_READY) {
             break;
         }
         n = n->next;
@@ -189,7 +189,9 @@ task_t *fork_inner()
             } else {
                 pipe->writers++;
             }
-            //	kprintf("fork: pipe: readers: %d, writers: %d, nodecnt: %d\n", pipe->readers, pipe->writers, current_task->files[fd]->fs_node->ref_count);
+            //	kprintf("fork: pipe: readers: %d, writers: %d, nodecnt: %d\n", 
+            //	pipe->readers, pipe->writers, 
+            //	current_task->files[fd]->fs_node->ref_count);
         }
         t->files[fd]->offs = current_task->files[fd]->offs;
     }
@@ -289,7 +291,7 @@ pid_t task_wait(int *status)
     t = (task_t *) 
         n->data;
     pid_t pid = t->pid;
-    if(status) 
+    if (status) 
         *status = t->exit_status;
     task_free(t);
     list_del(current_task->wait_queue, n);
@@ -303,20 +305,20 @@ void task_exit(int status)
     task_t *t, *parent;
     // TODO - kill task and clean memory
     parent = get_task_by_pid(current_task->ppid);
-    if(!parent) {
+    if (!parent) {
         // halt();
         return;
     }
     // reparent my children//
-    for(t = task_queue; t; t = t->next) {
-        if(t->ppid == current_task->pid) {
+    for (t = task_queue; t; t = t->next) {
+        if (t->ppid == current_task->pid) {
             t->ppid = 1;
         }
     }
     // clean my waiting q //
     node_t *n;
     switch_locked = true;
-    for(n = current_task->wait_queue->head; n; n = n->next) {
+    for (n = current_task->wait_queue->head; n; n = n->next) {
         task_free((task_t *) n->data);
         list_del(current_task->wait_queue, n);
     }
@@ -325,7 +327,7 @@ void task_exit(int status)
     list_add(parent->wait_queue, current_task);
 
     // and wake my parent //
-    if(parent->state == TASK_SLEEPING) {
+    if (parent->state == TASK_SLEEPING) {
         parent->state = TASK_READY;
     }
     current_task->exit_status = status;
@@ -404,13 +406,16 @@ void sleep_on(void *addr)
     task_switch();
 }
 
+/**
+ * Waking up tasks that sleeps on a address
+ */
 int wakeup(void *addr)
 {
     int cnt = 0;
     task_t * t;
     switch_locked = true;
-    for(t = task_queue; t; t = t->next) {
-        if(t->state == TASK_SLEEPING && t->sleep_addr == addr) {
+    for (t = task_queue; t; t = t->next) {
+        if (t->state == TASK_SLEEPING && t->sleep_addr == addr) {
             cnt++; t->state = TASK_READY;
             t->sleep_addr = 0;
         }

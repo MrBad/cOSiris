@@ -11,6 +11,7 @@
 #include <string.h>		// memset //
 #include "i386.h"       // invlpg
 #include "console.h"	// kprint, panic//
+#include "crt.h"        // CRT_ADDR
 #include "isr.h" 		// iregs //
 #include "multiboot.h"	// multiboot_header //
 #include "kernel.h" 	// kinfo //
@@ -46,7 +47,6 @@ int page_fault(struct iregs *r)
             "FAULT: %s addr: 0x%X, stack: 0x%X\n"
             , r->err_code & P_PRESENT ? "page violation" : "page not present", 
             addr, get_esp());
-    
     if (current_task) {
         kprintf("task %s pid %u\n", current_task->name, current_task->pid);
     }
@@ -70,7 +70,10 @@ int page_fault(struct iregs *r)
     }
     kprintf("Paging was %s\n", paging_on() ? "ON" : "OFF");
     ps();
-    
+    if (r->err_code & P_USER) {
+        kprintf("_____\nGoing to terminate pid: %d\n", current_task->pid);
+        task_exit(-1);
+    } 
     return false;
 }
 
@@ -161,7 +164,7 @@ static void reserve_region(phys_t addr, size_t length)
             continue;
         }
         // Skip frames from vga start addr to end of the kernel //
-        if (ptr >= VID_ADDR && ptr <= kinfo.end) {
+        if (ptr >= CRT_ADDR && ptr <= kinfo.end) {
             continue;
         }
 #if 0
@@ -233,7 +236,7 @@ static void identity_map_kernel(dir_t *dir)
     phys_t addr;
 
     // Identity maps pages from VGA addr to kernel end //
-    for (addr = VID_ADDR; addr <= kinfo.end; addr += PAGE_SIZE) {
+    for (addr = CRT_ADDR; addr <= kinfo.end; addr += PAGE_SIZE) {
         identity_map_page(dir, addr);
     }
 

@@ -8,6 +8,7 @@
 #define COM1 0x3F8
 #define COM2 0x2F8  
 
+int serial_up;
 /**
  * Transmit a character
  */
@@ -41,6 +42,13 @@ void serial_debug(char *fmt, ...)
     serial_write(buf);
 }
 
+int serial_getc()
+{
+    if(!(inb(COM1+5) & 0x01))
+        return -1;
+    return inb(COM1);
+}
+
 /**
  * Serial interrupt handler (int 4).
  * This is called when there is a characted in the serial buffer to be read.
@@ -49,13 +57,8 @@ void serial_debug(char *fmt, ...)
  */
 static void serial_handler(struct iregs *r)
 {
-    char c;
-    if(!(inb(COM1+5) & 0x01))
-        return;
-    c = inb(COM1);
-    r->eax = 2;
-    r->ebx = c;
-    console_handler(r);
+    (void) r;
+    console_in(serial_getc);
 }
 
 /**

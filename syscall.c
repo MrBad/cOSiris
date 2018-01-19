@@ -48,7 +48,7 @@ static void *syscalls[] = {
     &sys_unlink,
     &sys_dup,
     &sys_pipe,
-    &clrscr,
+    0,
     &sys_link,
     &sys_rename,
 };

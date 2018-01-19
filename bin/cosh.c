@@ -8,7 +8,7 @@
 //
 //  Simple shell intended for my hobby osdev - cOSiris
 //      supports multiple commands, pipes and redirections
-//		TODO:	some builtins: cd is a must
+//		TODO:	some builtins: bg, fg and group
 //				some history, env and maybe variables
 //
 #define MAX_ARGV 16

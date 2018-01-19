@@ -1,23 +1,35 @@
 #ifndef _CONSOLE_H
 #define _CONSOLE_H
-
+#include <stdarg.h>
 #include "isr.h"
 #include "vfs.h"
+#include "ansi.h"
 
-#define VID_ADDR    0xB8000
+#define CIN_BUF_SIZE 256
 
-void scroll_line_up();
-void scroll_line_down();
-void scroll_page_up();
-void scroll_page_down();
+struct cin {
+    // Console input circular buffer
+    struct {
+        char buf[CIN_BUF_SIZE];
+        int r;  // read pointer; downstream reads from here, until w
+        int w;  // write pointer, begining of line, after last flash
+        int e;  // edit pointer
+        int t;  // top pointer
+        int sz; // size of buffer
+    } cb;
+    // Console ANSI input status
+    struct ansi_stat astat;
+};
+
+typedef int (*getc_t)();
 
 /**
- * When you have last words to say
+ * Write the string to stdout and halt kernel
  */
-void panic(char * str, ...);
+void panic(char *str, ...);
 
 /**
- * Like printf, but for kernel
+ * Kernel low level, unbuffered printf
  */
 void kprintf(char *fmt, ...);
 
@@ -34,18 +46,10 @@ unsigned int console_read(fs_node_t *node, unsigned int offset,
                           unsigned int size, char *buffer);
 
 /**
- * Clears the screen
- */
-void clrscr();
-
-/**
- * Console interrupt handler
- */
-void console_handler(struct iregs *r);
-
-/**
  * Initializes the console
  */
 void console_init();
+
+void console_in(getc_t getc);
 
 #endif

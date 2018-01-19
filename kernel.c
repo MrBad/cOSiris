@@ -1,6 +1,7 @@
 #include "kernel.h"
 #include <sys/types.h>
 #include <string.h>
+#include "crt.h"
 #include "console.h"
 #include "multiboot.h"
 #include "kinfo.h"
@@ -28,8 +29,9 @@ uint32_t initrd_location, initrd_end;
 
 void main(uint32_t magic, multiboot_header *mboot)
 {
+    crt_init();
     // multiboot_parse(magic, mboot);
-    kprintf("\ncOSiris...\n");
+    kprintf("cOSiris...\n");
     get_kernel_info(magic, mboot, &kinfo);
     kprintf("Kernel info:\n");
     kprintf(" code start: 0x%p, start entry: 0x%p, data start: 0x%p\n",
@@ -38,7 +40,6 @@ void main(uint32_t magic, multiboot_header *mboot)
             kinfo.bss, kinfo.end, kinfo.size/1024);
     kprintf(" stack (hi/start): 0x%p, size: 0x%p\n",
             kinfo.stack, kinfo.stack_size);
-
     kprintf("Setup gdt entries\n");
     gdt_init();
 
@@ -50,9 +51,9 @@ void main(uint32_t magic, multiboot_header *mboot)
 
     kprintf("Setup irq\n");
     irq_install();
-
-    serial_init();
     sti();
+   
+    serial_init();
 
     kprintf("Setup timer\n");
     timer_install();
@@ -84,6 +85,8 @@ void main(uint32_t magic, multiboot_header *mboot)
         ;
     kprintf("Unix time is: %u\n", system_time);
 
+    kprintf("\n\033[31mc\033[33;1mOS\033[34miris\033[0m. "
+            "Switching to \033[31mring 3\033[0m.\n");
     sys_exec("/init", NULL);
 
     // ps();

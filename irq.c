@@ -84,14 +84,14 @@ void irq_install()
  */
 void irq_handler(struct iregs *r)
 {
-    irq_handler_t handler = irq_routines[r->int_no - 32];
-    if (handler) {
-        handler(r);
-    }
     if (r->int_no >= 0x28) {	
         // send end of interrupt, if irq is on slave
         outb(port_8259S, 0x20);
     }
     // send end of interrupt on master
     outb(port_8259M, 0x20);
+    irq_handler_t handler = irq_routines[r->int_no - 32];
+    if (handler) {
+        handler(r);
+    }
 }
