@@ -214,193 +214,161 @@ GLOBAL isr16, isr17, isr18, isr19, isr20, isr21, isr22, isr23
 GLOBAL isr24, isr25, isr26, isr27, isr28, isr29, isr30, isr31, isr128
 
 isr0:
-    cli
     push byte 0
     push byte 0
     jmp isr_common
 
 isr1:
-    cli
     push byte 0
     push byte 1
     jmp isr_common
 
 isr2:
-    cli
     push byte 0
     push byte 2
     jmp isr_common
 
 isr3:
-    cli
     push byte 0
     push byte 3
     jmp isr_common
 
 isr4:
-    cli
     push byte 0
     push byte 4
     jmp isr_common
 
 isr5:
-    cli
     push byte 0
     push byte 5
     jmp isr_common
 
 isr6:
-    cli
     push byte 0
     push byte 6
     jmp isr_common
 
 isr7:
-    cli
     push byte 0
     push byte 7
     jmp isr_common
 
 isr8:
-    cli
     push byte 8
     jmp isr_common
     
 isr9:
-    cli
     push byte 0
     push byte 9
     jmp isr_common
 
 isr10:
-    cli
     push byte 10
     jmp isr_common
 
 isr11:
-    cli
     push byte 11
     jmp isr_common
 
 isr12:
-    cli
     push byte 12
     jmp isr_common
  
 isr13:
-    cli
     push byte 13
     jmp isr_common
 
 isr14:
-    cli
     push byte 14
     jmp isr_common
 
 isr15:
-    cli
     push byte 0
     push byte 15
     jmp isr_common
 
 isr16:
-    cli
     push byte 0
     push byte 16
     jmp isr_common
 
 isr17:
-    cli
     push byte 0
     push byte 17
     jmp isr_common
 
 isr18:
-    cli
     push byte 0
     push byte 18
     jmp isr_common
 
 isr19:
-    cli
     push byte 0
     push byte 19
     jmp isr_common
 
 isr20:
-    cli
     push byte 0
     push byte 20
     jmp isr_common
 
 isr21:
-    cli
     push byte 0
     push byte 21
     jmp isr_common
 
 isr22:
-    cli
     push byte 0
     push byte 22
     jmp isr_common
 
 isr23:
-    cli
     push byte 0
     push byte 23
     jmp isr_common
 
 isr24:
-    cli
     push byte 0
     push byte 24
     jmp isr_common
 
 isr25:
-    cli
     push byte 0
     push byte 25
     jmp isr_common
 
 isr26:
-    cli
     push byte 0
     push byte 26
     jmp isr_common
 
 isr27:
-    cli
     push byte 0
     push byte 27
     jmp isr_common
 
 isr28:
-    cli
     push byte 0
     push byte 28
     jmp isr_common
 
 isr29:
-    cli
     push byte 0
     push byte 29
     jmp isr_common
 
 isr30:
-    cli
     push byte 0
     push byte 30
     jmp isr_common
 
 isr31:
-    cli
     push byte 0
     push byte 31
     jmp isr_common
 
 isr128:
-    ;cli
+    sti
     push byte 0
     push 128
     jmp isr_common
@@ -442,97 +410,81 @@ GLOBAL irq0, irq1, irq2, irq3, irq4, irq5, irq6, irq7
 GLOBAL irq8, irq9, irq10, irq11, irq12, irq13, irq14, irq15
 
 irq0:
-    ;cli
     push byte 0
     push byte 32
     jmp irq_common
 
 irq1:
-    ;cli
     push byte 0
     push byte 33
     jmp irq_common
 
 irq2:
-    cli
     push byte 0
     push byte 34
     jmp irq_common
 
 irq3:
-    cli
     push byte 0
     push byte 35
     jmp irq_common
 
 irq4:
-    cli
     push byte 0
     push byte 36
     jmp irq_common
 
 irq5:
-    cli
     push byte 0
     push byte 37
     jmp irq_common
 
 irq6:
-    cli
     push byte 0
     push byte 38
     jmp irq_common
 
 irq7:
-    cli
     push byte 0
     push byte 39
     jmp irq_common
 
 irq8:
-    cli
     push byte 0
     push byte 40
     jmp irq_common
 
 irq9:
-    cli
     push byte 0
     push byte 41
     jmp irq_common
 
 irq10:
-    cli
     push byte 0
     push byte 42
     jmp irq_common
 
 irq11:
-    cli
     push byte 0
     push byte 43
     jmp irq_common
 
 irq12:
-    cli
     push byte 0
     push byte 44
     jmp irq_common
 
 irq13:
-    cli
     push byte 0
     push byte 45
     jmp irq_common
 
 irq14:
-    ;cli
     push byte 0
     push byte 46
     jmp irq_common
 
 irq15:
-    ;cli
     push byte 0
     push byte 47
     jmp irq_common

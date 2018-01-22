@@ -27,10 +27,12 @@ fork:
     sti
     ret
 
-EXTERN get_current_task, task_switch_inner
+EXTERN current_task, task_switch_inner
 [GLOBAL task_switch]
 task_switch:
-    call get_current_task           ; if current_task not inited, just return
+    cli ; clear the interrupts, because function can be called from isr0x80
+        ; with IFLAG On.
+    mov eax, [current_task]           ; if current_task not inited, just return
     cmp eax, 0
     je .bye
     ; current_task was initialised by task_init
@@ -54,11 +56,5 @@ task_switch:
 .bye:
     mov eax, 0x20
     out 0x20, al
-    ret
-
-GLOBAL get_flags
-get_flags:
-    pushfd
-    pop eax
     ret
 

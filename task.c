@@ -40,13 +40,8 @@ task_t *task_new()
     h->readonly = h->supervisor = false;
     t->heap = h;
     t->name = NULL;
-    return t;
-}
 
-void idle_loop()
-{
-    while(true)
-        ;
+    return t;
 }
 
 /**
@@ -117,40 +112,31 @@ task_t *get_last_task()
     return t;
 }
 
-// called from task_switch in sched.asm
 task_t *task_switch_inner()
 {
-    unsigned int i;
-    
+    task_t *n;
+
     if (switch_locked) {
         return current_task;
     }
-    task_t *n = current_task->next;
-    for (i = 0; i < 100; i++) {
-        if (!n) {
-            n = task_queue;
-        }
-        if (n->state == TASK_READY) {
+    for (n = current_task->next; n; n = n->next) {
+        if (n->state == TASK_READY)
             break;
-        }
-        n = n->next;
     }
-    if (i == 100) {
-        panic("All threads sleeping...\n");
+    if (!n) {
+        for (n = task_queue; n; n = n->next)
+            if (n->state == TASK_READY)
+                break;
     }
-
-    current_task = n;
-    // set_tss_kernel_stack(n->tss_kernel_stack);
-    // kprintf("switch to task %d\n", n->pid);
-    return n;
-}
-
-// returns current running  task
-task_t *get_current_task()
-{
+    // giveup and return init
+    current_task = n ? n : get_task_by_pid(1);
+    current_task->state = TASK_READY;
     return current_task;
 }
 
+/**
+ * Called from sched.asm
+ */
 task_t *fork_inner()
 {
     int fd;
@@ -189,9 +175,6 @@ task_t *fork_inner()
             } else {
                 pipe->writers++;
             }
-            //	kprintf("fork: pipe: readers: %d, writers: %d, nodecnt: %d\n", 
-            //	pipe->readers, pipe->writers, 
-            //	current_task->files[fd]->fs_node->ref_count);
         }
         t->files[fd]->offs = current_task->files[fd]->offs;
     }
@@ -214,15 +197,18 @@ int getring()
 
 task_t *get_task_by_pid(pid_t pid)
 {
-    task_t *t;
-    for (t = task_queue; t; t = t->next) {
-        if (t->pid == pid) {
-            return t;
-        }
-    }
-    return NULL;
+    task_t *t = NULL;
+ 
+    for (t = task_queue; t; t = t->next)
+        if (t->pid == pid)
+            break;
+
+    return t;
 }
 
+/**
+ * Free task alocated memory
+ */
 void task_free(task_t *task)
 {
     KASSERT(task);
@@ -256,146 +242,6 @@ void task_free(task_t *task)
     free(task);
 }
 
-pid_t task_wait(int *status)
-{
-    task_t *t;
-    if (!current_task->wait_queue->num_items) {
-        switch_locked = true;
-        // check if they are not exiting childs; //
-        bool found = false;
-        for (t = task_queue; t; t = t->next) {
-            if (t->ppid == current_task->pid) {
-                found = true; 
-                break;
-            }
-        }
-        if (!found) {
-            switch_locked = false;
-            return -1;
-        }
-        if (current_task->pid == 1) {
-            kprintf("You tried to sleep init\n");
-        }
-        current_task->state = TASK_SLEEPING;
-        // kprintf("Going to sleep\n");
-        switch_locked = false;
-
-        task_switch();
-
-        // kprintf("Wakeup\n");
-    }
-
-    switch_locked = true;
-    // kprintf("Waiting for...%d items\n", current_task->wait_queue->num_items);
-    node_t *n = current_task->wait_queue->head;
-    t = (task_t *) 
-        n->data;
-    pid_t pid = t->pid;
-    if (status) 
-        *status = t->exit_status;
-    task_free(t);
-    list_del(current_task->wait_queue, n);
-    switch_locked = false;
-    return pid;
-}
-
-void task_exit(int status)
-{
-    // wait_queue_t *q, *n;
-    task_t *t, *parent;
-    // TODO - kill task and clean memory
-    parent = get_task_by_pid(current_task->ppid);
-    if (!parent) {
-        // halt();
-        return;
-    }
-    // reparent my children//
-    for (t = task_queue; t; t = t->next) {
-        if (t->ppid == current_task->pid) {
-            t->ppid = 1;
-        }
-    }
-    // clean my waiting q //
-    node_t *n;
-    switch_locked = true;
-    for (n = current_task->wait_queue->head; n; n = n->next) {
-        task_free((task_t *) n->data);
-        list_del(current_task->wait_queue, n);
-    }
-
-    // add me to the parent waiting queue //
-    list_add(parent->wait_queue, current_task);
-
-    // and wake my parent //
-    if (parent->state == TASK_SLEEPING) {
-        parent->state = TASK_READY;
-    }
-    current_task->exit_status = status;
-    current_task->state = TASK_EXITING;
-
-    switch_locked = false;
-
-    task_switch();
-}
-
-
-void switch_to_user_mode(uint32_t code_addr, uint32_t stack_hi_addr)
-{
-    current_task->ring = 3;
-    switch_to_user_mode_asm(code_addr, stack_hi_addr);
-}
-
-#if 0
-//
-//	Loading program from initrd.img "filesystem"
-//		into memory @0x10000000 and jump to it in ring 3
-//
-void task_exec(char *path, char **argv)
-{
-
-    fs_node_t *fs_node;
-    if(fs_open_namei(path, 0, 0, &fs_node) < 0) {
-        kprintf("Cannot open %s\n", path);
-        return;
-    } else {
-        kprintf("Found: %s\n", path);
-    }
-    if(!(fs_node->type & FS_FILE)) {
-        kprintf("%s is not a file\n", path);
-        return;
-    }
-    if(!fs_node) {
-        panic("Cannot find %s\n", path);
-    } else {
-        kprintf("Loading %s, inode:%d, at address %p, length:%d\n", fs_node->name,
-                fs_node->inode, USER_CODE_START_ADDR, fs_node->size);
-    }
-    unsigned int i;
-    if(current_task->name) free(current_task->name);
-    current_task->name = strdup(fs_node->name);
-    unsigned int num_pages = (fs_node->size / PAGE_SIZE) + 1;
-    for(i = 0; i < num_pages; i++) {
-        map(USER_CODE_START_ADDR + (PAGE_SIZE*i), (unsigned int)frame_alloc(),
-                P_PRESENT | P_READ_WRITE | P_USER);
-    }
-
-    // reserve 2 page stack //
-    for(i = 2; i > 0; i--) {
-        map(USER_STACK_HI-(i * PAGE_SIZE), (unsigned int) frame_calloc(),
-                P_PRESENT | P_READ_WRITE | P_USER);
-    }
-
-    unsigned int offset = 0, size = 0;
-    char *buff = (char *)USER_CODE_START_ADDR;
-    do {
-        size = fs_read(fs_node, offset, fs_node->size, buff);
-        offset += size;
-    } while(size > 0);
-
-    switch_to_user_mode(USER_CODE_START_ADDR, USER_STACK_HI);
-}
-#endif 
-
 void sleep_on(void *addr)
 {
     switch_locked = true;
@@ -421,6 +267,83 @@ int wakeup(void *addr)
         }
     }
     switch_locked = false;
-    // kprintf("waked up %d tasks\n", cnt);
     return cnt;
 }
+
+pid_t task_wait(int *status)
+{
+    task_t *t;
+    node_t *n;
+    pid_t pid;
+
+    if (current_task->wait_queue->num_items == 0) {
+        switch_locked = true;
+        // check if this task has children to wait for //
+        for (t = task_queue; t; t = t->next)
+            if (t->ppid == current_task->pid)
+                break;
+
+        if (!t) {
+            switch_locked = false;
+            return -1;
+        } 
+        sleep_on(&current_task->wait_queue);
+    }
+    switch_locked = true;
+    // This is init, because we forced it to wake up
+    if (current_task->wait_queue->num_items == 0 && current_task->pid == 1) {
+        switch_locked = false;
+        return -1;
+    }
+    n = current_task->wait_queue->head;
+    t = (task_t *) n->data;
+    pid = t->pid;
+    if (status) 
+        *status = t->exit_status;
+    task_free(t);
+    list_del(current_task->wait_queue, n);
+    switch_locked = false;
+ 
+    return pid;
+}
+
+// When a task exits, it's resources are not freed until it's parent exits.
+void task_exit(int status)
+{
+    task_t *t, *parent;
+    node_t *n;
+
+    if(!(parent = get_task_by_pid(current_task->ppid))) {
+        // Probably we should reparent myself to init? But what if i am init?
+        panic("pid: %d - i have no parent\n", current_task->pid);
+        return;
+    }
+    // Reparent my children to init, it will clean them.
+    for (t = task_queue; t; t = t->next)
+        if (t->ppid == current_task->pid)
+            t->ppid = 1;
+    
+    // Clean my waiting queue. 
+    // All childs in waiting queue are in TASK_EXIT, so we free them
+    switch_locked = true;
+    for (n = current_task->wait_queue->head; n; n = n->next) {
+        task_free((task_t *) n->data);
+        list_del(current_task->wait_queue, n);
+    }
+    // Add me to the parent waiting queue //
+    list_add(parent->wait_queue, current_task);
+
+    current_task->exit_status = status;
+    current_task->state = TASK_EXITING;
+    // Wakeup Neo
+    wakeup(&parent->wait_queue);
+    switch_locked = false;
+    task_switch();
+}
+
+void switch_to_user_mode(uint32_t code_addr, uint32_t stack_hi_addr)
+{
+    current_task->ring = 3;
+    switch_to_user_mode_asm(code_addr, stack_hi_addr);
+}
+
