@@ -2,6 +2,7 @@
 #include "../include/dirent.h"
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <signal.h>
 #include "sys.h"
 
 #ifndef _uint32_t
@@ -140,3 +141,16 @@ int link(char *oldpath, char *newpath) {
 int rename(char *oldpath, char *newpath) {
 	return _syscall2(SYS_RENAME, (uint32_t) oldpath, (uint32_t) newpath);
 }
+
+int kill(pid_t pid, int signum)
+{
+    return _syscall2(SYS_KILL, (uint32_t)pid, (uint32_t)signum);
+}
+
+sighandler_t signal(int signum, sighandler_t handler)
+{
+    return (sighandler_t) _syscall2(SYS_SIGNAL, (uint32_t) signum, 
+            (uint32_t) handler);
+}
+
+

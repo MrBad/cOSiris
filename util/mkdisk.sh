@@ -74,7 +74,8 @@ sudo ./util/cofs/mkfs /dev/loop1 \
     bin/cat bin/cdc bin/cosh bin/cp bin/echo bin/init kernel.sym bin/ln \
     bin/ls bin/mkdir bin/mv bin/ps bin/pwd README.txt bin/reset bin/rm \
     bin/tdup bin/test_append bin/test_fork bin/test_malloc bin/test_sbrk \
-    bin/test_write bin/tpipe bin/truncate bin/test_loop bin/fault bin/ansi
+    bin/test_write bin/tpipe bin/truncate bin/test_loop bin/fault bin/ansi \
+    bin/signal bin/kill bin/daemon
     sudo losetup -d /dev/loop1
 rm -rf mnt
 

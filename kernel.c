@@ -20,6 +20,7 @@
 #include "serial.h"
 #include "task.h"
 #include "syscall.h"
+#include "sysproc.h"
 #include "zero.h"
 #include "pipe.h"
 #include "hd_queue.h"

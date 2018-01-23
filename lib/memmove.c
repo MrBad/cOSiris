@@ -1,10 +1,18 @@
-void * memmove(void *mdest, void *msrc, int n)
+void * memmove(void *dst, void *src, int n)
 {
-	char *dst, *src;
-	dst = mdest;
-	src = msrc;
-	while(n-- > 0) {
-		*dst++ = *src++;
-	}
-	return mdest;
+    char *d, *s;
+
+    if (dst < src) {
+        d = dst;
+        s = src;
+        while (n-- > 0)
+            *d++ = *s++;
+    } else {
+        d = dst + n;
+        s = src + n;
+        while (n-- > 0)
+            *--d = *--s;
+    }
+
+    return dst;
 }

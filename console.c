@@ -12,6 +12,7 @@
 #include "serial.h"
 #include "console.h"
 #include "ansi.h"
+#include "signal.h"
 
 spin_lock_t console_lock;
 struct cin cin = {
@@ -153,13 +154,16 @@ static void console_control(char c)
             cin.cb.e = cin.cb.w;
         }
     } else if (c == 'P') {
-        kprintf("\n");
         ps();
-    } 
-    else if (c == 'C') {
-        // kill process
-        kprintf("Kill process unavailable\nCurrent running: %s, pid: %d\n", 
-            current_task->name, current_task->pid);
+    } else if (c == 'X') {
+        kprintf("^X");
+        kill(current_task->pid, SIGINT);
+    } else if (c == 'D') {
+        wakeup(&console_read);
+    } else if (c == 'Z') {
+        kill(current_task->pid, SIGTSTP);
+    } else if (c == 'Q') {
+        kill(current_task->pid, SIGCONT);
     } else {
         kprintf("[Unavailable ^0x%X]\n", c);
     }
@@ -277,7 +281,7 @@ void console_in(getc_t getc)
                 // If buffer is full or is a new line, wakeup tasks waiting.
                 if (c == '\n' || cin.cb.t == cin.cb.r + cin.cb.sz) {
                     cin.cb.w = cin.cb.e = cin.cb.t;
-                    wakeup(&cin);
+                    wakeup(&console_read);
                 }
             }
 
@@ -297,16 +301,18 @@ unsigned int console_read(fs_node_t *node, unsigned int offset,
     unsigned initial_size = size;
     // spin_lock(&console_lock);
     while (size > 0) {
-        while (cin.cb.r == cin.cb.w) {
+        if (cin.cb.r == cin.cb.w) {
             if (current_task->state == TASK_EXITING) {
                 //spin_unlock(&console_lock);
                 return -1;
             }
-            if (current_task->state == TASK_READY) {
-                sleep_on(&cin);
+            if (current_task->state == TASK_RUNNING) {
+                sleep_on(&console_read);
             }
         }
-
+        // Did we waked up by CTRL+D
+        if (cin.cb.r == cin.cb.w)
+            break;
         c = cin.cb.buf[cin.cb.r++ % cin.cb.sz];
         *buffer++ = c;
         size--;

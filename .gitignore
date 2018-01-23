@@ -36,6 +36,9 @@ bin/truncate
 bin/test_loop
 bin/fault
 bin/ansi
+bin/signal
+bin/kill
+bin/daemon
 util/mkcofs
 util/mkinitrd
 util/find_func

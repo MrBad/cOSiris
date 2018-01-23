@@ -6,6 +6,7 @@
 #include "task.h"
 #include "mem.h"
 #include "sysfile.h"
+#include "sysproc.h"
 #include "cofs.h"
 
 void exit(int status)
@@ -51,6 +52,8 @@ static void *syscalls[] = {
     0,
     &sys_link,
     &sys_rename,
+    &sys_kill,
+    &sys_signal,
 };
 
 static uint32_t syscall_handler(struct iregs *r)

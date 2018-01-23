@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <signal.h>
 #include "syscalls.h"
 //
 //  Simple shell intended for my hobby osdev - cOSiris
@@ -49,6 +50,13 @@ void clean_cmd(cmd_t *cmd)
 	}
 }
 
+void sig_clean(int signum)
+{
+    (void) signum;
+    printf("^X\n");
+    print_prompt();
+}
+
 // from where we read -> stdin for now //
 int fd;
 
@@ -57,10 +65,15 @@ int main()
 	char line[512];
 	fd = 0;
 	cmd_t *head;
+
+	signal(SIGINT, sig_clean);
+	signal(SIGTERM, sig_clean);
+
 	while (1) {
 		head = NULL;
 		print_prompt();
-		read_line(line, sizeof(line));
+		if (read_line(line, sizeof(line)) <= 0)
+		    break;
 		if (parse(line, &head) < 0) {
 			clean_cmd(head);
 			continue;

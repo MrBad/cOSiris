@@ -111,8 +111,14 @@ phys_t *frame_calloc();
  */
 void frame_free(phys_t addr);
 
+
+void link_pde(phys_t *new_dir, virt_t *old_dir, int pd_idx);
+void clone_pde(phys_t *new_dir, virt_t *old_dir, int pd_idx);
+void free_pde(phys_t *dir, int pd_idx);
+void recursively_map_page_directory(dir_t *dir);
+
 /**
- * Clones a directory
+ * Clones current directory
  */
 dir_t *clone_directory();
 

@@ -27,7 +27,7 @@ fork:
     sti
     ret
 
-EXTERN current_task, task_switch_inner
+EXTERN current_task, task_switch_inner, process_signals
 [GLOBAL task_switch]
 task_switch:
     cli ; clear the interrupts, because function can be called from isr0x80
@@ -47,14 +47,12 @@ task_switch:
     mov ebp, [eax + 12]             ; ebp
     mov ebx, [eax + 20]             ; it's cloned directory
     mov cr3, ebx                    ; change page directory
-    sti
-    mov ecx, [eax+16]
-    mov eax, 0x20
-    out 0x20, al
+    ;mov ecx, [eax+16]
+    call process_signals            ; let's process the signals before we jump
+    mov eax, [current_task]         ; read it again, we can be in other thask
+    mov ecx, [eax + 16]              ; already
     jmp ecx                         ; jump to it's saved eip; 
                                     ; task_switch.bye or fork.child
 .bye:
-    mov eax, 0x20
-    out 0x20, al
     ret
 

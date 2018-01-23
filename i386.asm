@@ -398,7 +398,7 @@ isr_common:
     pop ds
     popa
 
-    add esp, 8	; cleanup pushed error codes and pushed isr numbers
+    add esp, 8	; cleanup pushed error code and pushed isr number
     iret
 
 ;; end isrs ;;

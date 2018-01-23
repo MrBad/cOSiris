@@ -18,7 +18,6 @@ struct file {
 };
 typedef struct file DIR;
 
-int sys_exec(char *path, char *argv[]);
 int sys_open(char *path, int flag, int mode);
 int sys_close(int fd);
 int sys_stat(char *path, struct stat *buf);

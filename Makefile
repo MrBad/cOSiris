@@ -21,7 +21,7 @@ OBJS = startup.o kernel.o i386.o port.o kinfo.o \
 	   gdt.o idt.o isr.o irq.o delay.o timer.o rtc.o \
 	   ansi.o kbd.o crt.o serial.o console.o \
 	   mem.o kheap.o \
-	   task.o sched.o sys.o syscall.o \
+	   task.o thread.o sched.o sys.o syscall.o signal.o sysproc.o \
 	   list.o bname.o canonize.o \
 	   hd.o hd_queue.o cofs.o vfs.o pipe.o sysfile.o \
 	   lib/libc.a
@@ -102,5 +102,5 @@ debug: diskimg
 	$(QEMU) $(QEMU_SKIP_GRUB) $(QEMU_PARAMS) -display none -s -S
 
 run: diskimg
-	$(QEMU) $(QEMU_PARAMS)
+	$(QEMU) $(QEMU_PARAMS) -display none
 

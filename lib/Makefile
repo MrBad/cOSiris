@@ -11,7 +11,7 @@ CC	=gcc -m32 -g -Wall -W -O2 -nostdlib -fno-builtin -ffreestanding -I$(INCDIR)
 STRING	=memcpy.o memmove.o strcpy.o strncpy.o strlen.o strcmp.o memset.o strdup.o strcat.o strncat.o strchr.o
 STDARG	=vsprintf.o sprintf.o
 STDIO	=printf.o
-STDLIB 	=malloc.o
+STDLIB 	=malloc.o atoi.o
 #X86	=x86/inportb.o x86/outportb.o x86/disable.o x86/enable.o
 #CTYPE	=ctype/ctype.o
 #SETJMP	=setjmp/setjmp.o setjmp/longjmp.o
@@ -44,6 +44,7 @@ strdup.o:	strdup.c		$(MAKEDEP)
 strcat.o:	strcat.c		$(MAKEDEP)
 strncat.o:	strncat.c		$(MAKEDEP)
 malloc.o:	malloc.c		$(MAKEDEP)
+atoi.o:     atoi.c          $(MAKEDEP)
 # explicit rules
 libc.a:	$(OBJS) $(MAKEDEP)
 	ar rcs libc.a $(OBJS)

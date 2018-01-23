@@ -5,15 +5,17 @@
 #include "kheap.h"
 #include "list.h"
 #include "i386.h"
+#include "isr.h"
 #include "sys.h"
 #include "sysfile.h"
+#include "signal.h"
 
 typedef enum {
     TASK_CREATING,
-    TASK_READY,
+    TASK_RUNNING,
+    TASK_AWAKEN,
     TASK_SLEEPING,
     TASK_EXITING,
-    TASK_EXITED,
 } task_states_t;
 
 #define TASK_INITIAL_NUM_FILES 6
@@ -36,13 +38,15 @@ typedef struct task {
     void *sleep_addr;
     int exit_status;
     list_t *wait_queue;
-    heap_t * heap;          // user heap
+    sighandler_t sig_handlers[NUM_SIGS]; // handlers for signals
+    heap_t *heap;           // user heap
     char *name;             // yeah, let's name it!
     // file sistem //
     fs_node_t *root_dir;    // which is process root directory ? use in chroot
     char *cwd;              // current working directory
     struct file **files;    // pointer to num_files array
     int num_files;          // available number of slots < MAX_OPEN_FILES
+    bool is_thread;
 } task_t;
 
 /**
@@ -50,12 +54,19 @@ typedef struct task {
  */
 task_t *current_task;       // current running task
 task_t *task_queue;         // list of tasks
+list_t *sigs_queue;         // list of signals
 int next_pid;               // next available free pid number
+bool switch_locked;
 
 /**
  * Initializes the tasks
  */
 void task_init();
+
+/**
+ * Creates a new task
+ */
+task_t *task_new();
 
 /**
  * Gets current running task pid

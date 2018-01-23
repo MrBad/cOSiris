@@ -43,12 +43,17 @@ int page_fault(struct iregs *r)
     if (fault_counter > 10) {
         panic("Too many faults");
     }
+    if (addr == 0xC0DEDAC0) {
+        task_exit(128 + 9);
+    }
     kprintf("_____\n"
             "FAULT: %s addr: 0x%X, stack: 0x%X\n"
             , r->err_code & P_PRESENT ? "page violation" : "page not present", 
             addr, get_esp());
     if (current_task) {
-        kprintf("task %s pid %u\n", current_task->name, current_task->pid);
+        kprintf("task %s pid %u\n", 
+                current_task->name ? current_task->name : "[unnamed]", 
+                current_task->pid);
     }
     if (USER_STACK_HI <= addr && addr < USER_CODE_START_ADDR) {
         kprintf("User stack overflow!\n");
@@ -70,9 +75,9 @@ int page_fault(struct iregs *r)
     }
     kprintf("Paging was %s\n", paging_on() ? "ON" : "OFF");
     ps();
-    if (r->err_code & P_USER) {
+    if (current_task) {
         kprintf("_____\nGoing to terminate pid: %d\n", current_task->pid);
-        task_exit(-1);
+        task_exit(128 + 9);
     } 
     return false;
 }
@@ -197,7 +202,7 @@ static void reserve_memory()
 /**
  * Maps recursively the page directory
  */
-static void recursively_map_page_directory(dir_t *dir)
+void recursively_map_page_directory(dir_t *dir)
 {
     if (paging_on()) {
         map(RESV_PAGE, (phys_t) dir, P_PRESENT | P_READ_WRITE);
@@ -372,78 +377,119 @@ void temp_unmap()
 }
 
 /**
+ * A pde is a page directory entry - the value from dir[0-1023]
+ * A pte is a page table entry - the value of table[0-1023]
+ */
+
+/**
+ * Links a page directory index from current/old directory to the new 
+ * created one. It maps 4MB of space. 
+ * old_dir should be mapped in virtual space, new_dir is physical
+ */
+void link_pde(phys_t *new_dir, virt_t *old_dir, int pd_idx)
+{
+    virt_t *addr;
+    addr = temp_map(new_dir);
+    addr[pd_idx] = old_dir[pd_idx];
+    temp_unmap();
+}
+/**
+ * Clone a page directory index (copy 4 MB of space, if present) 
+ * from old_dir to new dir. Creates the directory entries as needed.
+ * new_dir is the physical address of the new directory
+ * old_dir is allready mapped in virtual space directory.
+ */
+void clone_pde(phys_t *new_dir, virt_t *old_dir, int pd_idx)
+{
+    phys_t *pde, *pte;
+    virt_t *from_table, *from_addr, *addr;
+    flags_t dir_flags, table_flags;
+    int pt_idx; 
+
+    // Alocate a new page for the directory entry
+    dir_flags = old_dir[pd_idx] & 0xFFF;
+    pde = frame_calloc();
+    addr = temp_map(new_dir);
+    addr[pd_idx] = (phys_t) pde | dir_flags;
+    temp_unmap();
+
+    from_table = (virt_t *)(PTABLES_ADDR + pd_idx * PAGE_SIZE);
+    for (pt_idx = 0; pt_idx < 1024; pt_idx++) {
+        if (from_table[pt_idx] & P_PRESENT) {
+            table_flags = from_table[pt_idx] & 0xFFF;
+            // Make a copy of the content of the page
+            //   in a newly allocated frame
+            pte = frame_calloc();
+            from_addr = (virt_t *)(pd_idx * 1024 * PAGE_SIZE 
+                      + pt_idx * PAGE_SIZE);
+            addr = temp_map(pte);
+            memcpy(addr, from_addr, PAGE_SIZE);
+            temp_unmap();
+            // And link it
+            addr = temp_map(pde);
+            addr[pt_idx] = (phys_t) pte | table_flags;
+            temp_unmap();
+        }
+    }
+}
+
+/**
+ * Frees a directory index
+ */
+void free_pde(phys_t *dir, int pd_idx)
+{
+    int pt_idx;
+    virt_t *addr;
+    phys_t pde, pte;
+
+    addr = temp_map(dir);
+    pde = addr[pd_idx];
+    temp_unmap(dir);
+
+    if (pde & P_PRESENT) {
+        for (pt_idx = 0; pt_idx < 1024; pt_idx++) {
+            addr = temp_map((phys_t *)(pde & 0xFFFFF000));
+            pte = addr[pt_idx];
+            temp_unmap();
+            if (pte & P_PRESENT)
+                frame_free(pte & 0xFFFFF000); // free (data|code) frame
+        }
+        frame_free(pde & 0xFFFFF000); // free frame assigned to pde
+    }
+}
+
+/**
  * Clones current address space and returns a new dir
  *   this is how fork() is done :)
+ * All programs will "see" the same linked zones of memory
+ * These zones are: video memory, kernel code, kernel static vars,
+ *   kernel heap, but not kernel stack
+ * The reset of the memory will be cloned (assign new mem and copy)
+ * This will be used in fork(), when every new process will "see" 
+ * it's own copy of program stack, it's own copy of code and data, 
+ * and a copy of kernel stack.
+ * TODO: use P_USER on USER_STACK, P_READ only on code.
  */
-dir_t *clone_directory()
+virt_t *clone_directory()
 {
-    static int iter = 0;
-    unsigned int dir_idx, tbl_idx;
-    dir_t *curr_dir = (dir_t *) PDIR_ADDR;      // current directory table
-    dir_t *new_dir = (dir_t *) frame_calloc();  // new directory table, cloned
-    phys_t *new_table, *frame;
-    virt_t *table, *addr, *from_addr;
+    uint32_t pd_idx; // page directory index
+    dir_t *curr_dir = (dir_t *) PDIR_ADDR;      // Current directory table
+    dir_t *new_dir = (dir_t *) frame_calloc();  // A new page for directory
 
     cli();
-    for (dir_idx = 0; dir_idx < 1023; dir_idx++) {
-        if (curr_dir[dir_idx] & P_PRESENT) {
-            /**
-             * All programs will "see" the same linked zones of memory
-             * These zones are: video memory, kernel code, kernel static vars,
-             * kernel heap, but not kernel stack
-             */
-            if ((dir_idx < ((USER_STACK_LOW)/1024/PAGE_SIZE))
-                || (
-                    dir_idx >= (HEAP_START/1024/PAGE_SIZE) 
-                    && dir_idx < (HEAP_END/1024/PAGE_SIZE)
-                    )
-            ) {
-                addr = temp_map(new_dir);
-                addr[dir_idx] = curr_dir[dir_idx];
-                temp_unmap();
-                // kprintf("Link dir: %p\n", (dir_idx * 1024 * PAGE_SIZE));
-            }
-            /**
-             * The reset of the memory will be cloned (assign new mem and copy)
-             * This will be used in fork(), when every new process will "see" 
-             * it's own copy of program stack, it's own copy of code and data, 
-             * and a copy of kernel stack
-             * TODO - use P_USER on USER_STACK, P_READ only on code.
-             */
-            else {
-                int dir_flags = curr_dir[dir_idx] & 0xFFF;
-                new_table = frame_calloc();
-                addr = temp_map(new_dir);
-                addr[dir_idx] = (phys_t)new_table | dir_flags;
-                temp_unmap();
-
-                table = (virt_t *) (PTABLES_ADDR + dir_idx * PAGE_SIZE);
-                for (tbl_idx = 0; tbl_idx < 1024; tbl_idx++) {
-                    if (table[tbl_idx] & P_PRESENT) {
-
-                        int table_flags = table[tbl_idx] & 0xFFF;
-                        // make a copy :) //
-                        frame = (phys_t *)frame_calloc();
-                        from_addr = (virt_t *)(dir_idx * 1024 * PAGE_SIZE 
-                                + tbl_idx * PAGE_SIZE);
-                        //kprintf("copy phys: %p->%p, flags: 0x%3x\n", 
-                        //          from_addr, frame, table_flags);
-                        addr = temp_map(frame);
-                        memcpy(addr, from_addr, PAGE_SIZE);
-                        temp_unmap();
-
-                        addr = temp_map(new_table);
-                        addr[tbl_idx] = (phys_t)frame | table_flags;
-                        temp_unmap();
-                    }
-                }
-            }
+    for (pd_idx = 0; pd_idx < 1023; pd_idx++) {
+        if (curr_dir[pd_idx] & P_PRESENT) {
+            if (pd_idx < USER_STACK_LOW / 1024 / PAGE_SIZE)
+                link_pde(new_dir, curr_dir, pd_idx);
+            else if (pd_idx >= HEAP_START / 1024 / PAGE_SIZE 
+                    && pd_idx < HEAP_END / 1024 / PAGE_SIZE)
+                link_pde(new_dir, curr_dir, pd_idx);
+            else
+                clone_pde(new_dir, curr_dir, pd_idx);
         }
     }
     recursively_map_page_directory(new_dir);
-    iter++;
-    sti();
-    
+
     return new_dir;
 }
 
@@ -452,43 +498,23 @@ dir_t *clone_directory()
  */
 void free_directory(dir_t *dir)
 {
-    // cli();
-    virt_t *addr;
-    phys_t pde, pte;
-    unsigned int dir_idx, tbl_idx;
-
-    // kprintf("Free directory: %p, curr: %p\n", dir, virt_to_phys(PDIR_ADDR));
+    cli();
+    unsigned int pd_idx;
 
     // Don't Try to free current working directory (self freeing)
     KASSERT((virt_to_phys(PDIR_ADDR) != (phys_t)dir)); 
 
-    for (dir_idx = 0; dir_idx < 1023; dir_idx++) {
-        addr = temp_map(dir);
-        pde = addr[dir_idx];
-        temp_unmap(dir);
-        if (pde & P_PRESENT) {
-            // Skip linked pages, common to all processes
-            if ((dir_idx < ((USER_STACK_LOW)/1024/PAGE_SIZE)) 
-                || (
-                    dir_idx >= (HEAP_START/1024/PAGE_SIZE) 
-                    && dir_idx < (HEAP_END/1024/PAGE_SIZE)
-                )
-            ) {
-                continue;
-            }
-            for (tbl_idx = 0; tbl_idx < 1024; tbl_idx++) {
-                addr = temp_map((phys_t *)(pde & 0xFFFF000));
-                pte = addr[tbl_idx];
-                temp_unmap();
-                if (pte & P_PRESENT) {
-                    frame_free(pte & 0xFFFF000); // free (data|code) frame
-                }
-            }
-            frame_free(pde & 0xFFFF000); // free frame assigned to pde
-        }
+    for (pd_idx = 0; pd_idx < 1023; pd_idx++) {
+        // Skip linked pages, common to all processes
+        if (pd_idx < USER_STACK_LOW / 1024 / PAGE_SIZE)
+            continue;
+        else if (pd_idx >= HEAP_START / 1024 / PAGE_SIZE
+                && pd_idx < HEAP_END / 1024 / PAGE_SIZE)
+            continue;
+
+        free_pde(dir, pd_idx);
     }
     frame_free((phys_t)dir); // free directory
-    // sti();
 }
 
 /**

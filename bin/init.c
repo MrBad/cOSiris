@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <signal.h>
 #include "syscalls.h"
 
 int main()
@@ -10,6 +11,9 @@ int main()
     pid_t pid, zpid;
     int status;
     char *argv[] = {0};
+
+    signal(SIGTERM, SIG_IGN);
+    signal(SIGINT, SIG_IGN);
 
     printf("INIT started, in userland.\n"
             "Forking cosh, the interactive shell :D\n");
@@ -30,8 +34,8 @@ int main()
             if ((zpid = wait(&status)) < 0)
                 continue;
             if (zpid == pid) {
-                printf("init: cosh pid: %d died with status: %d\n"
-                        , zpid, status);
+                printf("init: cosh pid: %d died with status: %d\n",
+                        zpid, status);
                 break;
             } else {
                 printf("init: RIP zombie pid: %d, status: %d\n", zpid, status);
