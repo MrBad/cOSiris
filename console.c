@@ -19,6 +19,7 @@ struct cin cin = {
     .cb.sz = CIN_BUF_SIZE,
 };
 
+// TODO: use console_putc
 static void console_puts(char *str)
 {
     while (*str) {

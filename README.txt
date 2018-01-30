@@ -7,7 +7,8 @@ There is also a Linux module that i've wrote to mount this type of custom
 file system available here https://github.com/MrBad/cofs and also 
 as a git submodule.
 It can run on emulators or on real hardware, but with limitations.
-
+Few videos are available here: 
+https://www.youtube.com/playlist?list=PL_E8HVuR4axHayR5EV8iY-Rp_AkfYrd3V
 ---
 
 0. History because without it, we are lost.

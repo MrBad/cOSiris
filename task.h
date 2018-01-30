@@ -22,6 +22,8 @@ typedef enum {
 #define MAX_OPEN_FILES 64
 #define MAX_ARGUMENTS 16
 
+typedef struct task task_t;
+
 typedef struct task {
     pid_t pid;              // task + 0		process id
     pid_t ppid;             // task + 4		parent pid
@@ -47,6 +49,7 @@ typedef struct task {
     struct file **files;    // pointer to num_files array
     int num_files;          // available number of slots < MAX_OPEN_FILES
     bool is_thread;
+    task_t *s_task;
 } task_t;
 
 /**
@@ -64,6 +67,11 @@ bool switch_locked;
 void task_init();
 
 /**
+ * Sets kernel stack point
+ */
+void set_kernel_esp(uint32_t esp);
+
+/**
  * Creates a new task
  */
 task_t *task_new();
@@ -79,9 +87,22 @@ pid_t getpid();
 task_t *get_task_by_pid(pid_t pid);
 
 /**
- * Switch current task with the next
+ * Saves current task esp,ebp,eip, get next task, switch to it's page directory
+ *  and jump to it's saved eip
  */
 void task_switch();		// sched.asm
+
+/**
+ * Sets esp, ebp and jump to current task eip
+ * Function is not returning!
+ */
+void jump_to_current_task(); // sched.asm
+
+/**
+ * Gets next task, switch to it's pd and jump to it's eip
+ * Function is not returning!
+ */
+void task_switch_next();
 
 /**
  * There is no spoon

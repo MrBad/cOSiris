@@ -25,9 +25,8 @@ task_t *task_new()
 {
     task_t *t = calloc(1, sizeof(task_t));
     t->pid = next_pid++;
-    // t->tss_kernel_stack = (unsigned int *)KERNEL_STACK_HI;
     t->wait_queue = list_open(NULL);
-    // install defaul signals
+    // install default signals
     set_default_signals(t->sig_handlers);
     // heap //
     heap_t *h = calloc(1, sizeof(heap_t));
@@ -40,6 +39,11 @@ task_t *task_new()
     return t;
 }
 
+void set_kernel_esp(uint32_t esp)
+{
+    write_tss(5, 0x10, esp);
+    gdt_flush();
+}
 /**
  * Initialize multitasking
  */
@@ -50,7 +54,7 @@ void task_init()
     cli();
     switch_locked = true;
     next_pid = 1;
-    write_tss(5, 0x10, KERNEL_STACK_HI);
+    set_kernel_esp(KERNEL_STACK_HI);
     gdt_flush();
     tss_flush();
 

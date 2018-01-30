@@ -14,5 +14,6 @@ typedef struct {
 void set_default_signals(sighandler_t sig_handlers[NUM_SIGS]);
 int signal_is_default(sighandler_t handler, int signum);
 void process_signals();
+void signal_handler_return();
 
 #endif

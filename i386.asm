@@ -8,6 +8,7 @@
 GLOBAL get_esp
     get_esp:
     mov eax, esp
+    add eax, 4
     ret
 
 GLOBAL get_ebp

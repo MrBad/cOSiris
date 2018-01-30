@@ -20,12 +20,13 @@ void my_int(int signum)
     printf("\nGot signal %d\nDumping stack, hits left: %d\n", 
             signum, hits);
     dump_stack(0xDADADADA);
-    hits--;
+    if (--hits == 0)
+        exit(0);
 }
 
 void loop()
 {
-    while (hits > 0)
+    while (1)
         ;
 }
 

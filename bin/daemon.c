@@ -33,11 +33,12 @@ int main()
 
     if ((pid = fork()) == 0) {
         if ((c_pid =  fork()) == 0) {
-            printf("stepson up\n");
-            // Child should inherit the signals!!!
+            printf("Grandson up\n");
+            // After 2 iteration, return.
             while (iterations > 0)
                 ;
         } else {
+            // Son, wait for grandson to exit and only then exit
             wp = wait(&status);
             printf("son end: pid: %d, status: %d\n", wp, status);
             return 0;

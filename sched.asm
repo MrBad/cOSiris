@@ -41,6 +41,20 @@ task_switch:
     mov [eax + 12], ebp             ; save current_task ebp
     mov [eax + 16], dword .bye      ; next time, jump to .bye
 
+    call task_switch_next
+.bye:
+    ret
+
+GLOBAL jump_to_current_task
+jump_to_current_task:
+    mov eax, [current_task]
+    mov esp, [eax + 8]
+    mov ebp, [eax + 12]
+    mov ecx, [eax + 16]
+    jmp ecx
+
+GLOBAL task_switch_next
+task_switch_next:
     call task_switch_inner          ; call inner so we have mode control in C
 
     mov esp, [eax + 8]              ; move it's saved esp to esp
@@ -52,7 +66,4 @@ task_switch:
     mov eax, [current_task]         ; read it again, we can be in other thask
     mov ecx, [eax + 16]              ; already
     jmp ecx                         ; jump to it's saved eip; 
-                                    ; task_switch.bye or fork.child
-.bye:
-    ret
 

@@ -44,7 +44,7 @@ int page_fault(struct iregs *r)
         panic("Too many faults");
     }
     if (addr == 0xC0DEDAC0) {
-        task_exit(128 + 9);
+        signal_handler_return();
     }
     kprintf("_____\n"
             "FAULT: %s addr: 0x%X, stack: 0x%X\n"
