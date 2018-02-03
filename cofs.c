@@ -39,6 +39,7 @@ fs_node_t *cofs_finddir(fs_node_t *node, char *name);
 struct dirent *cofs_readdir(fs_node_t *node, unsigned int index);
 fs_node_t *cofs_mkdir(fs_node_t *node, char *name, unsigned int mode);
 fs_node_t *cofs_creat(fs_node_t *node, char *name, unsigned int mode);
+fs_node_t *cofs_mknod(fs_node_t *dir, char *name, uint32_t mode, uint32_t dev);
 int cofs_truncate(fs_node_t *node, unsigned int length);
 int cofs_link(fs_node_t *parent, fs_node_t *node, char *name);
 int cofs_unlink(fs_node_t *node, char *name);
@@ -130,7 +131,11 @@ fs_node_t *inode_alloc(unsigned short int type)
         ino = (cofs_inode_t *) hdb->buf + ino_num % NUM_INOPB;
         if (ino->type == 0) { // if type == 0 -> is unalocated
             memset(ino, 0, sizeof(*ino));
-            ino->type = type;
+            ino->type = type & 0xF000;
+            if (ino->type & FS_CHARDEVICE || ino->type & FS_BLOCKDEVICE) {
+                ino->major = major(type);
+                ino->minor = minor(type);
+            }
             hdb->is_dirty = true;
             put_hd_buf(hdb);
             return cofs_get_node(ino_num);
@@ -150,7 +155,9 @@ void cofs_update_node(fs_node_t *node)
     cofs_inode_t *ino;
     hd_buf_t *hdb = get_hd_buf(INO_BLK(node->inode, superb));
     ino = (cofs_inode_t *) hdb->buf + node->inode % NUM_INOPB;
-    ino->type = node->type;
+    ino->type = (node->type & 0xF000) | node->mask;
+    ino->major = node->major;
+    ino->minor = node->minor;
     ino->uid = node->uid;
     ino->gid = node->gid;
     ino->num_links = node->num_links;
@@ -203,6 +210,7 @@ fs_node_t *cofs_get_node(uint32_t inum)
     node->finddir = cofs_finddir;
     node->readdir = cofs_readdir;
     node->mkdir = cofs_mkdir;
+    node->mknod = cofs_mknod;
     node->creat = cofs_creat;
     node->truncate = cofs_truncate;
     node->link = cofs_link;
@@ -238,6 +246,9 @@ void cofs_lock(fs_node_t *node)
         hdb = get_hd_buf(INO_BLK(node->inode, superb));
         cofs_inode_t *ino = (cofs_inode_t *) hdb->buf + node->inode % NUM_INOPB;
         node->type = ino->type & FS_IFMT;
+        node->mask = ino->type & ~FS_IFMT;
+        node->major = ino->major;
+        node->minor = ino->minor;
         node->uid = ino->uid;
         node->gid = ino->gid;
         node->num_links = ino->num_links;
@@ -512,6 +523,7 @@ unsigned int cofs_write(fs_node_t *node, unsigned int offset, unsigned int size,
 void cofs_open(fs_node_t *node, unsigned int flags)
 {
     (void) flags;
+    kprintf("cofs_open: %s\n", node->name);
     cofs_lock(node); // should we lock only if writing?!
 }
 
@@ -552,7 +564,8 @@ fs_node_t *cofs_finddir(fs_node_t *node, char *name)
     }
     new_node = cofs_get_node(inum);
     cofs_lock(new_node);
-    if (new_node->inode != 1)strncpy(new_node->name, name, sizeof(new_node->name) - 1);
+    if (new_node->inode != 1)
+        strncpy(new_node->name, name, sizeof(new_node->name) - 1);
     cofs_unlock(new_node);
     // cofs_put_node(new_node);
     return new_node;
@@ -658,6 +671,33 @@ fs_node_t *cofs_mkdir(fs_node_t *node, char *name, unsigned int mode)
 
     return new_dir;
 }
+
+fs_node_t *cofs_mknod(fs_node_t *dir, char *name, uint32_t mode, uint32_t dev)
+{
+    fs_node_t *node;
+    if ((node = cofs_finddir(dir, name))) {
+        cofs_put_node(node);
+        kprintf("file %s exists\n", name);
+        return NULL;
+    }
+    node = inode_alloc((dev & FS_IFMT) | (mode & 0xFF));
+    cofs_lock(node);
+    strncpy(node->name, name, sizeof(node->name) - 1);
+    dev &= ~FS_IFMT;
+    node->major = major(dev);
+    node->minor = minor(dev);
+    node->mask = mode;
+    node->num_links = 1;
+    cofs_update_node(node);
+    cofs_unlock(node);
+
+    cofs_lock(dir);
+    cofs_dirlink(dir, name, node->inode);
+    cofs_unlock(dir);
+
+    return node;
+}
+
 /**
  * Creates a new node inside parent node
  */
@@ -785,7 +825,7 @@ fs_node_t *cofs_init()
     cofs_unlock(root);
 
     // dev //
-    fs_node_t *dev, *console;
+    /*fs_node_t *dev, *console;
     dev = cofs_finddir(root, "dev");
     if (!dev) {
         dev = cofs_mkdir(root, "dev", 0755);
@@ -806,5 +846,6 @@ fs_node_t *cofs_init()
     cofs_put_node(dev);
     cofs_put_node(root);
     cofs_dup(root);
+    */
     return root;
 }

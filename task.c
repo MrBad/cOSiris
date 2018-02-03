@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -8,6 +9,7 @@
 #include "pipe.h"
 #include "thread.h"
 #include "task.h"
+#include "dev.h"
 
 char *task_states[] = {
     "TASK_CREATING",
@@ -74,9 +76,10 @@ void task_init()
     current_task->num_files = TASK_INITIAL_NUM_FILES;
     for (i = 0; i < 3; i++) {
         f = calloc(1, sizeof(*f));
-        f->fs_node = fs_namei("/dev/console");
+        f->fs_node = fs_namei("/dev/tty0");
         f->mode = (i == 0 ? O_RDONLY : O_WRONLY);
         current_task->files[i] = f;
+        dev_open(f->fs_node, f->mode);
     }
     switch_locked = false;
     sti();
@@ -92,11 +95,16 @@ void print_current_task()
 void ps()
 {
     task_t *t = task_queue;
+    char buf[512];
     while (t) {
         // no eip, esp - assumes we are already in kernel mode //
-        kprintf("%10s, pid: %2d, ppid: %2d, state: %2s, ring: %2d\n", 
+        sprintf(buf, "%10s, pid: %2d, ppid: %2d, state: %13s, ssid: %d, pgrp: %d\n",
                 t->name ? t->name : "[unnamed]", t->pid, t->ppid, 
-                task_states[t->state], t->ring);
+                task_states[t->state], t->sid, t->pgrp);
+        if (current_task->files[1])
+            fs_write(current_task->files[1]->fs_node, 0, strlen(buf), buf);
+        else
+            kprintf("%s", buf);
         t = t->next;
     }
 }
@@ -170,6 +178,8 @@ task_t *fork_inner()
     t->ring = current_task->ring;
     t->uid = current_task->uid;
     t->gid = current_task->gid;
+    t->sid = current_task->sid;
+    t->pgrp = current_task->pgrp;
     t->page_directory = clone_directory();
 
     // child has end addr as parent, clonned by clone directory //

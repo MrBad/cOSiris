@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdarg.h>
 
 int sprintf(char *str, const char *fmt, ...)

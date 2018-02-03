@@ -1,3 +1,6 @@
+#ifndef _STDARG_H
+#define _STDARG_H
+
 typedef unsigned char *va_list;
 
 /* width of stack == width of int */
@@ -19,6 +22,4 @@ typedef unsigned char *va_list;
 #define va_arg(AP, TYPE)	\
 	(AP += VA_SIZE(TYPE), *((TYPE *)(AP - VA_SIZE(TYPE))))
 
-
-
-int vsprintf(char *str, const char *format, va_list ap);
+#endif

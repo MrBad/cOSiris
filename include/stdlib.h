@@ -12,4 +12,9 @@ void *realloc(void *ptr, size_t size);
 
 int atoi(const char *str);
 
+extern void(*exit_stack[])(void);
+extern int exit_stack_idx;
+#define ATEXIT_MAX 32
+int atexit(void (*function)(void));
+
 #endif

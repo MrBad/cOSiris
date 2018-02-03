@@ -28,6 +28,10 @@ ansi_stat_t ansi_stat_switch(struct ansi_stat *st, char c)
         st->n1 = c - '0'; 
         return st->stat = ANSI_IN_NUM1;
     }
+    if (st->stat == ANSI_IN_BRA && c == '?') {
+        st->c2 = '?';
+        return st->stat = ANSI_IN_NUM1;
+    }
     if (st->stat == ANSI_IN_NUM1 && c >= '0' && c <= '9') {
         st->n1 = st->n1 * 10 + c - '0';
         return st->stat;

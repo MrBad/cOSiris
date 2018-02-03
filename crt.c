@@ -1,6 +1,8 @@
 #include <stdarg.h>
 #include <string.h>
+#include "assert.h"
 #include "i386.h"
+#include "serial.h"
 #include "crt.h"
 
 uint8_t ansi_to_col[8] = 
@@ -10,7 +12,7 @@ uint8_t ansi_to_col[8] =
 
 struct crt crt;
 
-int crt_get_cursor()
+static int crt_get_cursor()
 {
     int pos;
     outb(CRTC_PORT, 0x0E);
@@ -20,18 +22,12 @@ int crt_get_cursor()
     return pos;
 }
 
-void crt_set_cursor(int pos)
+static void crt_set_cursor(int pos)
 {
-    if (pos < 0)
-        pos = CRT_MAX_ROWS * crt.cols - pos;
-    pos = pos % (CRT_MAX_ROWS * crt.cols);
-    crt.x = pos % crt.cols;
-    crt.y = pos / crt.cols;
-    
     outb(CRTC_PORT, 0x0E);
-    outb(CRTC_PORT + 1, pos >> 8);
+    outb(CRTC_DATA, (pos >> 8) & 0x0FF);
     outb(CRTC_PORT, 0x0F);
-    outb(CRTC_PORT + 1, pos & 0xFF);
+    outb(CRTC_DATA, pos & 0xFF);
 }
 
 void crt_cursor_on()
@@ -50,12 +46,11 @@ void crt_cursor_off()
 
 void crt_set_cursor_xy(uint16_t x, uint16_t y)
 {
-    if (y > CRT_MAX_ROWS)
-        return;
-    if (x > crt.cols)
-        return;
-    int pos = y * crt.cols + x;
-    crt_set_cursor(pos);
+    KASSERT(y < CRT_MAX_ROWS);
+    KASSERT(x < crt.cols);
+    crt.x = x;
+    crt.y = y;
+    crt_set_cursor(CRT_POS(crt));
 }
 
 static void crt_scroll_to_line(int line)
@@ -71,7 +66,7 @@ static void crt_scroll_to_line(int line)
     outb(CRTC_DATA, offs & 0xFF);
 }
 
-void crt_reset()
+static void crt_reset()
 {
     int i;
     crt.x = crt.y = 0;
@@ -85,11 +80,14 @@ void crt_reset()
 
 void crt_init()
 {
-    int pos = crt_get_cursor();
+    int pos;
     crt.buf = (uint16_t *) CRT_ADDR;
     crt.attr = CRT_DEF_ATTR;
     crt.cols = CRT_COLS;
     crt.rows = CRT_ROWS;
+    pos = crt_get_cursor();
+    if (pos / crt.cols > crt.rows - 1)
+        pos = 0;
     crt.x = pos % crt.cols;
     crt.y = pos / crt.cols;
     crt_cursor_on();
@@ -113,9 +111,26 @@ static void crt_set_background(uint8_t bg_color, uint8_t bright)
     crt.attr = (bg_color | color) << 8;
 }
 
-void crt_handle_ansi(char c)
+static void crt_reverse_video()
 {
-    int n1 = crt.astat.n1, n2 = crt.astat.n2;
+    int bg_color = crt.attr & 0x0F;
+    int text_color = (crt.attr) >> 8 & 0x0F;
+    crt_set_color(bg_color, 0);
+    crt_set_background(text_color, 0);
+}
+
+static void ansi_unknown(struct ansi_stat *st)
+{
+    serial_debug("Unknown ansi. c1: %c, c2: %c, n1: %d, n2: %d\n",
+        st->c1, st->c2, st->n1, st->n2);
+}
+
+static void crt_handle_ansi(char c)
+{
+    int n1 = crt.astat.n1,
+        n2 = crt.astat.n2,
+        i;
+
     if (c == 'c') {
         crt_reset();
     } else if (c == 'm') {
@@ -125,20 +140,46 @@ void crt_handle_ansi(char c)
             crt_set_color(ansi_to_col[n1 - 30], n2);
         else if (n1 >= 40 && n1 <= 47)
             crt_set_background(ansi_to_col[n1 - 40], n2);
+        else if (n1 == 7)
+            crt_reverse_video();
+        else if (n1 == 39)
+            crt_set_background(CRT_DEF_ATTR & 0x0F, 0);
+        else
+            ansi_unknown(&crt.astat);
     } else if (c == 'A') {
         MIN_ONE(crt, n1);
-        crt_set_cursor(CRT_POS(crt) - n1 * crt.cols);
+        crt_set_cursor_xy(crt.x, crt.y - n1);
     } else if (c == 'B') {
         MIN_ONE(crt, n1);
-        crt_set_cursor(CRT_POS(crt) + n1 * crt.cols);
+        crt_set_cursor_xy(crt.x, crt.y + n1);
     } else if (c == 'C') {
         MIN_ONE(crt, n1);
-        crt_set_cursor(CRT_POS(crt) + n1);
+        crt_set_cursor_xy(crt.x + n1, crt.y);
     } else if (c == 'D') {
         MIN_ONE(crt, n1);
-        crt_set_cursor(CRT_POS(crt) - n1);
+        crt_set_cursor_xy(crt.x - n1, crt.y);
+    } else if (c == 'K') { // erase in line
+        if (n1 == 1) {
+            for (i = 0; i < crt.x; i++)
+                crt.buf[crt.y * crt.cols + i] = ' ' | crt.attr;
+        } else if (n1 == 2) {
+            for (i = 0; i < crt.cols; i++)
+                crt.buf[crt.y * crt.cols + i] = ' ' | crt.attr;
+        } else {
+            for (i = crt.x; i < crt.cols; i++)
+                crt.buf[crt.y * crt.cols + i] = ' ' | crt.attr;
+        }
+    } else if (crt.astat.n1 == 25 && crt.astat.c2 == '?') {
+        if (c == 'h')
+            crt_cursor_on();
+        else if (c == 'l')
+            crt_cursor_off();
+    } else if (c == 'H') { // move cursor
+        MIN_ONE(crt, n1);
+        MIN_ONE(crt, n2);
+        crt_set_cursor_xy(n2 - 1, n1 - 1);
     } else {
-        //serial_debug("\nGot command: %c\n", c);
+        ansi_unknown(&crt.astat);
     }
 }
 
@@ -152,6 +193,21 @@ void crt_scroll_down()
     crt_scroll_to_line(crt.scroll + 10);
 }
 
+/**
+ * Line feed
+ */
+static void crt_lf()
+{
+    int i;
+    crt.y--;
+    memcpy(crt.buf, crt.buf + crt.cols, sizeof(crt.buf[0]) * crt.cols * crt.y);
+    for (i = 0; i < crt.cols; i++)
+        crt.buf[crt.y * crt.cols + i] = ' ' | crt.attr;
+}
+
+/**
+ * Char out crt routine - needs rewrite
+ */
 void crt_putc(char c)
 {
     if (ansi_stat_switch(&crt.astat, c)) {
@@ -160,13 +216,18 @@ void crt_putc(char c)
         }
         return;
     }
-    if (c == '\n' || crt.x == crt.cols) {
+    if (crt.x > crt.cols) {
+        crt.x %= crt.cols;
         crt.y++;
-        crt.x = 0;
+        if (CRT_POS(crt) >= crt.rows * crt.cols)
+            crt_lf();
+    }
+    if (c == '\n') {
+        crt.y++;
+        if (CRT_POS(crt) >= crt.rows * crt.cols)
+            crt_lf();
     } else if (c == '\r') {
         crt.x = 0;
-    } else if (c == '\f') {
-        crt.y++;
     } else if (c == '\b') {
         if (crt.x == 0 && crt.y > 0) {
             crt.x = crt.cols;
@@ -179,17 +240,6 @@ void crt_putc(char c)
         crt.buf[CRT_POS(crt)] = c | crt.attr;
         crt.x++;
     }
-    if (crt.x > 80) {
-        crt.x = 0;
-        crt.y++;
-    }
-    if (crt.y == CRT_MAX_ROWS) {
-        crt.y--;
-        memmove(crt.buf, crt.buf+crt.cols, (crt.cols*2) * (crt.y));
-        for (int i = 0; i < crt.cols; i++)
-            crt.buf[crt.y * crt.cols + i] = ' ' | crt.attr;
-    }
-    if (crt.x == 0)
-        crt_scroll_to_line(crt.y);
-    crt_set_cursor_xy(crt.x, crt.y);
+    crt_set_cursor(CRT_POS(crt));
 }
+

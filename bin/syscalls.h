@@ -4,7 +4,6 @@
 #include <sys/stat.h>
 
 void print(char *str);
-// void print_int(int n);
 pid_t fork();
 pid_t wait(int *status);
 void exit(int status);

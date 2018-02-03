@@ -41,7 +41,7 @@ typedef struct cofs_superblock {
  * Must be a sub multiple of BLOCK_SIZE.
  */
 typedef struct cofs_inode {
-    unsigned short int type;
+    unsigned short int type; // file type + access mode
     unsigned short int major;
     unsigned short int minor;
     unsigned short int uid;

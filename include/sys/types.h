@@ -33,5 +33,8 @@ typedef unsigned short mode_t;
 typedef unsigned short umode_t;
 typedef unsigned char nlink_t;
 
+dev_t makedev(int maj, int min);
+unsigned int major(dev_t dev);
+unsigned int minor(dev_t dev);
 
 #endif

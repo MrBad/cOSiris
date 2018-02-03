@@ -9,6 +9,7 @@
 #include "console.h"
 #include "kbd.h"
 #include "ansi.h"
+#include "tty.h"
 
 /**
  * Codes of the non-ascii keys
@@ -49,7 +50,7 @@ uint8_t kbd_map[128] = {
     0,     0x1b,  '1',  '2',   '3',   '4',   '5',   '6', 
     '7',   '8',   '9',  '0',   '-',   '=',   '\b',  '\t', 
     'q',   'w',   'e',  'r',   't',   'y',   'u',   'i', 
-    'o',   'p',   '[',  ']',   '\n',  KLC,   'a',   's',
+    'o',   'p',   '[',  ']',   '\r',  KLC,   'a',   's',
     'd',   'f',   'g',  'h',   'j',   'k',   'l',   ';', 
     '\'',  '`',   KLS,  '\\',  'z',   'x',   'c',   'v', 
     'b',   'n',   'm',  ',',   '.',   '/',   KRS,   '*', 
@@ -64,7 +65,7 @@ uint8_t kbd_map_shift[128] = {
     0,     0x1b,  '!',  '@',   '#',   '$',   '%',   '^', 
     '&',   '*',   '(',  ')',   '_',   '+',   '\b',  '\t', 
     'Q',   'W',   'E',  'R',   'T',   'Y',   'U',   'I', 
-    'O',   'P',   '{',  '}',   '\n',  KLC,   'A',   'S',
+    'O',   'P',   '{',  '}',   '\r',  KLC,   'A',   'S',
     'D',   'F',   'G',  'H',   'J',   'K',   'L',   ':', 
     '"',   '~',   KLS,  '|',   'Z',   'X',   'C',   'V', 
     'B',   'N',   'M',  '<',   '>',   '?',   KRS,   '*', 
@@ -161,100 +162,20 @@ int kbd_getc()
             if (c >= 'a' && c <= 'z')
                 c = c - 'a' + 'A';
     }
-    
+
     return c;
 }
 
 void kbd_handler(struct iregs *r)
 {
     (void) r;
-    console_in(kbd_getc);
-}
-
-#if 0
-bool shift_pressed = false;
-bool ctrl_pressed = false;
-char kbdgetc() 
-{
-    uint8_t scancode = 0;
-    if (inb(0x64) & 1)
-        scancode = inb(0x60);
-    if (scancode & 0x80) {
-        // when key release //
-        if (scancode==(0x2A|0x80) || scancode == 0x36) {
-            shift_pressed = false;
-            return 0;
-        }
-        if (scancode == (0x1d|0x80)) {
-            ctrl_pressed = false;
-            return 0;
-        }
-        // serial_debug("[%x] ", scancode);
-    } else {
-        scancode = scancode & 0x7F;
-        // 0x0E -> backspace
-        // 0x49 -> page up
-        // 0x48 -> a up
-        // 0x4B -> a left
-        // 0x4D -> a right
-        // 0x50 -> a down
-        // 0x51 -> page down
-        // 0x47 -> home
-        // 0x4F -> end
-        // serial_debug("%X ", scancode);
-        if (scancode == 0x48) {
-            scroll_line_up();
-            return 0;
-        }
-        if (scancode == 0x49) {
-            scroll_page_up();
-            return 0;
-        }
-        if (scancode == 0x51) {
-            scroll_page_down();
-            return 0;
-        }
-        if (scancode == 0x50) {
-            scroll_line_down();
-            return 0;
-        }
-        if (scancode == 0x1) {
-            kprintf("Shut down\n");
-            char *c = "Shutdown";
-            while (*c) {
-                outb(0x8900, *c++);
-            }
-        }
-        // when key pressed //
-        if (scancode == 0x2A || scancode == 0x36) {
-            shift_pressed = true;
-            return 0;
-        }
-        if (scancode == 0x1d) {
-            ctrl_pressed = true;
-            return 0;
-        }
-        if (shift_pressed) {
-            return kbd_map_shift[scancode];
-            // kprintf("%c", kbd_map_shift[scancode]);
-        }
-        // else if (ctrl_pressed) {
-        // kprintf("[%c]", kbd_map[scancode]);
-        // return kbd_map[scancode];
-        // }
-        else {
-            return kbd_map[scancode];
-            // kprintf("%c", kbd_map[scancode]);
-        }
+    //console_in(kbd_getc);
+    char c;
+    while (((c = kbd_getc()) > 0)) {
+        tty_in(tty_devs[0], c);
     }
-    return 0;
 }
 
-void kbd_install() {
-    // irq_install_handler(0x1, kbd_handler); // seteaza timerul pe intreruperea 0
-    return;
-}
-#endif
 void kbd_install()
 {
     irq_install_handler(0x1, kbd_handler);

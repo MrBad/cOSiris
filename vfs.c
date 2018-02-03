@@ -71,7 +71,6 @@ fs_node_t *fs_mkdir(fs_node_t *node, char *name, int mode)
     return node->mkdir(node, name, mode);
 }
 
-
 fs_node_t *fs_dup(fs_node_t *node)
 {
     spin_lock(&node->lock);
@@ -108,7 +107,7 @@ fs_node_t *fs_namei(char *path)
             if (node) {
                 //kprintf("fs_namei - open %s, ref: %d, len: %d\n", 
                 //node->name, node->ref_count, len);
-                if (node->inode!=1) node->ref_count--;
+                if (node->inode != 1) node->ref_count--;
             }
             if (!(node = fs_finddir(node ? node : fs_root, p))) {
                 break;
@@ -189,15 +188,19 @@ fs_node_t *fs_creat(char *path, int mode)
     return parent->creat(parent, filename, mode);
 }
 
-fs_node_t *fs_truncate(fs_node_t *node, unsigned int length) 
+fs_node_t *fs_mknod(fs_node_t *dir, char *filename, uint32_t mode, uint32_t dev)
+{
+    return dir->mknod ? dir->mknod(dir, filename, mode, dev) : NULL;
+}
+
+int fs_truncate(fs_node_t *node, unsigned int length) 
 {
     KASSERT(node);
     if (!node->truncate) {
         kprintf("filesystem does not support truncate\n");
-        return NULL;
+        return -1;
     }
-    node->truncate(node, length);
-    return node;
+    return node->truncate(node, length);
 }
 
 // move part of this code to sysfile.c //
@@ -251,6 +254,10 @@ int fs_link(fs_node_t *parent, fs_node_t *node, char *name)
     return parent->link(parent, node, name);
 }
 
+int fs_ioctl(fs_node_t *node, int request, void *argp)
+{
+    return node->ioctl ? node->ioctl(node, request, argp) : -1;
+}
 
 // dep
 int fs_rename(char *oldname, char *newname) 
@@ -311,7 +318,7 @@ int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
     if (node) {
         if (flags & O_TRUNC) {
             if (flags & O_RDWR || flags & O_WRONLY) {
-                if (!(fs_truncate(*node, 0))) {
+                if (fs_truncate(*node, 0) < 0) {
                     kprintf("cannot truncate %s\n", p);
                     return -1;
                 }
@@ -342,3 +349,4 @@ void lstree(fs_node_t *parent, int level)
         fs_close(file);
     }
 }
+

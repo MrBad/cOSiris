@@ -2,14 +2,14 @@ void * memmove(void *dst, void *src, int n)
 {
     char *d, *s;
 
+    d = dst;
+    s = src;
     if (dst < src) {
-        d = dst;
-        s = src;
         while (n-- > 0)
             *d++ = *s++;
     } else {
-        d = dst + n;
-        s = src + n;
+        d += n;
+        s += n;
         while (n-- > 0)
             *--d = *--s;
     }

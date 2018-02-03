@@ -54,7 +54,24 @@ static void *syscalls[] = {
     &sys_rename,
     &sys_kill,
     &sys_signal,
+    &sys_ioctl,
+    &sys_setsid,
+    &sys_time,
+    &sys_ftruncate,
 };
+
+/**
+ * Validates if a user can access a zone of memory
+ *  starting at ptr and having size;
+ */
+void validate_usr_ptr(void *ptr)
+{
+    uint32_t p = (uint32_t) ptr;
+    if (p < USER_STACK_LOW) {
+        kill(current_task->pid, SIGSEGV);
+        task_switch();
+    }
+}
 
 static uint32_t syscall_handler(struct iregs *r)
 {

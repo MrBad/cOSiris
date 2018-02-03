@@ -41,6 +41,10 @@ enum {
     SYS_RENAME,		// 34
     SYS_KILL,       // 35
     SYS_SIGNAL,     // 36
+    SYS_IOCTL,      // 37
+    SYS_SETSID,     // 38
+    SYS_TIME,       // 39
+    SYS_FTRUNCATE,  // 40
 };
 
 #endif
