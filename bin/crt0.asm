@@ -1,9 +1,10 @@
-extern main, exit
+extern _ini, main, exit
 
 section .text
 global start
 start:
-	call main
-	push eax
-	call exit
-	jmp $
+    call _ini
+    call main
+    push eax
+    call exit
+    jmp $

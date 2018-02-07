@@ -17,6 +17,8 @@ void cat(int fd)
 		printf("cat: read error\n");
 		exit(1);
 	}
+	if (i == 0)
+	    exit(0);
 }
 
 int main(int argc, char *argv[])

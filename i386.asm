@@ -431,6 +431,7 @@ irq3:
     jmp irq_common
 
 irq4:
+    ;sti
     push byte 0
     push byte 36
     jmp irq_common

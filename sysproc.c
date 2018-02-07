@@ -5,9 +5,11 @@
 #include "vfs.h"
 #include "mem.h"
 #include "task.h"
-#include "sysproc.h"
 #include "canonize.h"
 #include "bname.h"
+#include "rtc.h"
+#include "syscall.h"
+#include "sysproc.h"
 
 int sys_kill(int pid, int signum)
 {
@@ -138,3 +140,30 @@ int sys_exec(char *path, char *argv[])
 
     return 0;
 }
+
+pid_t sys_setsid()
+{
+    if (current_task->uid)
+        return -1;
+    if (current_task->leads)
+        return -1;
+    current_task->leads = true;
+    current_task->sid = current_task->pgrp = current_task->pid;
+    current_task->tty = -1;
+
+    return current_task->pgrp;
+}
+
+time_t sys_time(time_t *tlock)
+{
+    time_t ret;
+
+    if (tlock)
+        validate_usr_ptr(tlock);
+    ret = system_time;
+    if (tlock)
+        *tlock = ret;
+
+    return ret;
+}
+

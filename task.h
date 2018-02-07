@@ -24,7 +24,7 @@ typedef enum {
 
 typedef struct task task_t;
 
-typedef struct task {
+struct task {
     pid_t pid;              // task + 0		process id
     pid_t ppid;             // task + 4		parent pid
     unsigned int esp;       // task + 8		esp
@@ -48,9 +48,13 @@ typedef struct task {
     char *cwd;              // current working directory
     struct file **files;    // pointer to num_files array
     int num_files;          // available number of slots < MAX_OPEN_FILES
-    bool is_thread;
-    task_t *s_task;
-} task_t;
+    bool is_thread;         // is this task a light process (thread)
+    task_t *s_task;         // use in signaling, to save current state
+    pid_t sid;              // session id
+    pid_t pgrp;             // program group id
+    bool leads;             // is this program a leader?
+    int tty;                // terminal number attached to program
+};
 
 /**
  * Global vars

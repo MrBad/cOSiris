@@ -35,9 +35,12 @@ typedef fs_node_t * (*mkdir_type_t)(fs_node_t *node, char *name,
         unsigned int mode);
 typedef fs_node_t * (*creat_type_t)(fs_node_t *node, char *name, 
         unsigned int mode);
+typedef fs_node_t* (*mknod_type_t)(fs_node_t *dir, char *name,
+        unsigned int mode, unsigned int dev);
 typedef int(*truncate_type_t)(fs_node_t *node, unsigned int length);
 typedef int(*unlink_type_t)(fs_node_t *parent, char *name);
 typedef int(*link_type_t)(fs_node_t *parent, fs_node_t *node, char *name);
+typedef int (*ioctl_type_t) (fs_node_t *node, int request, void *argp);
 
 /**
  * An in-memory representation of an inode
@@ -45,6 +48,7 @@ typedef int(*link_type_t)(fs_node_t *parent, fs_node_t *node, char *name);
 struct fs_node {
     char name[256];             // this info should go ouside inode in future
     unsigned int mask;          //
+    unsigned int major, minor;       // for char devices
     unsigned int uid;           //
     unsigned int gid;           //
     unsigned short int type;    // type of file - FS_
@@ -67,9 +71,11 @@ struct fs_node {
     finddir_type_t finddir;
     mkdir_type_t mkdir;
     creat_type_t creat;
+    mknod_type_t mknod;
     truncate_type_t truncate;
     unlink_type_t unlink;
     link_type_t link;
+    ioctl_type_t ioctl;
     void *ptr;                // reserved
 };
 
@@ -111,6 +117,10 @@ struct dirent *fs_readdir(fs_node_t *node, unsigned int index);
  */
 fs_node_t *fs_mkdir(fs_node_t *node, char *name, int mode);
 
+fs_node_t *fs_mknod(fs_node_t *dir, char *filename,
+        unsigned int mode, unsigned int dev);
+
+int fs_truncate(fs_node_t *node, unsigned int length);
 /**
  * Duplicates an inode
  */
@@ -155,4 +165,10 @@ int fs_rename(char *oldpath, char *newpath);
  */
 int fs_link(fs_node_t *parent, fs_node_t *node, char *basename);
 
+/**
+ * FS ioctl
+ */
+int fs_ioctl(fs_node_t *node, int request, void *argp);
+
 #endif
+

@@ -10,8 +10,8 @@
 #define CRT_ADDR        0xB8000
 #define CRT_END_ADDR    0xC0000
 #define CRT_COLS        80
-#define CRT_ROWS        24
-#define CRT_MAX_ROWS    CRT_ROWS * 8
+#define CRT_ROWS        25
+#define CRT_MAX_ROWS    CRT_ROWS
 #define CRT_DEF_ATTR    0x700
 
 // gets cursor position from crt structure
@@ -28,16 +28,6 @@ struct crt {
     uint16_t scroll;        // where the scroll pointer is
     struct ansi_stat astat;
 };
-
-/**
- * Like printf, but it is panicking :D (halts the CPU with a message)
- */
-void panic(char *str, ...);
-
-/**
- * Like printf, but low level and unbuffered
- */
-void kprintf(char *fmt, ...);
 
 /**
  * Scrolls the display 10 lines by modifying video memory start address

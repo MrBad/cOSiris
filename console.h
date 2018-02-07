@@ -48,8 +48,9 @@ unsigned int console_read(fs_node_t *node, unsigned int offset,
 /**
  * Initializes the console
  */
-void console_init();
+//void console_init(fs_node_t *cons);
 
+void console_open(fs_node_t *node, uint32_t flags);
 void console_in(getc_t getc);
 
 #endif

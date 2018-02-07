@@ -7,14 +7,16 @@
 #include "assert.h"
 #include "console.h"
 #include "task.h"
-#include "sysfile.h"
 #include "vfs.h"
 #include "pipe.h"
 #include "serial.h"
 #include "canonize.h"
 #include "bname.h"
+#include "dev.h"
+#include "syscall.h"
+#include "sysfile.h"
 
-static struct file *alloc_file()
+static struct file *file_alloc()
 {
     struct file *f;
     f = (struct file *) calloc(1, sizeof(struct file));
@@ -51,29 +53,37 @@ int sys_open(char *filename, int flags, int mode)
 {
     // treat mode here!!! //
     int fd;
-    if ((fd = fd_alloc()) < 0) {
+    struct file *file;
+    if ((fd = fd_alloc()) < 0)
         return -1;
-    }
-    current_task->files[fd] = alloc_file();
-    if ((fs_open_namei(filename, flags, mode, &current_task->files[fd]->fs_node)) < 0) {
-        free(current_task->files[fd]);
-        current_task->files[fd] = NULL;
-        return -1;
-    }
-    if (!current_task->files[fd]->fs_node) {
-        kprintf("should not happen?!?!\n");
-        free(current_task->files[fd]);
-        current_task->files[fd] = NULL;
-        return -1;
-    }
-    if (flags & O_APPEND && (flags & O_WRONLY || flags & O_RDWR)) {
-        current_task->files[fd]->offs = current_task->files[fd]->fs_node->size;
-    } else {
-        current_task->files[fd]->offs = 0;
-    }
-    current_task->files[fd]->flags = flags;
-    current_task->files[fd]->mode = mode;
+    if (!(file = file_alloc()))
+        goto err;
+    if ((fs_open_namei(filename, flags, mode, &file->fs_node)) < 0)
+        goto err;
+    if (!file->fs_node)
+        goto err;
+
+    if (flags & O_APPEND && (flags & O_WRONLY || flags & O_RDWR))
+        file->offs = file->fs_node->size;
+    else
+        file->offs = 0;
+
+    file->flags = flags;
+    file->mode = mode;
+    current_task->files[fd] = file;
+
+    if (S_ISCHR(file->fs_node->type) || S_ISBLK(file->fs_node->type))
+        dev_open(file->fs_node, flags);
+
     return fd;
+
+err:
+    if (file->fs_node)
+        fs_close(file->fs_node);
+    if (file)
+        free(file);
+    current_task->files[fd] = NULL;
+    return -1;
 }
 
 /**
@@ -124,11 +134,11 @@ static void populate_stat_buf(fs_node_t *fs_node, struct stat *buf)
     buf->st_dev = 0;					// the device id where it reside
     buf->st_ino = fs_node->inode;
     buf->st_size = fs_node->size;
-    buf->st_mode = fs_node->type;
+    buf->st_mode = fs_node->type | fs_node->mask;
     buf->st_nlink = fs_node->num_links; // number of links
     buf->st_uid = fs_node->uid;
     buf->st_gid = fs_node->gid;
-    buf->st_rdev = 0;
+    buf->st_rdev = makedev(fs_node->major, fs_node->minor);
     buf->st_atime = fs_node->atime;
     buf->st_mtime = buf->st_mtime;
     buf->st_ctime = buf->st_ctime;
@@ -472,8 +482,8 @@ int sys_pipe(int fd[2])
     struct file *fin, *fout;
     fs_node_t *nodes[2];
     pipe_new(nodes);
-    fin = alloc_file();
-    fout = alloc_file();
+    fin = file_alloc();
+    fout = file_alloc();
     fin->flags = O_RDONLY;
     fin->fs_node = nodes[0];
     fout->flags = O_WRONLY;
@@ -599,5 +609,29 @@ cln1:
     free(old);
     free(new);
     return ret;
+}
+
+int sys_ioctl(int fd, int request, void *argp)
+{
+    struct file *f;
+
+    validate_usr_ptr(argp);
+    if (!fd_is_valid(fd))
+        return 0;
+    f = current_task->files[fd];
+
+    return fs_ioctl(f->fs_node, request, argp);
+}
+
+int sys_ftruncate(int fd, off_t len)
+{
+    struct file *f;
+
+    if (!fd_is_valid(fd))
+        return -1;
+
+    f = current_task->files[fd];
+
+    return fs_truncate(f->fs_node, len);
 }
 

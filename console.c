@@ -19,18 +19,30 @@ struct cin cin = {
     .cb.sz = CIN_BUF_SIZE,
 };
 
-// TODO: use console_putc
+/**
+ * Puts a character at the current cursor position
+ */
+void console_putc(char c)
+{
+    serial_putc(c);
+    crt_putc(c);
+}
+
+/**
+ * Write a string to console
+ */
 static void console_puts(char *str)
 {
     while (*str) {
-        serial_putc(*str);
-        crt_putc(*str);
-        str++;
+        if (*str == '\n') {
+            console_putc('\r');
+        }
+        console_putc(*str++);
     }
 }
 
 /**
- * Write the string to stdout and halt kernel
+ * Write the string to all consoles and halt kernel
  */
 void panic(char *str, ...)
 {
@@ -49,6 +61,8 @@ void panic(char *str, ...)
 
 /**
  * Kernel low level, unbuffered printf
+ *  to be used before any tty is up
+ *  or better, search for first tty somehow
  */
 void kprintf(char *fmt, ...)
 {
@@ -71,15 +85,6 @@ void console_bs()
 {
     char seq[4] = "\b \b";
     console_puts(seq);
-}
-
-/**
- * Puts a character at the current cursor position
- */
-void console_putc(char c)
-{
-    serial_putc(c);
-    crt_putc(c);
 }
 
 /**
@@ -343,23 +348,16 @@ unsigned int console_write(fs_node_t *node, unsigned int offset,
     return i;
 }
 
-void console_close(struct fs_node *node)
+void console_close(fs_node_t *node)
 {
     node->ref_count--;
 }
 
-void console_init()
+void console_open(fs_node_t *cons, uint32_t flags)
 {
-    fs_node_t *cons = fs_namei("/dev/console");
-    if (!cons) {
-        panic("Cannot find /dev/console\n");
-    }
-    if (!(cons->type & FS_CHARDEVICE)) {
-        panic("/dev/console is not a char device\n");
-    }
+    (void) flags;
     cons->read = console_read;
     cons->write = console_write;
     cons->close = console_close;
-    cons->open = NULL;
-    // cons->ref_count--;
 }
+

@@ -1,6 +1,13 @@
-char *strchr(char *str, int c) 
+#include <sys/types.h>
+
+char *strchr(const char *str, int c)
 {
     for (; *str && *str != c; str++)
         ;
-    return str;
+    
+    if (c == 0 || *str)
+        return (char *)str;
+
+    return NULL;
 }
+

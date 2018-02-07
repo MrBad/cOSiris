@@ -1,8 +1,9 @@
-#include <stdarg.h>
+#include <stdio.h>
 #include "i386.h"
 #include "irq.h"
 #include "console.h"
 #include "serial.h"
+#include "tty.h"
 
 // COM ports //
 #define COM1 0x3F8
@@ -44,7 +45,7 @@ void serial_debug(char *fmt, ...)
 
 int serial_getc()
 {
-    if(!(inb(COM1+5) & 0x01))
+    if(!(inb(COM1 + 5) & 0x01))
         return -1;
     return inb(COM1);
 }
@@ -58,7 +59,9 @@ int serial_getc()
 static void serial_handler(struct iregs *r)
 {
     (void) r;
-    console_in(serial_getc);
+    char c = serial_getc();
+    tty_in(tty_devs[12], c);
+    //console_in(serial_getc);
 }
 
 /**
@@ -86,3 +89,4 @@ void serial_init()
     serial_write("Serial is up\n");
     sti();
 }
+

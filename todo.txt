@@ -1,0 +1,8 @@
+- crt should be able to respond when asked for cursor position
+- crt should handle save cursor/restore cursor
+- tty.c should ask remote terminal for it's winsize, or set to 0?
+- problem with truncate, when truncate len > sizeof file
+- switch between console/getty
+- validate syscalls pointers
+- cosh should support jobs
+

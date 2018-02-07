@@ -5,6 +5,8 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <termios.h>
+#include <sys/ioctl.h>
 #include "syscalls.h"
 //
 //  Simple shell intended for my hobby osdev - cOSiris
@@ -38,6 +40,10 @@ void clean_cmd(cmd_t *cmd)
 	cmd_t *c;
 	int i;
 	while (cmd) {
+	    if (cmd->fdin > -1)
+	        close(cmd->fdin);
+	    if (cmd->fdout > -1)
+	        close(cmd->fdout);
 		if (cmd->infile)
 			free(cmd->infile);
 		if (cmd->outfile)
@@ -248,9 +254,9 @@ int cd(char *dir) {
 
 int exec_commands(cmd_t *head) 
 {
-	cmd_t *cmd, *prev;
+	cmd_t *cmd;
 	int fd[2];
-	pid_t pid;
+	pid_t pid, fg_pid;
 	int status;
 
 	for (cmd = head; cmd; cmd = cmd->next) {
@@ -284,6 +290,9 @@ int exec_commands(cmd_t *head)
 				if (dup(cmd->fdout) != 1) {
 					printf("error in dup() stdout\n");
 				}
+			} else {
+			    fg_pid = getpid();
+			    tcsetpgrp(1, fg_pid);
 			} 
 			if (cmd->fdin > 0) {
 				close(0);
@@ -294,12 +303,12 @@ int exec_commands(cmd_t *head)
 			printf("error executing: %s\n", cmd->argv[0]);
 			exit(1);
 		} else {
-		if(cmd->do_pipe) {
-			cmd->next->fdin = fd[0];
-			close(fd[1]);
-		}}
-		
-		prev = cmd;
+		    if(cmd->do_pipe) {
+			    cmd->next->fdin = fd[0];
+			    close(fd[1]);
+		    }
+		    cmd->pid = pid;
+		}
 	}
 
 	pid_t p;
@@ -314,11 +323,13 @@ int exec_commands(cmd_t *head)
 				if(cmd->fdout != -1)
 					close(cmd->fdout);
 */				if(status != 0) {
-					printf("%s exited with status %d\n", cmd->argv[0], status);
+					printf("%s exited with status %d\n", cm->argv[0], status);
 					err++;
 				}
 			}
 		}
 	}
+	fg_pid = getpid();
+	tcsetpgrp(1, fg_pid);
 	return err;
 }

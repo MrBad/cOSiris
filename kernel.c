@@ -25,6 +25,8 @@
 #include "pipe.h"
 #include "hd_queue.h"
 #include "cofs.h"
+#include "dev.h"
+#include "tty.h"
 
 uint32_t initrd_location, initrd_end;
 
@@ -53,8 +55,7 @@ void main(uint32_t magic, multiboot_header *mboot)
     kprintf("Setup irq\n");
     irq_install();
     sti();
-   
-    serial_init();
+
 
     kprintf("Setup timer\n");
     timer_install();
@@ -63,8 +64,7 @@ void main(uint32_t magic, multiboot_header *mboot)
 
     kprintf("Calibrating delay loop: %d loops/ms\n", calibrate_delay_loop());
 
-    kprintf("Setup keyboard\n");
-    kbd_install();
+    //kprintf("Setup keyboard\n");
 
     // find location of initial ramdisk //
     if (mboot->mods_count > 0) {
@@ -78,7 +78,9 @@ void main(uint32_t magic, multiboot_header *mboot)
     // fs_root = initrd_init(initrd_location);
 
     fs_root = cofs_init();
-    console_init();
+    dev_init();
+    serial_init();
+    kbd_install();
     task_init();
     syscall_init();
     // wait for the rtc interrupt to fire //

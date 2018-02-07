@@ -39,6 +39,8 @@ bin/ansi
 bin/signal
 bin/kill
 bin/daemon
+bin/test_atexit
+bin/tty
 util/mkcofs
 util/mkinitrd
 util/find_func

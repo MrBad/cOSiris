@@ -55,4 +55,9 @@ int sys_pipe(int fd[2]);
 int sys_link(char *oldpath, char *newpath);
 int sys_rename(char *oldpath, char *newpath);
 
+int sys_ioctl(int fd, int request, void *argp);
+
+int sys_ftruncate(int fd, off_t len);
+
 #endif
+

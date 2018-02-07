@@ -66,17 +66,14 @@ sync
 sudo umount -l mnt
 sudo losetup -d /dev/loop0
 sudo losetup -d /dev/loop1
+sudo losetup -D
 rm device.map
 
-# Format the cofs partition and copy files 
+# Format the cofs partition and copy all executable files in bin/
 sudo losetup /dev/loop1 -o 104858112 $IMAGE
-sudo ./util/cofs/mkfs /dev/loop1 \
-    bin/cat bin/cdc bin/cosh bin/cp bin/echo bin/init kernel.sym bin/ln \
-    bin/ls bin/mkdir bin/mv bin/ps bin/pwd README.txt bin/reset bin/rm \
-    bin/tdup bin/test_append bin/test_fork bin/test_malloc bin/test_sbrk \
-    bin/test_write bin/tpipe bin/truncate bin/test_loop bin/fault bin/ansi \
-    bin/signal bin/kill bin/daemon
-    sudo losetup -d /dev/loop1
+FILES=`find bin/ -type f -executable | tr '\n' ' '`
+sudo ./util/cofs/mkfs /dev/loop1 $FILES kernel.sym README.txt
+
 rm -rf mnt
 
 #rm sda.vdi

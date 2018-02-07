@@ -2,8 +2,9 @@ export CFLAGS="-j 4"
 CC = gcc
 DFLAGS= -DKERNEL
 INCLUDE= -Iinclude
-CFLAGS = -g3 -m32 -Wall -Wextra -std=c99 -nostdlib -fno-builtin\
-		 -ffreestanding -c $(INCLUDE) $(DFLAGS)
+CFLAGS = -g3 -Wall -Wextra -std=c99 -m32 -nostdlib -fno-builtin \
+		 -ffreestanding $(INCLUDE) $(DFLAGS)
+OFLAGS = -c
 ASM = nasm
 ASMFLAGS = -g3 -f elf
 RM = rm -f
@@ -17,9 +18,9 @@ BOOTFLAGS = -f bin
 LD = ld
 LDFLAGS	= -g -n -melf_i386 -T ldscript.ld -Map System.map
 
-OBJS = startup.o kernel.o i386.o port.o kinfo.o \
+OBJS = startup.o kernel.o i386.o port.o kinfo.o ring_buf.o \
 	   gdt.o idt.o isr.o irq.o delay.o timer.o rtc.o \
-	   ansi.o kbd.o crt.o serial.o console.o \
+	   dev.o ansi.o kbd.o crt.o serial.o console.o tty.o \
 	   mem.o kheap.o \
 	   task.o thread.o sched.o sys.o syscall.o signal.o sysproc.o \
 	   list.o bname.o canonize.o \
@@ -37,7 +38,7 @@ lib/libc.a: lib/Makefile
 	make -C lib
 
 %.o: %.c Makefile *.h
-	$(CC) $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) $(OFLAGS) -o $@ $<
 
 %.o: %.asm
 	$(ASM) $(ASMFLAGS) -o $@ $<
@@ -96,11 +97,11 @@ runb: diskimg
 	$(BOCHS) -f bochsrc -q
 
 rung: diskimg
-	$(QEMU) $(QEMU_PARAMS)
+	$(QEMU) $(QEMU_SKIP_GRUB) $(QEMU_PARAMS)
 
 debug: diskimg
-	$(QEMU) $(QEMU_SKIP_GRUB) $(QEMU_PARAMS) -display none -s -S
+	$(QEMU) $(QEMU_SKIP_GRUB) $(QEMU_PARAMS) -s -S
 
 run: diskimg
-	$(QEMU) $(QEMU_PARAMS) -display none
+	$(QEMU) $(QEMU_SKIP_GRUB) $(QEMU_PARAMS) -display none
 

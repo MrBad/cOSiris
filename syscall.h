@@ -11,4 +11,9 @@ void syscall_init();
  */
 void exit(int status);
 
+/**
+ * Validates a pointer
+ */
+void validate_usr_ptr(void *ptr);
+
 #endif
