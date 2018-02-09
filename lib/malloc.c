@@ -128,6 +128,8 @@ void free(void *ptr)
 {
     block_meta_t *p, *prev = NULL;
     // spin_lock(&kheap_lock);
+    if (!ptr)
+        return;
     p = first_block;
     for (; ;) {
         if (p + 1 == ptr) {

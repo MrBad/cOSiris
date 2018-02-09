@@ -5,4 +5,11 @@
 - switch between console/getty
 - validate syscalls pointers
 - cosh should support jobs
+- add/fix mount; remove inode functions and use a vtable fs_node->iop->open.
+- fix hdd to use interrupts and a queue of buffers
+- libc
+    - add fdopen to libc
+    - write a clean vsnprintf function and rewrite vsprintf to use it
+        - move all *printf to use "n", safe version
+    - write a sscanf function
 

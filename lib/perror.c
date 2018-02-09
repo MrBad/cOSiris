@@ -6,5 +6,5 @@
  */
 void perror(const char *s)
 {
-    printf("%s\n", s);
+    printf("perror: %s\n", s);
 }

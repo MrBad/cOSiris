@@ -23,9 +23,6 @@ pid_t wait(int *status)
     return _syscall1(SYS_WAIT, (uint32_t)status);
 }
 
-int exit_stack_idx = ATEXIT_MAX;
-void(*exit_stack[ATEXIT_MAX])(void);
-
 void exit(int status)
 {
     int i;
