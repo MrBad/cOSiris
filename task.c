@@ -98,7 +98,7 @@ void ps()
     char buf[512];
     while (t) {
         // no eip, esp - assumes we are already in kernel mode //
-        sprintf(buf, "%10s, pid: %2d, ppid: %2d, state: %13s, ssid: %d, pgrp: %d\n",
+        snprintf(buf, sizeof(buf), "%10s, pid: %2d, ppid: %2d, state: %13s, ssid: %d, pgrp: %d\n",
                 t->name ? t->name : "[unnamed]", t->pid, t->ppid, 
                 task_states[t->state], t->sid, t->pgrp);
         if (current_task->files[1])

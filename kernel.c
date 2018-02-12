@@ -37,11 +37,11 @@ void main(uint32_t magic, multiboot_header *mboot)
     kprintf("cOSiris...\n");
     get_kernel_info(magic, mboot, &kinfo);
     kprintf("Kernel info:\n");
-    kprintf(" code start: 0x%p, start entry: 0x%p, data start: 0x%p\n",
+    kprintf(" code start: %p, start entry: %p, data start: %p\n",
             kinfo.code, kinfo.start, kinfo.data);
-    kprintf(" bss start: 0x%p, end: 0x%p, total size: %dKB\n",
+    kprintf(" bss start: %p, end: %p, total size: %dKB\n",
             kinfo.bss, kinfo.end, kinfo.size/1024);
-    kprintf(" stack (hi/start): 0x%p, size: 0x%p\n",
+    kprintf(" stack (hi/start): %p, size: %p\n",
             kinfo.stack, kinfo.stack_size);
     kprintf("Setup gdt entries\n");
     gdt_init();

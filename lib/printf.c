@@ -3,18 +3,23 @@
 #include <string.h>
 #include <unistd.h>
 
-// void print(char *str);
+#define BUF_SIZE 512
 
 int printf(char * fmt, ...)
 {
-	char buf[1024];
-	va_list args;
-	va_start(args, fmt);
-	vsprintf(buf, fmt, args);
-	va_end(args);
-	buf[1023]=0;
+    char buf[BUF_SIZE];
+    va_list args;
+    int n;
 
-	write(1, buf, strlen(buf)); // for now...
+    va_start(args, fmt);
+    n = vsnprintf(buf, BUF_SIZE, fmt, args);
+    va_end(args);
 
-	return 0;
+    if (n < BUF_SIZE)
+        n = write(1, buf, n);
+    else
+        n = write(1, buf, BUF_SIZE - 1);
+
+    return n;
 }
+

@@ -61,7 +61,7 @@ void * sbrk(int increment)
 }
 
 // files
-int open(char *filename, int flag, int mode)
+int open(const char *filename, int flag, int mode)
 {
     return _syscall3(SYS_OPEN, (uint32_t)filename, flag, mode);
 }

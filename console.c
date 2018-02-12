@@ -46,14 +46,13 @@ static void console_puts(char *str)
  */
 void panic(char *str, ...)
 {
-    char buf[1024];
+    char buf[512];
     va_list args;
 
     va_start(args, str);
-    vsprintf(buf, str, args);
+    vsnprintf(buf, sizeof(buf), str, args);
     va_end(args);
     // spin_lock(&console_lock);
-    buf[1023] = 0;
     console_puts(buf);
     cli();
     halt();
@@ -66,14 +65,13 @@ void panic(char *str, ...)
  */
 void kprintf(char *fmt, ...)
 {
-    char buf[1024];
+    char buf[512];
     va_list args;
 
     va_start(args, fmt);
-    vsprintf(buf, fmt, args);
+    vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
     spin_lock(&console_lock);
-    buf[1023] = 0;
     console_puts(buf);
     spin_unlock(&console_lock);
 }
@@ -94,7 +92,7 @@ void console_cur_up(int n)
 {
     char buf[32] = "\033[A";
     if (n)
-        sprintf(buf, "\033[%dA", n);
+        snprintf(buf, sizeof(buf), "\033[%dA", n);
     console_puts(buf);
 }
 
@@ -102,7 +100,7 @@ void console_cur_down(int n)
 {
     char buf[32] = "\033[B";
     if (n)
-        sprintf(buf, "\033[%dB", n);
+        snprintf(buf, sizeof(buf), "\033[%dB", n);
     console_puts(buf);
 }
 
@@ -110,7 +108,7 @@ void console_cur_left(int n)
 {
     char buf[32] = "\033[D";
     if (n)
-        sprintf(buf, "\033[%dD", n);
+        snprintf(buf, sizeof(buf), "\033[%dD", n);
     console_puts(buf);
 }
 
@@ -118,7 +116,7 @@ void console_cur_right(int n)
 {
     char buf[32] = "\033[C";
     if (n)
-        sprintf(buf, "\033[%dC", n);
+        snprintf(buf, sizeof(buf), "\033[%dC", n);
     console_puts(buf);
 }
 

@@ -16,7 +16,7 @@ void lstree();
 void * sbrk(int increment);
 
 // files //
-int open(char *filename, int flag, int mode);
+int open(const char *filename, int flag, int mode);
 int close(unsigned int fd);
 int stat(const char *pathname, struct stat *buf);
 int fstat(int fd, struct stat *buf);

@@ -147,7 +147,7 @@ void free(void *ptr)
             break;
         }
         if (!p->next) {
-            printf("Bad free pointer: 0x%p, mem: 0x%p, size: %d, "
+            printf("Bad free pointer: %p, mem: %p, size: %d, "
                     "MH: %X, ME: %X, %s\n",
                     ptr, p+1, p->size, p->magic_head, p->magic_end, 
                     p->free ? "free" : "used");

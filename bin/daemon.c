@@ -16,7 +16,7 @@ void sig_clean(int signum)
 
     fd = open("daemon.log", O_WRONLY|O_CREAT|O_APPEND, 644);
     if (fd > 0) {
-        sprintf(buf, "pid %d got signal %d\n", getpid(), signum);
+        snprintf(buf, sizeof(buf), "pid %d got signal %d\n", getpid(), signum);
         write(fd, buf, strlen(buf));
         close(fd);
     }

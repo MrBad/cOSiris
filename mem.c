@@ -62,10 +62,10 @@ int page_fault(struct iregs *r)
         kprintf("In user stack! "
                 "Automatically user stack grow not available yet.\n");
     }
-    kprintf("Virtual page: 0x%p, dir_idx: %u, tbl_idx: %u\n", 
+    kprintf("Virtual page: %p, dir_idx: %u, tbl_idx: %u\n", 
         dir_idx * 1024 * PAGE_SIZE + tbl_idx * PAGE_SIZE, dir_idx, tbl_idx);
 
-    kprintf("From eip: 0x%p, ", r->eip);
+    kprintf("From eip: %p, ", r->eip);
     kprintf("%s, ", r->err_code & P_READ_WRITE ? "write" : "read", addr);
     kprintf("%s mode\n", r->err_code & P_USER ? "user" : "kernel");
     kprintf("Page is %s\n", is_mapped(addr & ~0xFFF) ? "mapped":"not mapped");

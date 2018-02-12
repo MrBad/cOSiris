@@ -10,7 +10,7 @@ enum {
 };
 
 void *sbrk(int increment);
-int open(char *filename, int flag, int mode);
+int open(const char *filename, int flag, int mode);
 int close(unsigned int fd);
 int read(int fd, void *buf, unsigned int count);
 int write(int fd, void *buf, unsigned int count);

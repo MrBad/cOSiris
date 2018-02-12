@@ -27,9 +27,9 @@ void dev_init()
 
     for (i = 0; i < NTTY + NTTYS; i++) {
         if (i < NTTY)
-            sprintf(buf, "tty%d", i);
+            snprintf(buf, sizeof(buf), "tty%d", i);
         else
-            sprintf(buf, "ttyS%d", i - NTTY);
+            snprintf(buf, sizeof(buf), "ttyS%d", i - NTTY);
 
         if (!(node = fs_finddir(dev, buf)))
             node = fs_mknod(dev, buf, 0666, FS_CHARDEVICE | makedev(4, i));

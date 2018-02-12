@@ -38,7 +38,7 @@ void serial_debug(char *fmt, ...)
     char buf[1024];
     va_list args;
     va_start(args, fmt);
-    vsprintf(buf, fmt, args);
+    vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
     serial_write(buf);
 }
