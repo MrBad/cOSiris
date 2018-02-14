@@ -48,14 +48,18 @@ int fputs(char *s, FILE *fp);
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *fp);
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *fp);
 ssize_t getline(char **lineptr, size_t *n, FILE *fp);
-
 int fflush(FILE *fp);
+
 int vsprintf(char *str, const char *fmt, va_list ap);
 int vsnprintf(char *str, size_t size, const char  *fmt,  va_list ap);
 int sprintf(char *buf, const char *fmt, ...);
 int snprintf(char *str, size_t size, const char *fmt, ...);
 int printf(char *fmt, ...);
 int fprintf(FILE *fp, const char *fmt, ...);
+
+int vsscanf(const char *str, const char *fmt, va_list ap);
+int sscanf(const char *str, const char *fmt, ...);
+
 void perror(const char *s);
 
 #endif

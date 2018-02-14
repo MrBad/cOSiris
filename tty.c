@@ -307,6 +307,12 @@ void tty_set_defaults(tty_t *tty)
 void tty_close(fs_node_t *node)
 {
     tty_t *tty = tty_devs[node->minor];
+    if (!tty) {
+        // Why closing too many times?
+        kprintf("pid: %d, %s is already closed!\n",
+            current_task->pid, node->name);
+        return;
+    }
     KASSERT(tty);
     KASSERT(node->major == TTY_MAJOR);
 

@@ -5,12 +5,20 @@
 
 int fprintf(FILE *fp, const char *fmt, ...)
 {
-	char buf[1024];
-	va_list args;
-	va_start(args, fmt);
-	vsprintf(buf, fmt, args);
-	va_end(args);
-	buf[1023]=0;
+    char buf[1024];
+    va_list args;
+    int n;
+    va_start(args, fmt);
+    n = vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    if (n < 0)
+        return -1;
 
-	return fwrite(buf, 1, strlen(buf), fp);
+    if ((unsigned) n < sizeof(buf))
+        n = fwrite(buf, 1, n, fp);
+    else
+        n = fwrite(buf, 1, sizeof(buf) - 1, fp);
+
+    return n;
 }
+

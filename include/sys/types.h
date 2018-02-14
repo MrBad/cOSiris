@@ -1,12 +1,14 @@
 #ifndef _TYPES_H
 #define _TYPES_H
 
+#include <stddef.h>
+
 typedef unsigned long ulong_t;
-#define NULL (void *) 0
+//#define NULL ((void *) 0)
 #define false 0
 #define true 1
 typedef unsigned char bool;
-typedef unsigned int size_t;
+//typedef unsigned int size_t;
 typedef int ssize_t;
 #ifndef _uint32_t
 #define _uint32_t

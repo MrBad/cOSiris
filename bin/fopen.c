@@ -2,7 +2,6 @@
 
 int main()
 {
-    char str[512];
     FILE *fp = fopen("README.txt", "r");
     if (!fp)
         return 1;

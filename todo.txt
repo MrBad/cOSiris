@@ -13,6 +13,6 @@
         + move all *printf to use "n", safe version
     - make vsnprintf work OK on 64 bits - need a clean div/mod for 64 bits, or
       use gcc __umoddi3/__udivdi3 or rewrite them
-
-    - write a sscanf function
+    - printf should be buffered - use fprintf
+    + write a sscanf function - vsscanf, no floating point support yet.
 
