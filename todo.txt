@@ -1,6 +1,16 @@
+- there is a need for errno/perror system
+- use elf as executable format, and not flat binary
+
+- tty should implement timeout for raw mode / some alarm or something,
+  to wakeup process that reads in raw mode, if for eg. 1 second passed and
+  no character was received - tty_read(), tty.c. Do processes should
+  sleep if they are in tty raw mode and queue is empty?
+  Maybe a sleep(x seconds) will solve the problem.
+  How to test - press esc in kilo
 - crt should be able to respond when asked for cursor position
 - crt should handle save cursor/restore cursor
-- tty.c should ask remote terminal for it's winsize, or set to 0?
+- tty.c should ask remote terminal for it's winsize, or set to 0, or is the
+  getty job to set the line? (better)
 - problem with truncate, when truncate len > sizeof file
 - switch between console/getty
 - validate syscalls pointers

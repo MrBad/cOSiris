@@ -60,7 +60,7 @@ static void serial_handler(struct iregs *r)
 {
     (void) r;
     char c = serial_getc();
-    tty_in(tty_devs[12], c);
+    tty_in(tty_devs[NTTY], c);
     //console_in(serial_getc);
 }
 
