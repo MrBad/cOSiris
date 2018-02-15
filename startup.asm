@@ -7,11 +7,11 @@
 	MULTIBOOT_HEADER_FLAGS	equ MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO
 	CHECKSUM equ -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)	; checksum
 
-	GLOBAL start					; kernel entry point
+	GLOBAL start                    ; kernel entry point
 	GLOBAL stack_ptr, stack_size    ; save stack pointer and size
-	EXTERN main						; main function to call
-	EXTERN code, bss, end, data		; passed in by linker - ldscript.ld
-	STACKSIZE equ 0x4000			; stack size
+	EXTERN kmain                    ; main function to call
+	EXTERN code, bss, end, data	    ; passed in by linker - ldscript.ld
+	STACKSIZE equ 0x4000            ; stack size
 
 [SECTION .text]
 	; multiboot header
@@ -26,9 +26,9 @@ start:
     mov [stack_size], dword STACKSIZE
 	mov esp, stack+STACKSIZE
 	mov ebp, esp
-	push ebx	; push pointer to struct multiboot_header, passed by grub
-	push eax	; magic
-	call main
+	push ebx    ; push pointer to struct multiboot_header, passed by grub
+	push eax    ; magic
+	call kmain
 .h:
 	hlt
 	jmp .h

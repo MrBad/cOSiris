@@ -43,6 +43,7 @@ bin/test_atexit
 bin/tty
 bin/fopen
 bin/kilo
+bin/args
 util/mkcofs
 util/mkinitrd
 util/find_func

@@ -1,4 +1,4 @@
-OUTPUT_FORMAT("binary")    /* output flat binary */
+OUTPUT_FORMAT("elf32-i386")    /* output flat binary */
 
 SECTIONS
 {

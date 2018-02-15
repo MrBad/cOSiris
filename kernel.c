@@ -30,7 +30,7 @@
 
 uint32_t initrd_location, initrd_end;
 
-void main(uint32_t magic, multiboot_header *mboot)
+void kmain(uint32_t magic, multiboot_header *mboot)
 {
     crt_init();
     // multiboot_parse(magic, mboot);

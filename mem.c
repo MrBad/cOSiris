@@ -329,11 +329,26 @@ phys_t virt_to_phys(virt_t addr)
 }
 
 /**
- * Unmaps a virtual address
+ * Unmaps a virtual address - it does not free the frame!!!
  */
 void unmap(virt_t virtual_addr)
 {
     map(virtual_addr, 0, 0);
+}
+
+/**
+ * Unmaps a virtual page and free it's associated physical frame
+ */
+int free_page(virt_t page)
+{
+    phys_t frame;
+    frame = virt_to_phys(page);
+    if (!frame)
+        return -1;
+    memset((void *)page, 0, PAGE_SIZE);
+    unmap(page);
+    frame_free(frame);
+    return 0;
 }
 
 /**

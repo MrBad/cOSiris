@@ -40,6 +40,8 @@ typedef uint16_t flags_t;   // Flags type.
 #define USER_STACK_HI   (USER_CODE_START_ADDR - PAGE_SIZE)
 // User program low stack address (or max stack)
 #define USER_STACK_LOW	(USER_STACK_HI - 10 * PAGE_SIZE)
+// Number of initial user stack size, in pages
+#define USER_STACK_MIN_PGS 4
 // Kernel stack high address
 #define KERNEL_STACK_HI		0xFF118000ul
 // A reserved kernel page, to map in any physical memory page, so we can 
@@ -75,6 +77,11 @@ void map(virt_t virtual_addr, phys_t physical_addr, flags_t flags);
  * Unmaps a virtual page
  */
 void unmap(virt_t virtual_addr);
+
+/**
+ * Unmaps a virtual page and free it's frame
+ */
+int free_page(virt_t page);
 
 /**
  * Temporary maps a physical page to a known address

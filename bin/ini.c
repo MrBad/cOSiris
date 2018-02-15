@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /** 
  * Per process, global vars
@@ -13,10 +14,7 @@ extern void _iob_init();
 
 void _ini()
 {
-    int i;
     // Free atexit stack
-    for (i = 0; i < exit_stack_idx; i++)
-        exit_stack[i] = 0;
-    // Init buffered files IO structs
+    memset(exit_stack, 0, sizeof(exit_stack));
     _iob_init();
 }

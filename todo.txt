@@ -1,5 +1,7 @@
+# Lines starting with - need to be done, +, are done, ~ partial
+
 - there is a need for errno/perror system
-- use elf as executable format, and not flat binary
++ use elf as executable format, and not flat binary
 
 - tty should implement timeout for raw mode / some alarm or something,
   to wakeup process that reads in raw mode, if for eg. 1 second passed and
