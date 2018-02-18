@@ -35,10 +35,17 @@ typedef struct _multiboot_header {
     uint32_t apm_table;		    // 68
     uint32_t vbe_control_info;	// 72
     uint32_t vbe_mode_info;	    // 76
-    uint32_t vbe_mode;			// 80
+    uint16_t vbe_mode;			// 80
     uint16_t vbe_interface_seg; // 82
     uint16_t vbe_interface_off; // 84
     uint16_t vbe_interface_len; // 86
+    uint64_t fb_addr;
+    uint32_t fb_pitch;
+    uint32_t fb_width;
+    uint32_t fb_height;
+    uint8_t fb_bpp;
+    uint8_t fb_type;
+    uint32_t fb_color_info;
 } multiboot_header;
 
 typedef struct _memory_map {

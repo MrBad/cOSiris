@@ -2,19 +2,27 @@
 #define _TTY_H
 
 #include <termios.h>
+#include "vfs.h"
+#include "cofs.h"
 #include "ring_buf.h"
 
-#define NTTY 12
+#define NTTY 1
 #define NPTY 52
 #define NTTYS 4
 #define TTY_MAJOR 4
 #define CTRL(key) (key - '@')
 
+#define TTY0 0
+#define TTYS0 NTTY
+#define TTYS1 NTTY + 1
+#define TTYS2 NTTY + 2
+#define TTYS3 NTTY + 3
+
 #define TTY_IN_BUF_SIZE 128
 #define TTY_OUT_BUF_SIZE 128
 #define TTY_LN_BUF_SIZE 512
 
-typedef void (*putc_t)(char c);
+typedef void (*putc_t)(char c, int tty_minor);
 
 typedef struct tty_line {
     char buf[TTY_LN_BUF_SIZE];
@@ -31,6 +39,7 @@ typedef struct tty {
     int minor;
     pid_t ctrl_pid; // pid of the controlling process
     pid_t fg_pid;   // pid of the foreground process
+    void *oldc;
 } tty_t;
 
 tty_t *tty_devs[NTTY + NTTYS];

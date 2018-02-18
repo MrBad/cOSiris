@@ -23,28 +23,29 @@ static struct file *file_alloc()
     return f;
 }
 
-// Allocates a file descriptor pointer for current proc //
-// if it does not find a free one, enlarge the files pointer buffer //
+/**
+ * Allocates a file descriptor pointer for current process.
+ * If it does not find a free one, grow the files pointers buffer.
+ * Returns a new file descriptor or -1 on error (MAX_OPEN_FILES reached).
+ */
 static int fd_alloc()
 {
-    int fd; 
-    for (fd = 0; fd < current_task->num_files; fd++) {
-        if (!current_task->files[fd]) {
+    int fd, n = current_task->num_files;
+
+    for (fd = 0; fd < n; fd++) {
+        if (!current_task->files[fd])
             break;
-        }
     }
-    if (fd == current_task->num_files) {
-        // not enough available files, let's enlarge the array //
-        int items = current_task->num_files;
-        if (items > MAX_OPEN_FILES) {
-            return -1; 
-        }
-        items = items * 2 >= MAX_OPEN_FILES ? MAX_OPEN_FILES : items * 2;
-        current_task->files = realloc(current_task->files, items * sizeof(struct file *));
-        for(; current_task->num_files < items; current_task->num_files++) {
-            current_task->files[current_task->num_files] = NULL; // and null the reallocated buffer //
-        }
-        KASSERT(current_task->num_files == items);
+    if (fd == n) {
+        /* Not enough available files, grow the array. */
+        if (fd > MAX_OPEN_FILES)
+            return -1;
+        n = n * 2 >= MAX_OPEN_FILES ? MAX_OPEN_FILES : n * 2;
+        current_task->files = realloc(current_task->files,
+                n * sizeof(*current_task->files));
+        memset(current_task->files + current_task->num_files, 0,
+                (n - current_task->num_files) * sizeof(*current_task->files));
+        current_task->num_files = n;
     }
     return fd;
 }
@@ -112,20 +113,20 @@ int sys_close(int fd)
 {
     if (!fd_is_valid(fd))
         return -1;
-    
+
     if (current_task->files[fd]->dup_cnt < 0) {
         kprintf("dup close error ?!\n");
         return -1;
     }
     fs_close(current_task->files[fd]->fs_node);
-    if (current_task->files[fd]->dup_cnt > 0)
-        current_task->files[fd]->dup_cnt--;
-    // when dup_cnt is 0, it is safe to free the 
-    // structure
+    /* When dup_cnt is 0, this struct file is no longer linked
+     * inside process files, and it is safe to free it */
     if (current_task->files[fd]->dup_cnt == 0) {
         free(current_task->files[fd]);
-        current_task->files[fd] = NULL;
+    } else {
+        current_task->files[fd]->dup_cnt--;
     }
+    current_task->files[fd] = NULL;
     return 0;
 }
 
@@ -208,17 +209,14 @@ int sys_write(int fd, void *buf, size_t count)
 
     f = current_task->files[fd];
     
-    if (!(f = current_task->files[fd])) {
-        kprintf("File %d not opened by proc %d\n", fd, current_task->pid);
-        return -1;
-    }
     bytes = fs_write(f->fs_node, f->offs, count, buf);
     f->offs += bytes;
     return bytes;
 }
 
 // alias //
-int write(int fd, void *buf, size_t count) {
+int write(int fd, void *buf, size_t count)
+{
     return sys_write(fd, buf, count);
 }
 

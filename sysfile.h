@@ -4,17 +4,19 @@
 #include <sys/stat.h>
 #include "vfs.h"
 
-#define PROC_MAX_OPEN_FILES 256 // maximum number of open files //
+#define PROC_MAX_OPEN_FILES 256 /* How many files a process can open */
 
-// file type structure //
+/* An internal process file structure */
 struct file {
     unsigned short mode;
     unsigned short flags; 
     unsigned int offs;
     fs_node_t *fs_node;
-    int dup_cnt; // use it in dup() to keep reference count 
-                          // to this file
-                          // when dup_cnt is 0, it's safe to free the struct
+    /* dup_cnt is a refference number to this structure, (inside one process).
+     * When a process does dup(), this should be incremented, and new fd
+     * linked to this structure.
+     * When dup_cnt is 0, it's safe to free this structure. */
+    int dup_cnt;
 };
 typedef struct file DIR;
 

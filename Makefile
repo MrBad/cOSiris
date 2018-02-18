@@ -100,8 +100,9 @@ rung: diskimg
 	$(QEMU) $(QEMU_SKIP_GRUB) $(QEMU_PARAMS)
 
 debug: diskimg
-	$(QEMU) $(QEMU_SKIP_GRUB) $(QEMU_PARAMS) -s -S
+	$(QEMU) $(QEMU_SKIP_GRUB) $(QEMU_PARAMS) -display none -s -S
 
 run: diskimg
-	$(QEMU) $(QEMU_SKIP_GRUB) $(QEMU_PARAMS) -display none
+	$(QEMU) $(QEMU_SKIP_GRUB) $(QEMU_PARAMS) -display none \
+		-serial file:debug.log -serial telnet:127.0.0.1:2222,server,nowait
 

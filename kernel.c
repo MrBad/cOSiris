@@ -54,8 +54,8 @@ void kmain(uint32_t magic, multiboot_header *mboot)
 
     kprintf("Setup irq\n");
     irq_install();
-    sti();
 
+    sti();
 
     kprintf("Setup timer\n");
     timer_install();
@@ -63,8 +63,6 @@ void kmain(uint32_t magic, multiboot_header *mboot)
     rtc_init();
 
     kprintf("Calibrating delay loop: %d loops/ms\n", calibrate_delay_loop());
-
-    //kprintf("Setup keyboard\n");
 
     // find location of initial ramdisk //
     if (mboot->mods_count > 0) {
@@ -92,7 +90,6 @@ void kmain(uint32_t magic, multiboot_header *mboot)
             "Switching to \033[31mring 3\033[0m.\n");
     sys_exec("/init", NULL);
 
-    // ps();
     kprintf("Should not get here\n");
     return;
 }

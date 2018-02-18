@@ -209,8 +209,9 @@ static void crt_lf()
  * Char out crt routine - needs rewrite
  * TODO: This code is not beautiful and it needs change.
  */
-void crt_putc(char c)
+void crt_putc(char c, int tty_minor)
 {
+    (void) tty_minor;
     if (ansi_stat_switch(&crt.astat, c)) {
         if (crt.astat.stat == ANSI_IN_FIN) {
             crt_handle_ansi(c);

@@ -2,7 +2,10 @@
 
 - there is a need for errno/perror system
 + use elf as executable format, and not flat binary
-
+- vfs should be rewrite, support for mount / register devices
+  - cofs_cache should be moved to vfs, and not implemented in file system
+  - a better dev should be written
+- console should be clean-up; not really used after switching to tty.
 - tty should implement timeout for raw mode / some alarm or something,
   to wakeup process that reads in raw mode, if for eg. 1 second passed and
   no character was received - tty_read(), tty.c. Do processes should

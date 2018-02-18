@@ -63,7 +63,7 @@ fi
 
 sync
 
-sudo umount -l mnt
+sudo umount -lf mnt
 sudo losetup -d /dev/loop0
 sudo losetup -d /dev/loop1
 sudo losetup -D

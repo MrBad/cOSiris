@@ -4,6 +4,7 @@
 *.lst
 *.sym
 *.a
+*.log
 .gdb_history
 .idea
 core

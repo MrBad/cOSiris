@@ -824,28 +824,5 @@ fs_node_t *cofs_init()
     strcpy(root->name, "/");
     cofs_unlock(root);
 
-    // dev //
-    /*fs_node_t *dev, *console;
-    dev = cofs_finddir(root, "dev");
-    if (!dev) {
-        dev = cofs_mkdir(root, "dev", 0755);
-    }
-    cofs_lock(dev);
-    if (!(console = cofs_finddir(dev, "console"))) {
-        console = inode_alloc(FS_CHARDEVICE);
-        cofs_lock(console);
-        strncpy(console->name, "console", sizeof(console->name) - 1);
-        console->num_links = 1;
-        console->mask = 0755;
-        cofs_update_node(console);
-        cofs_dirlink(dev, console->name, console->inode);
-        cofs_unlock(console);
-    }
-    cofs_put_node(console);
-    cofs_unlock(dev);
-    cofs_put_node(dev);
-    cofs_put_node(root);
-    cofs_dup(root);
-    */
     return root;
 }

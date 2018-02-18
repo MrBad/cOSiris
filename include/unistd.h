@@ -19,6 +19,7 @@ int isatty(int fd);
 int tcsetpgrp(int fildes, pid_t pgid_id);
 pid_t tcgetpgrp(int fildes);
 pid_t setsid();
+pid_t getpid(void);
 
 #endif
 

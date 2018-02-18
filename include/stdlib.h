@@ -17,4 +17,5 @@ extern int exit_stack_idx;
 #define ATEXIT_MAX 32
 int atexit(void (*function)(void));
 
+void abort();
 #endif

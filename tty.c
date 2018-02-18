@@ -28,7 +28,8 @@
 static int tty_ioctl(fs_node_t *node, int request, void *argp)
 {
     tty_t *tty = tty_devs[node->minor];
-    KASSERT(tty);
+    if (!tty)
+        return -1;
     KASSERT(node->major == TTY_MAJOR);
 
     switch (request) {
@@ -82,14 +83,14 @@ static int tty_ioctl(fs_node_t *node, int request, void *argp)
 
 void tty_oput(tty_t *tty, char c)
 {
-    // Put to cout buffer //
+    // TODO: Put to cout buffer; right now, output is unbuffered
     if (tty->termios.c_oflag & OPOST) {
         if (c == '\n') {
             if (tty->termios.c_oflag & ONLCR)
-                tty->putc('\r');
+                tty->putc('\r', tty->minor);
         }
     }
-    tty->putc(c);
+    tty->putc(c, tty->minor);
 }
 
 void tty_oputs(tty_t *tty, char *s)
@@ -186,8 +187,11 @@ void tty_editor(tty_t *tty, char c)
     } else if (c == CTRL('P')) {
         ps();
         return;
-    } else if (c == CTRL('O')) {
+    } else if (c == CTRL('F')) {
         kprintf("fg_pid: %d\n", tty->fg_pid);
+        return;
+    } else if (c == CTRL('O')) {
+        cofs_dump_cache();
         return;
     } else {
         if (ln->ed == ln->len) {
@@ -239,7 +243,8 @@ uint32_t tty_write(fs_node_t *node, uint32_t offs, uint32_t size, char *buf)
     (void) offs;
     uint32_t i;
     tty_t *tty = tty_devs[node->minor];
-    KASSERT(tty);
+    if (!tty)
+        return -1;
     KASSERT(node->major == TTY_MAJOR);
 
     for (i = 0; i < size; i++)
@@ -254,7 +259,8 @@ uint32_t tty_read(fs_node_t *node, uint32_t offs, uint32_t size, char *buf)
     char c;
     uint32_t num_bytes = 0;
     tty_t *tty = tty_devs[node->minor];
-    KASSERT(tty);
+    if (!tty)
+        return -1;
     KASSERT(node->major == TTY_MAJOR);
     while (num_bytes < size) {
         if (rb_is_empty(tty->cin)) {
@@ -307,20 +313,11 @@ void tty_set_defaults(tty_t *tty)
 void tty_close(fs_node_t *node)
 {
     tty_t *tty = tty_devs[node->minor];
-    if (!tty) {
-        // Why closing too many times?
-        kprintf("pid: %d, %s is already closed!\n",
-            current_task->pid, node->name);
-        return;
-    }
-    KASSERT(tty);
     KASSERT(node->major == TTY_MAJOR);
-
     if (node->lock)
         spin_unlock(&node->lock);
     node->ref_count--;
-
-    if (node->ref_count == 0) {
+    if (tty && node->ref_count == 0) {
         // No process use this tty anymore.
         rb_delete(tty->cin);
         rb_delete(tty->cout);

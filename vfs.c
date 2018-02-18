@@ -305,23 +305,15 @@ int fs_open_namei(char *path, int flags, int mode, fs_node_t **node)
 {
     char *p;
     p = canonize_path(current_task->cwd, path);
-    if (flags & O_CREAT) {
-        *node = fs_namei(p);
-        if (!*node) {
-            // kprintf("Creating file [%s], flags: %x, mode: %x\n", 
-            // path, flags, mode);
-            *node = fs_creat(p, mode);
-        }
-    } else {
-        *node = fs_namei(p);
+    *node = fs_namei(p);
+    if (!*node && flags & O_CREAT) {
+        *node = fs_creat(p, mode);
     }
-    if (node) {
-        if (flags & O_TRUNC) {
-            if (flags & O_RDWR || flags & O_WRONLY) {
-                if (fs_truncate(*node, 0) < 0) {
-                    kprintf("cannot truncate %s\n", p);
-                    return -1;
-                }
+    if (node && (flags & O_TRUNC)) {
+        if (flags & (O_RDWR | O_WRONLY)) {
+            if (fs_truncate(*node, 0) < 0) {
+                kprintf("cannot truncate %s\n", p);
+                return -1;
             }
         }
     }

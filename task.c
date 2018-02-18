@@ -199,7 +199,8 @@ task_t *fork_inner()
             panic("task fork: pid: %d, fd: %d fs_node does not exists\n", 
                     current_task->pid, fd);
         }
-        t->files[fd]->fs_node = fs_dup(current_task->files[fd]->fs_node);
+        memcpy(t->files[fd], current_task->files[fd], sizeof(struct file));
+        fs_dup(current_task->files[fd]->fs_node);
 
         if (t->files[fd]->fs_node->type & FS_PIPE) {
             vfs_pipe_t *pipe = (vfs_pipe_t*) t->files[fd]->fs_node->ptr;
@@ -209,7 +210,6 @@ task_t *fork_inner()
                 pipe->writers++;
             }
         }
-        t->files[fd]->offs = current_task->files[fd]->offs;
     }
     t->num_files = current_task->num_files;
     // Inherit curstom signal handlers //

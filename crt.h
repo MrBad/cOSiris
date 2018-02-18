@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include "ansi.h"
+#include "tty.h"
 
 #define TAB_SPACES      8
 #define CRTC_PORT       0x3D4
@@ -41,7 +42,7 @@ void crt_scroll_down();
  * Puts a character on the screen. 
  * This speak ANSI escape sequences(or a part of them)
  */
-void crt_putc(char c);
+void crt_putc(char c, int tty_minor);
 
 /**
  * Inits video

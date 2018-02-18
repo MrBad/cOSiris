@@ -147,13 +147,14 @@ void free(void *ptr)
             break;
         }
         if (!p->next) {
-            printf("Bad free pointer: %p, mem: %p, size: %d, "
-                    "MH: %X, ME: %X, %s\n",
-                    ptr, p+1, p->size, p->magic_head, p->magic_end, 
-                    p->free ? "free" : "used");
-            dump_stack(ptr);
-            //exit(1);
-            break;
+            // Means we are at the last one, or something terrible
+            // happent to heap. If magics are correct, it's a double free ptr.
+            if (p->free && p->magic_head == MAGIC_HEAD
+                    && p->magic_end == MAGIC_END && p->size > 0) {
+                printf("Double free or corruption: %p, not found\n", ptr);
+                dump_stack(ptr);
+                abort();
+            }
         }
         prev = p;
         p = p->next;

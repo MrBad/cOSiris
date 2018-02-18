@@ -24,8 +24,8 @@ struct cin cin = {
  */
 void console_putc(char c)
 {
-    serial_putc(c);
-    crt_putc(c);
+    serial_putc(c, TTYS0);
+    crt_putc(c, TTY0);
 }
 
 /**
@@ -339,9 +339,8 @@ unsigned int console_write(fs_node_t *node, unsigned int offset,
     unsigned int i;
     // spin_lock(&console_lock);
     for (i = 0; i < size; i++) {
-        crt_putc(buffer[i]);
+        console_putc(buffer[i]);
     }
-    serial_write(buffer);
     // spin_unlock(&console_lock);
     return i;
 }
