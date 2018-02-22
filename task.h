@@ -5,7 +5,7 @@
 #include "kheap.h"
 #include "list.h"
 #include "i386.h"
-#include "isr.h"
+#include "int.h"
 #include "sys.h"
 #include "sysfile.h"
 #include "signal.h"
@@ -17,6 +17,8 @@ typedef enum {
     TASK_SLEEPING,
     TASK_EXITING,
 } task_states_t;
+
+extern char *task_states[];
 
 #define TASK_INITIAL_NUM_FILES 6
 #define MAX_OPEN_FILES 64
@@ -54,6 +56,7 @@ struct task {
     pid_t pgrp;             // program group id
     bool leads;             // is this program a leader?
     int tty;                // terminal number attached to program
+    iregs_t regs;
 };
 
 /**
@@ -81,6 +84,11 @@ void set_kernel_esp(uint32_t esp);
 task_t *task_new();
 
 /**
+ * Loop runned by idle task
+ */
+void idle_task();
+
+/**
  * Gets current running task pid
  */
 pid_t getpid();
@@ -90,11 +98,12 @@ pid_t getpid();
  */
 task_t *get_task_by_pid(pid_t pid);
 
+#define task_switch() __asm("int $32")
+
 /**
- * Saves current task esp,ebp,eip, get next task, switch to it's page directory
- *  and jump to it's saved eip
+ * Switching tasks, called from interrupt
  */
-void task_switch();		// sched.asm
+void task_switch_int();
 
 /**
  * Sets esp, ebp and jump to current task eip

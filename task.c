@@ -46,6 +46,7 @@ void set_kernel_esp(uint32_t esp)
     write_tss(5, 0x10, esp);
     gdt_flush();
 }
+
 /**
  * Initialize multitasking
  */
@@ -83,6 +84,8 @@ void task_init()
     }
     switch_locked = false;
     sti();
+    /* Switch task, to load registers */
+    task_switch();
 }
 
 void print_current_task()
@@ -97,7 +100,6 @@ void ps()
     task_t *t = task_queue;
     char buf[512];
     while (t) {
-        // no eip, esp - assumes we are already in kernel mode //
         snprintf(buf, sizeof(buf), "%10s, pid: %2d, ppid: %2d, state: %13s, ssid: %d, pgrp: %d\n",
                 t->name ? t->name : "[unnamed]", t->pid, t->ppid, 
                 task_states[t->state], t->sid, t->pgrp);
@@ -116,7 +118,9 @@ pid_t getpid()
 
 int getring()
 {
-    return current_task ? current_task->ring : -1;
+    if (!current_task)
+        return -1;
+    return current_task->regs.cs & 0x3;
 }
 
 task_t *get_task_by_pid(pid_t pid)
@@ -143,6 +147,24 @@ task_t *get_last_task()
     return t;
 }
 
+/**
+ * This is the idle CPU loop.
+ * An idle process will stay here, in TASK_RUNNING state, and it
+ *  will be picked up by the scheduler when no other process can be run.
+ * This just execute hlt command, which pause the CPU (reducing power
+ * consumption) until a new interrupt arrive.
+ */
+void idle_task()
+{
+    free(current_task->name);
+    current_task->name = strdup("idle");
+
+    for (;;) {
+        sti();
+        hlt();
+    }
+}
+
 task_t *task_switch_inner()
 {
     task_t *n;
@@ -159,18 +181,20 @@ task_t *task_switch_inner()
             if (n->state == TASK_RUNNING || n->state == TASK_AWAKEN)
                 break;
     }
-    // giveup and return init
-    current_task = n ? n : get_task_by_pid(1);
-    //current_task->state = TASK_RUNNING;
+    if (!n) {
+        panic("All threads sleeping, even idle\n");
+    }
+    current_task = n;
     return current_task;
 }
 
 /**
  * Called from sched.asm
  */
-task_t *fork_inner()
+pid_t fork()
 {
     int fd;
+    cli();
     switch_locked = true;
     task_t *t = task_new();
     t->ppid = current_task->pid;
@@ -181,6 +205,7 @@ task_t *fork_inner()
     t->sid = current_task->sid;
     t->pgrp = current_task->pgrp;
     t->page_directory = clone_directory();
+    memcpy(&t->regs, &current_task->regs, sizeof(t->regs));
 
     // child has end addr as parent, clonned by clone directory //
     t->heap->end_addr = current_task->heap->end_addr;
@@ -212,12 +237,25 @@ task_t *fork_inner()
         }
     }
     t->num_files = current_task->num_files;
-    // Inherit curstom signal handlers //
+    /* Inherit curstom signal handlers */
     memcpy(t->sig_handlers, current_task->sig_handlers,
             NUM_SIGS * sizeof(*current_task->sig_handlers));
+    /* Link new task, and let the scheduler do the rest of the job */
     t->state = TASK_RUNNING;
+    get_last_task()->next = t;
+    /* The child should return 0 */
+    t->regs.eax = 0;
     switch_locked = false;
-    return t;
+    /* Parent return the pid*/
+    return t->pid;
+}
+
+void task_switch_int()
+{
+    current_task = task_switch_inner();
+    switch_context();
+    process_signals();
+    int_return(&current_task->regs);
 }
 
 /**

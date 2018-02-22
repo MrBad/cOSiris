@@ -1,6 +1,9 @@
 /**
  * http://pubs.opengroup.org/onlinepubs/9699919799/
  */
+#ifndef _TERMIOS_H
+#define _TERMIOS_H
+
 #include <sys/types.h>
 
 typedef unsigned char cc_t;
@@ -230,4 +233,6 @@ extern int tcsendbreak(int fildes, int duration);
  */
 extern int tcsetattr(int fildes, int optional_actions, 
         const struct termios *termios);
+
+#endif
 

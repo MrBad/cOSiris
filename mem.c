@@ -12,7 +12,7 @@
 #include "i386.h"       // invlpg
 #include "console.h"	// kprint, panic//
 #include "crt.h"        // CRT_ADDR
-#include "isr.h" 		// iregs //
+#include "int.h" 		// iregs //
 #include "multiboot.h"	// multiboot_header //
 #include "kernel.h" 	// kinfo //
 #include "kheap.h"		// HEAP defs //

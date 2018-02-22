@@ -45,7 +45,8 @@ int exec(char *path, char **argv)
     return _syscall2(SYS_EXEC, (uint32_t) path, (uint32_t) argv);
 }
 
-int execvp(char *path, char **argv) {
+int execvp(char *path, char **argv)
+{
     return exec(path, argv);
 }
 

@@ -1,6 +1,6 @@
 #include <sys/types.h>
 #include <string.h>
-#include "isr.h"
+#include "int.h"
 #include "console.h"
 #include "syscall.h"
 #include "task.h"
@@ -91,5 +91,5 @@ static uint32_t syscall_handler(struct iregs *r)
 void syscall_init()
 {
     kprintf("Syscall Init\n");
-    isr_install_handler(0x80, &syscall_handler);
+    int_install_handler(0x80, &syscall_handler);
 }
