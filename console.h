@@ -1,7 +1,7 @@
 #ifndef _CONSOLE_H
 #define _CONSOLE_H
 #include <stdarg.h>
-#include "isr.h"
+#include "int.h"
 #include "vfs.h"
 #include "ansi.h"
 

@@ -98,9 +98,9 @@ void signal_handler_return()
     set_kernel_esp(KERNEL_STACK_HI);
     if (current_task->state == TASK_AWAKEN) {
         current_task->state = TASK_SLEEPING;
-        task_switch_next();
+        task_switch_int();
     }
-    jump_to_current_task();
+    int_return(&current_task->regs);
 }
 
 #define FLOOR(num, align) ((num / align) * align)
@@ -138,7 +138,8 @@ void process_signals()
                  */
                 current_task->s_task = malloc(sizeof(task_t));
                 memcpy(current_task->s_task, current_task, sizeof(task_t));
-                u_esp = (uint32_t *)*(((uint32_t *)KERNEL_STACK_HI) - 2);
+                //u_esp = (uint32_t *)*(((uint32_t *)KERNEL_STACK_HI) - 2);
+                u_esp = (uint32_t *) current_task->regs.useresp;
                 k_esp = FLOOR(get_esp(), PAGE_SIZE);
                 if (k_esp - get_esp() < 0x100)
                     k_esp -= PAGE_SIZE;

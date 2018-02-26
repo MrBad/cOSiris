@@ -4,6 +4,7 @@
 #include "console.h"
 #include "serial.h"
 #include "tty.h"
+#include "kdbg.h"
 
 // COM ports //
 #define COM1 0x3F8
@@ -53,11 +54,18 @@ void serial_debug(char *fmt, ...)
     serial_write(buf, TTYS0);
 }
 
-int serial_getc()
+int serial_getc(int tty_minor)
 {
-    if(!(inb(COM1 + 5) & 0x01))
+    int com;
+    switch (tty_minor) {
+        case TTYS0: com = COM1; break;
+        case TTYS1: com = COM2; break;
+        case TTYS2: com = COM3; break;
+        case TTYS3: com = COM4; break;
+    }
+    if(!(inb(com + 5) & 0x01))
         return -1;
-    return inb(COM1);
+    return inb(com);
 }
 
 /**
@@ -75,13 +83,14 @@ static void serial_handler(struct iregs *r)
     for (i = 0; i < 4; i++) {
         iir = inb(coms[i] + 2);
         if ((iir & 0001) == 0) {
+#ifdef KDEBG
+            if (KDBG_TTY == TTYS1 + i)
+                continue;
+#endif
             c = inb(coms[i]);
             tty_in(tty_devs[TTYS0+i], c);
         }
     }
-    //c = serial_getc();
-    //tty_in(tty_devs[NTTY], c);
-    //console_in(serial_getc);
 }
 
 /**

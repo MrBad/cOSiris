@@ -61,8 +61,10 @@ int main()
     // We can be wake up because scheduler cannot run other process
     // We should ignore the -1 wait return
     for (;;) {
-        if ((zpid = wait(&status)) < 0)
+        if ((zpid = wait(&status)) < 0) {
+            printf("init: error in wait\n");
             continue;
+        }
 
         found = 0;
         for (i = 0; i < ptbl_sz; i++) {

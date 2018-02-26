@@ -21,6 +21,7 @@
 #include "vfs.h"
 #include "syscall.h"
 #include "task.h"
+#include "kdbg.h"
 #include "signal.h"
 #include "crt.h"
 #include "tty.h"
@@ -187,7 +188,14 @@ void tty_editor(tty_t *tty, char c)
     } else if (c == CTRL('P')) {
         ps();
         return;
-    } else if (c == CTRL('F')) {
+    }
+#ifdef KDBG
+    else if (c == CTRL('I')) {
+        BREAK();
+        return;
+    }
+#endif
+    else if (c == CTRL('F')) {
         kprintf("fg_pid: %d\n", tty->fg_pid);
         return;
     } else if (c == CTRL('O')) {

@@ -1,5 +1,5 @@
 #include "i386.h"
-#include "isr.h"
+#include "int.h"
 #include "irq.h"
 #include "console.h"
 #include "task.h"
@@ -26,8 +26,10 @@ static void set_timer_phase(int hz)
  */
 void timer_handler(struct iregs *r) 
 {
+    (void) r;
     timer_ticks++;
-    task_switch(r);
+    if (current_task)
+        task_switch_int();
 }
 
 /**
@@ -36,7 +38,7 @@ void timer_handler(struct iregs *r)
 void timer_install(void) 
 {
     timer_ticks = 0;
-    set_timer_phase(1000 / MS_PER_TICK);    // one interrupt every 10ms
     irq_install_handler(0, timer_handler);  // set PIT to generate irq0
+    set_timer_phase(1000 / MS_PER_TICK);    // one interrupt every 10ms
 }
 

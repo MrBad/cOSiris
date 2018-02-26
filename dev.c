@@ -4,6 +4,7 @@
 #include "tty.h"
 #include "vfs.h"
 #include "dev.h"
+#include "kdbg.h"
 
 open_type_t devices[16] = {
     [4] = tty_open,
@@ -26,6 +27,10 @@ void dev_init()
         panic("cannot create console\n");
 
     for (i = 0; i < NTTY + NTTYS; i++) {
+#ifdef KDBG
+        if (i == KDBG_TTY)
+            continue;
+#endif
         if (i < NTTY)
             snprintf(buf, sizeof(buf), "tty%d", i);
         else

@@ -7,7 +7,7 @@
 #include "kinfo.h"
 #include "gdt.h"
 #include "idt.h"
-#include "isr.h"
+#include "int.h"
 #include "irq.h"
 #include "timer.h"
 #include "delay.h"
@@ -27,6 +27,7 @@
 #include "cofs.h"
 #include "dev.h"
 #include "tty.h"
+#include "kdbg.h"
 
 uint32_t initrd_location, initrd_end;
 
@@ -50,13 +51,12 @@ void kmain(uint32_t magic, multiboot_header *mboot)
     idt_init();
 
     kprintf("Setup isr\n");
-    isr_init();
+    int_init();
 
     kprintf("Setup irq\n");
     irq_install();
 
     sti();
-
     kprintf("Setup timer\n");
     timer_install();
 
@@ -80,16 +80,22 @@ void kmain(uint32_t magic, multiboot_header *mboot)
     serial_init();
     kbd_install();
     task_init();
+    if (fork() == 0)
+        idle_task(); // no return
+#ifdef KDBG
+    kdbg_init();
+    kprintf("Waiting for remote GDB client.\n");
+    BREAK();
+#endif
     syscall_init();
     // wait for the rtc interrupt to fire //
     while (!system_time)
         ;
     kprintf("Unix time is: %u\n", system_time);
-
     kprintf("\n\033[31mc\033[33;1mOS\033[34miris\033[0m. "
             "Switching to \033[31mring 3\033[0m.\n");
     sys_exec("/init", NULL);
-
     kprintf("Should not get here\n");
     return;
 }
+

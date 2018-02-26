@@ -2,6 +2,7 @@
 #define _I386_H
 
 #include <sys/types.h>
+#include "int.h"
 #include "kinfo.h"
 #include "mem.h"
 
@@ -28,10 +29,19 @@ uint32_t get_eip();
 uint32_t get_fault_addr();
 
 /**
- * Halts the CPU
+ * Disable interrupts and halts the CPU
  */
 void halt();
 
+/**
+ * Suspend the CPU until next interrupt accours
+ */
+void hlt();
+
+/**
+ * No op
+ */
+void nop();
 /**
  * Clear interrupt flag. Ignore maskable interrupts
  */
@@ -87,6 +97,20 @@ void bochs_break();
  *  (loads cr3 with dir value, and enable paging in cr0)
  */
 void switch_pd(dir_t *dir);
+
+/**
+ * Switch to current_task page directory (context) and loads it's esp and ebp.
+ * It returns to caller, with different context and stack, not jumping.
+ * This means that after this call, no local variables can be used!
+ * An int_return(&task->regs) must be done to jump to process eip.
+ */
+void switch_context();
+
+/**
+ * Loads registers pointed by r and iret to it's r->eip
+ *  Does not return!
+ */
+void int_return(struct iregs *r);
 
 /**
  * Flush current directory cache

@@ -1,3 +1,6 @@
+# Comment it out if you do not whant kdbg support
+CONFIG_KDBG=y
+
 export CFLAGS="-j 4"
 CC = gcc
 DFLAGS= -DKERNEL
@@ -19,13 +22,19 @@ LD = ld
 LDFLAGS	= -g -n -melf_i386 -T ldscript.ld -Map System.map
 
 OBJS = startup.o kernel.o i386.o port.o kinfo.o ring_buf.o \
-	   gdt.o idt.o isr.o irq.o delay.o timer.o rtc.o \
+	   gdt.o idt.o int.o irq.o delay.o timer.o rtc.o \
 	   dev.o ansi.o kbd.o crt.o serial.o console.o tty.o \
 	   mem.o kheap.o \
-	   task.o thread.o sched.o sys.o syscall.o signal.o sysproc.o \
+	   task.o thread.o sys.o syscall.o signal.o sysproc.o \
 	   list.o bname.o canonize.o \
-	   hd.o hd_queue.o cofs.o vfs.o pipe.o sysfile.o \
-	   lib/libc.a
+	   hd.o hd_queue.o cofs.o vfs.o pipe.o sysfile.o
+
+ifdef CONFIG_KDBG
+OBJS += kdbg.o kdbg0.o
+DFLAGS += -DKDBG
+endif
+
+OBJS += lib/libc.a
 
 all: $(OBJS)
 	$(LD) $(LDFLAGS) -o kernel.bin $(OBJS)
@@ -47,7 +56,8 @@ util/cofs/mkfs:
 	cd util/cofs && make && cd ../../
 clean:
 	$(RM) $(OBJS) fd.img kernel kernel.lst kernel.sym kernel.bin bochsout.txt\
-		parport.out System.map debugger.out serial.out *.gch initrd.img core
+		parport.out System.map debugger.out serial.out *.gch initrd.img core \
+		debug.log tags
 
 distclean:
 	make clean
@@ -88,6 +98,7 @@ fd:
 	rm -rf mnt
 
 diskimg: all util/cofs/mkfs
+	ctags -R .
 	cp kernel.bin kernel
 	objdump --source kernel.bin > kernel.lst
 	nm kernel.bin | sort > kernel.sym
@@ -104,5 +115,5 @@ debug: diskimg
 
 run: diskimg
 	$(QEMU) $(QEMU_SKIP_GRUB) $(QEMU_PARAMS) -display none \
-		-serial file:debug.log -serial telnet:127.0.0.1:2222,server,nowait
+		-serial telnet:127.0.0.1:1234,server,nowait
 

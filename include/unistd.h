@@ -15,6 +15,7 @@ int close(unsigned int fd);
 int read(int fd, void *buf, unsigned int count);
 int write(int fd, void *buf, unsigned int count);
 int ftruncate(int fd, off_t len);
+pid_t fork(void);
 int isatty(int fd);
 int tcsetpgrp(int fildes, pid_t pgid_id);
 pid_t tcgetpgrp(int fildes);
