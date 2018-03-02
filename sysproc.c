@@ -58,8 +58,8 @@ int sys_exec(char *path, char *argv[])
     }
     if (S_ISREG(node->type) == 0)
         return -1;
-    if ((node->mask & (S_IXUSR | S_IXOTH | S_IXUSR)) == 0)
-        return -1;
+    //if ((node->mask & (S_IXUSR | S_IXOTH | S_IXUSR)) == 0)
+    //    return -1;
     if (fs_read(node, 0, sizeof(elf), (char *)&elf) != sizeof(elf))
         return -1;
     if (memcmp(elf.ident, ELF_MAGIC, strlen(ELF_MAGIC)) != 0)

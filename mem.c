@@ -126,6 +126,57 @@ phys_t *frame_calloc()
 }
 
 /**
+ * Allocates a continuous size bytes of physical memory
+ */
+phys_t phys_block_alloc(uint32_t size)
+{
+    phys_t low, prev, hi;
+    virt_t *addr;
+    int frames = size / PAGE_SIZE;
+    prev = 0;
+    hi = last_free_page;
+    int found = 0;
+    while (!found) {
+        while (hi > 0) {
+            addr = temp_map((phys_t *)hi);
+            if (hi - PAGE_SIZE == *addr)
+                break;
+            prev = hi;
+            hi = *addr;
+        }
+        KASSERT(hi > 0);
+        low = hi;
+        while (low > 0) {
+            addr = temp_map((phys_t *)low);
+            if (low - PAGE_SIZE == *addr) {
+                low = *addr;
+                if (--frames == 1) {
+                    found = 1;
+                    break;
+                }
+            } else {
+               frames = size / PAGE_SIZE;
+               hi = low;
+               break;
+            }
+        }
+    }
+    if (!found)
+        return 0;
+    addr = temp_map((phys_t *)low);
+    phys_t next = *addr;
+    if (prev) {
+        addr = temp_map((phys_t *)prev);
+        *addr = next;
+    } else {
+        last_free_page = next;
+    }
+    temp_unmap();
+
+    return low;
+}
+
+/**
  * Frees the physical frame located at address addr.
  * Note: each free frame will point to the next available frame.
  */

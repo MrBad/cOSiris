@@ -33,6 +33,7 @@ void panic(char *str, ...);
  */
 void kprintf(char *fmt, ...);
 
+void hexdump(char *buf, int len);
 /**
  * Write
  */

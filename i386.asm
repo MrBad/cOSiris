@@ -73,6 +73,17 @@ outw:
     pop ebp
     ret
 
+GLOBAL outl
+outl:
+    push ebp
+    mov ebp, esp
+    mov dx, [ebp + 8]
+    mov eax, [ebp + 12]
+    out dx, eax
+    mov esp, ebp
+    pop ebp
+    ret
+
 GLOBAL inb
 inb:
     push ebp
@@ -89,6 +100,16 @@ inw:
     mov ebp, esp
     mov dx, [ebp + 8]
     in ax, dx
+    mov esp, ebp
+    pop ebp
+    ret
+
+GLOBAL inl
+inl:
+    push ebp
+    mov ebp, esp
+    mov dx, [ebp + 8]
+    in eax, dx
     mov esp, ebp
     pop ebp
     ret
@@ -186,7 +207,7 @@ patch_stack:
     sub edi, ecx          ; KERNEL_STACK_LOW
     shr ecx, 2            ; we read 4 bytes at a time
     mov esi, [stack_ptr]  ; save in esi current stack low
-    
+
     mov edx, edi          ; save in edx the difference 
     sub edx, esi          ; between old stack and the new stack
 

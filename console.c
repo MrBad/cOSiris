@@ -76,6 +76,17 @@ void kprintf(char *fmt, ...)
     spin_unlock(&console_lock);
 }
 
+void hexdump(char *buf, int len)
+{
+    int i;
+    for (i = 0; i < len; i++) {
+        if (i && ((i % 16) == 0))
+            kprintf("\n");
+        kprintf("%02X ", buf[i] & 0xFF);
+    }
+    kprintf("\n");
+}
+
 /**
  * Send backspace
  */

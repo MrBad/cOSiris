@@ -460,7 +460,7 @@ debugger_log: debugger.out
 #=======================================================================
 #com1: enabled=1, mode=term, dev=/dev/ttyp9
 com1: enabled=1, mode=file, dev=serial.out
-com2: enabled=1, mode=socket-server, dev=localhost:1234
+#com2: enabled=1, mode=socket-server, dev=localhost:1234
 
 #=======================================================================
 # PARPORT1, PARPORT2:

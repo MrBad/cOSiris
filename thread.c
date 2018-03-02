@@ -82,11 +82,11 @@ task_t *thread_new(thread_fn fn, void *arg)
     //memcpy(t->sig_handlers, current_task->sig_handlers,
     //        NUM_SIGS * sizeof(*current_task->sig_handlers));
  
-    t->ebp = get_ebp();
-    t->esp = get_esp();
+    t->regs.ebp = get_ebp();
+    t->regs.esp = get_esp();
     get_last_task()->next = t;
     t->state = TASK_RUNNING;
-    t->eip = get_eip();
+    t->regs.eip = get_eip();
     /**
      * Here will jump the new created thread (child), after get_eip().
      * If current task is the new child, aka scheduler switched to it

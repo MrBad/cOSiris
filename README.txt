@@ -162,6 +162,9 @@ disk.
 | 0x20000000     | 0x30000000    | User heap (sys_sbrk, malloc),              |
 | UHEAP_START    | UHEAP_END     |  cloned on fork()                          |
 -------------------------------------------------------------------------------
+| 0xA0000000     | 0xB0000000    |  mmio_remap()                              |
+| MMIO_START     | MMIO_END      |                                            |
+-------------------------------------------------------------------------------
 | 0xD0000000     | 0xE0000000    | Kernel Heap (kernel sbrk, kernel malloc)   |
 | HEAP_START     | HEAP_END      |  linked on fork(), so every process "sees" |
 |                |               |  same kernel variables.                    |

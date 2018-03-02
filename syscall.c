@@ -13,11 +13,11 @@ void exit(int status)
 {
     task_exit(status);
 }
-
+extern pid_t fork_int();
 static void *syscalls[] = {
     0,
 
-    &fork,
+    &fork_int,
     &task_wait,
     &task_exit,
     &getpid,
