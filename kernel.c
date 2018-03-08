@@ -28,6 +28,9 @@
 #include "dev.h"
 #include "tty.h"
 #include "kdbg.h"
+#include "net.h"
+#include "pci.h"
+#include "driver.h"
 
 uint32_t initrd_location, initrd_end;
 
@@ -80,6 +83,7 @@ void kmain(uint32_t magic, multiboot_header *mboot)
     serial_init();
     kbd_install();
     task_init();
+    syscall_init();
     if (fork() == 0)
         idle_task(); // no return
 #ifdef KDBG
@@ -87,7 +91,9 @@ void kmain(uint32_t magic, multiboot_header *mboot)
     kprintf("Waiting for remote GDB client.\n");
     BREAK();
 #endif
-    syscall_init();
+    net_init();
+    pci_init();
+    driver_init();
     // wait for the rtc interrupt to fire //
     while (!system_time)
         ;

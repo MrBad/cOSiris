@@ -120,7 +120,7 @@ void task_switch_next();
 /**
  * There is no spoon
  */
-pid_t fork();			// sched.asm
+pid_t fork();			// fork.asm
 
 /**
  * Dump current task

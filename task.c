@@ -84,8 +84,6 @@ void task_init()
     }
     switch_locked = false;
     sti();
-    /* Switch task, to load registers */
-    task_switch();
 }
 
 void print_current_task()
@@ -189,9 +187,10 @@ task_t *task_switch_inner()
 }
 
 /**
- * Called from sched.asm
+ * Fork. Must be called from an interrupt, in order for
+ * registers to be properly saved.
  */
-pid_t fork()
+pid_t fork_int()
 {
     int fd;
     cli();
