@@ -215,11 +215,6 @@ enum {
 #define MAC_LEN 6
 #define ARR_LEN(arr) ((int)(sizeof(arr) / sizeof(*arr)))
 
-void ne2000_handler(struct iregs *regs);
-int ne2000_up(struct pci_dev *dev);
-int ne2000_send(struct pci_dev *dev, void *buf, uint16_t len);
-int ne2000_recv(struct pci_dev *dev);
-
 struct driver ne2000_driver;
 
 struct eth_stats {
@@ -282,15 +277,41 @@ uint8_t test_packet[] = {
     10, 0, 2, 1,
 };
 
+/* Prototypes */
+void ne2000_handler(struct iregs *regs);
+int ne2000_up(struct ne2000 *ne);
+int ne2000_down(struct ne2000 *ne);
+int ne2000_send(struct ne2000 *ne, void *buf, uint16_t len);
+int ne2000_recv(struct ne2000 *ne);
+
+/* Net Iface bindings */
+int ne2000_netif_up(netif_t *netif)
+{
+    struct ne2000 *ne = netif->priv;
+    return ne2000_up(ne);
+}
+
+int ne2000_netif_down(netif_t *netif)
+{
+    struct ne2000 *ne = netif->priv;
+    return ne2000_down(ne);
+}
+
+int ne2000_netif_send(netif_t *netif, void *buf, int len)
+{
+    struct ne2000 *ne = netif->priv;
+    return ne2000_send(ne, buf, len);
+}
+
 /**
  * Writes size bytes from buf to chip memory ne_addr
  * Returns number of bytes written
  */
-int ne2000_put(struct pci_dev *dev, void *buf, int ne_addr, int size)
+int ne2000_put(struct ne2000 *ne, void *buf, int ne_addr, int size)
 {
     int n;
     uint16_t c;
-    struct ne2000 *ne = dev->priv;
+
     if (!ne->up)
         return -1;
     outb(ne->addr + NE_RBCR0, size & 0xFF);
@@ -313,11 +334,11 @@ int ne2000_put(struct pci_dev *dev, void *buf, int ne_addr, int size)
  * Reads size bytes from chip memory addr into buf
  * Returns number of bytes read
  */
-int ne2000_get(struct pci_dev *dev, void *buf, int ne_addr, int size)
+int ne2000_get(struct ne2000 *ne, void *buf, int ne_addr, int size)
 {
     int n;
     uint16_t c;
-    struct ne2000 *ne = dev->priv;
+
     if (!ne->up)
         return -1;
 
@@ -337,6 +358,7 @@ int ne2000_get(struct pci_dev *dev, void *buf, int ne_addr, int size)
 
     return n;
 }
+
 /* Init driver. Called once per ne2000 type. */
 static int ne2000_init(struct driver *driver)
 {
@@ -445,12 +467,15 @@ int ne2000_attach(struct pci_dev *dev)
     irq_install_handler(ne->irq, ne2000_handler);
     ne->attached = 1;
     /* Register it to global network interface array */
+    netifs[nics].id = nics;
+    netifs[nics].up = ne2000_netif_up;
+    netifs[nics].down = ne2000_netif_down;
+    netifs[nics].send = ne2000_netif_send;
+    netifs[nics].priv = ne;
+    memcpy(&netifs[nics].mac, ne->mac, sizeof(netifs[nics].mac));
     ne->nic = nics++;
-    net_ifaces[ne->nic].id = ne->nic;
-    net_ifaces[ne->nic].priv = ne;
     dev->priv = ne;
-
-    if (ne2000_up(dev) < 0) {
+    if (ne2000_up(ne) < 0) {
         kprintf("Cannot bring up the network interface\n");
         return -1;
     }
@@ -461,10 +486,9 @@ int ne2000_attach(struct pci_dev *dev)
 /**
  * Bring the card up
  */
-int ne2000_up(struct pci_dev *dev)
+int ne2000_up(struct ne2000 *ne)
 {
     int i;
-    struct ne2000 *ne = dev->priv;
 
     if (!ne->attached)
         return -1;
@@ -513,9 +537,8 @@ int ne2000_up(struct pci_dev *dev)
 /**
  * Bring the card down
  */
-int ne2000_down(struct pci_dev *dev)
+int ne2000_down(struct ne2000 *ne)
 {
-    struct ne2000 *ne = dev->priv;
     if (!ne->up)
         return -1;
     outb(ne->addr + NE_CR, NE_CR_PG0 | NE_CR_DMA_ABORT | NE_CR_STP);
@@ -570,7 +593,7 @@ void ne2000_handler(struct iregs *regs)
     if (isr & (NE_ISR_PTX | NE_ISR_TXE))
         spin_unlock(&ne->tx_lock);
     if (isr & NE_ISR_PRX) {
-        ne2000_recv(dev);
+        ne2000_recv(ne);
     } else if (isr & NE_ISR_RXE) {
         ne->stats.recv_errs++;
     }
@@ -585,14 +608,13 @@ void ne2000_handler(struct iregs *regs)
 /**
  * Send a packet in buf
  */
-int ne2000_send(struct pci_dev *dev, void *buf, uint16_t len)
+int ne2000_send(struct ne2000 *ne, void *buf, uint16_t len)
 {
-    struct ne2000 *ne = dev->priv;
     if (!ne->up)
         return -1;
 
     spin_lock(&ne->tx_lock);
-    ne2000_put(dev, buf, ne->tx_pstart * NE_PG_SIZE, len);
+    ne2000_put(ne, buf, ne->tx_pstart * NE_PG_SIZE, len);
 
     outb(ne->addr + NE_TPSR, ne->tx_pstart);
     outb(ne->addr + NE_TBCR0, len & 0xFF);
@@ -602,11 +624,10 @@ int ne2000_send(struct pci_dev *dev, void *buf, uint16_t len)
     return 0;
 }
 
-static int ne2000_recv_frame(struct pci_dev *dev, int page, int size)
+static int ne2000_recv_frame(struct ne2000 *ne, int page, int size)
 {
     int pg_end, size1, n;
     struct net_buf *net_buf;
-    struct ne2000 *ne = dev->priv;
 
     if (!ne->up)
         return -1;
@@ -616,11 +637,11 @@ static int ne2000_recv_frame(struct pci_dev *dev, int page, int size)
     pg_end = page + size / NE_PG_SIZE;
     if (pg_end >= ne->rx_pstop) {
         size1 = (ne->rx_pstop - page) * NE_PG_SIZE;
-        n = ne2000_get(dev, net_buf->buf, page * NE_PG_SIZE+4, size1);
-        n += ne2000_get(dev, net_buf->buf + size1, ne->rx_pstart * NE_PG_SIZE,
+        n = ne2000_get(ne, net_buf->data, page * NE_PG_SIZE+4, size1);
+        n += ne2000_get(ne, net_buf->data + size1, ne->rx_pstart * NE_PG_SIZE,
                 size - size1);
     } else {
-        n = ne2000_get(dev, net_buf->buf, page * NE_PG_SIZE+4, size);
+        n = ne2000_get(ne, net_buf->data, page * NE_PG_SIZE+4, size);
     }
     if (!netq_push(net_buf)) {
         net_buf_free(net_buf);
@@ -635,11 +656,10 @@ static int ne2000_recv_frame(struct pci_dev *dev, int page, int size)
  * Called from interrupt, to grab a frame from the device
  * and push it into network queue (netq)
  */
-int ne2000_recv(struct pci_dev *dev)
+int ne2000_recv(struct ne2000 *ne)
 {
     int bnry, curr, next, size;
     struct recv_hdr recv_hdr;
-    struct ne2000 *ne = dev->priv;
 
     if (!ne->up)
         return -1;
@@ -654,7 +674,7 @@ int ne2000_recv(struct pci_dev *dev)
             bnry = ne->rx_pstart;
         if (curr == bnry)
             break;
-        ne2000_get(dev, &recv_hdr, bnry * NE_PG_SIZE, sizeof(recv_hdr));
+        ne2000_get(ne, &recv_hdr, bnry * NE_PG_SIZE, sizeof(recv_hdr));
 #if 0
         kprintf("curr: %x, bnry: %x\n", curr, bnry);
         kprintf("pstart: %x, pstop: %x\n", ne->rx_pstart, ne->rx_pstop);
@@ -676,7 +696,7 @@ int ne2000_recv(struct pci_dev *dev)
             ne->stats.recv_overruns++;
             next = curr;
         } else if (recv_hdr.stat & NE_RSR_PRX) {
-            ne2000_recv_frame(dev, bnry, size);
+            ne2000_recv_frame(ne, bnry, size);
         }
         if (next == ne->rx_pstart)
             next = ne->rx_pstop - 1;

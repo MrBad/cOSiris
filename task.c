@@ -8,6 +8,7 @@
 #include "vfs.h"
 #include "pipe.h"
 #include "thread.h"
+#include "timer.h"
 #include "task.h"
 #include "dev.h"
 
@@ -163,6 +164,18 @@ void idle_task()
     }
 }
 
+int wake_check(task_t *t)
+{
+    if (t->state == TASK_SLEEPING && t->sleep_end_tick > 0) {
+        if (t->sleep_end_tick < timer_ticks) {
+            t->state = TASK_RUNNING;
+            t->sleep_end_tick = 0;
+            return 0;
+        }
+    }
+    return -1;
+}
+
 task_t *task_switch_inner()
 {
     task_t *n;
@@ -171,13 +184,16 @@ task_t *task_switch_inner()
         return current_task;
     }
     for (n = current_task->next; n; n = n->next) {
+        wake_check(n);
         if (n->state == TASK_RUNNING || n->state == TASK_AWAKEN)
             break;
     }
     if (!n) {
-        for (n = task_queue; n; n = n->next)
+        for (n = task_queue; n; n = n->next) {
+            wake_check(n);
             if (n->state == TASK_RUNNING || n->state == TASK_AWAKEN)
                 break;
+        }
     }
     if (!n) {
         panic("All threads sleeping, even idle\n");
@@ -302,6 +318,21 @@ void sleep_on(void *addr)
     switch_locked = false;
 
     task_switch();
+}
+
+/**
+ * Sleeps on addr, until it is waked up by other process, or ms has passed
+ * Note: this has a timer tick resolution (10ms) and it's not very accurate,
+ *  but should be enough. Another solution is to use a separate, decrementing,
+ *  timer channel and create a queue of waking up processes.
+ */
+void sleep_onms(void *addr, uint32_t ms)
+{
+    uint32_t ticks = ms / MS_PER_TICK;
+    if (ms % MS_PER_TICK)
+        ticks++;
+    current_task->sleep_end_tick = timer_ticks + ticks;
+    sleep_on(addr);
 }
 
 /**

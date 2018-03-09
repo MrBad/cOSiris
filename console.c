@@ -76,9 +76,10 @@ void kprintf(char *fmt, ...)
     spin_unlock(&console_lock);
 }
 
-void hexdump(char *buf, int len)
+void hexdump(void *buffer, int len)
 {
     int i;
+    char *buf = buffer;
     for (i = 0; i < len; i++) {
         if (i && ((i % 16) == 0))
             kprintf("\n");

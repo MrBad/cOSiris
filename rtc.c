@@ -22,6 +22,11 @@ static void set_system_time(uint16_t y, uint8_t m, uint8_t d, uint8_t h,
     system_time = (days * 86400) + (h * 3600) + (i * 60) + s;
 }
 
+uint32_t get_time()
+{
+    return system_time;
+}
+
 /**
  * Read the CMOS register reg
  */

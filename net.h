@@ -4,19 +4,47 @@
 #include "list.h"
 #include "i386.h"
 
-#define MAX_NET_IFACES 4
+#define MAC_SIZE 6
+#define MAX_NET_IFACES 8
+#define IFACE_MAX_IPS 4
 
-/* Network interface */
-struct net_iface {
+typedef struct netif netif_t;
+typedef int (*netif_send_t) (netif_t *netif, void *buf, int size);
+typedef int (*netif_up_t) (netif_t *netif);
+typedef int (*netif_down_t) (netif_t *netif);
+
+/* Network Interface */
+struct netif {
     int id;
+    uint8_t mac[6];
+    uint32_t ips[IFACE_MAX_IPS];
+    netif_up_t up;
+    netif_down_t down;
+    netif_send_t send;
     void *priv;
 };
 
-/* A network buffer */
+/* Array of network interfaces */
+extern netif_t netifs[MAX_NET_IFACES];
+
+/* Number of physical nics in the system */
+extern int nics;
+
+/* Ethernet Frame Header */
+struct eth_hdr {
+    uint8_t dmac[6];
+    uint8_t smac[6];
+    uint16_t eth_type;
+    uint8_t data[];
+} __attribute__((packed));
+
+typedef struct eth_hdr eth_hdr_t;
+
+/* Network buffer */
 struct net_buf {
-    void *buf;
-    int size;
-    int nic;
+    uint8_t nic;
+    uint16_t size;
+    void *data;
 };
 
 /* Network queue */
@@ -27,12 +55,6 @@ struct net_queue {
 
 /* The network receive queue */
 extern struct net_queue *netq;
-
-/* Array of network interfaces */
-extern struct net_iface net_ifaces[MAX_NET_IFACES];
-
-/* Number of physical nics in the system */
-extern int nics;
 
 /* Allocates a buffer */
 struct net_buf *net_buf_alloc(int len, int nic_id);
@@ -48,6 +70,13 @@ struct net_buf *netq_shift();
 
 /* Initialize the network structures */
 int net_init();
+
+void print_ip(uint32_t ip);
+void print_mac(uint8_t mac[6]);
+eth_hdr_t *buf2eth(void *buf);
+void *eth2buf(eth_hdr_t *eth);
+
+#define ETH_ARP 0x0806
 
 #endif
 

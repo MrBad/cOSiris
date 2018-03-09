@@ -3,6 +3,7 @@
 #include <string.h>
 #include "crt.h"
 #include "console.h"
+#include "assert.h"
 #include "multiboot.h"
 #include "kinfo.h"
 #include "gdt.h"
@@ -91,13 +92,16 @@ void kmain(uint32_t magic, multiboot_header *mboot)
     kprintf("Waiting for remote GDB client.\n");
     BREAK();
 #endif
-    net_init();
-    pci_init();
-    driver_init();
     // wait for the rtc interrupt to fire //
     while (!system_time)
         ;
     kprintf("Unix time is: %u\n", system_time);
+
+    KASSERT(netq == NULL);
+    pci_init();
+    driver_init();
+    net_init();
+
     kprintf("\n\033[31mc\033[33;1mOS\033[34miris\033[0m. "
             "Switching to \033[31mring 3\033[0m.\n");
     sys_exec("/init", NULL);
