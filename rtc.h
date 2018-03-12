@@ -3,6 +3,8 @@
 
 time_t system_time;
 
+uint32_t get_time();
+
 void rtc_init();
 
 #endif

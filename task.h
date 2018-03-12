@@ -57,6 +57,7 @@ struct task {
     bool leads;             // is this program a leader?
     int tty;                // terminal number attached to program
     iregs_t regs;
+    uint32_t sleep_end_tick; // if > 0, wakeup when timer ticks >= this value
 };
 
 /**
@@ -164,6 +165,11 @@ void switch_to_user_mode(uint32_t code_addr, uint32_t stack_hi_addr);
  */
 void sleep_on(void *addr);
 
+/**
+ * Put the current task to sleep on an address (event), with ms timeout.
+ */
+
+void sleep_onms(void *addr, uint32_t ms);
 /**
  * Wakes up all tasks that sleep on a particular address / event
  */
