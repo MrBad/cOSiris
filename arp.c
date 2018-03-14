@@ -263,7 +263,7 @@ int arp_resolve(uint32_t ip, uint8_t mac[6])
     eth = (eth_hdr_t *) buf->data;
     memset(eth->dmac, 0xFF, MAC_SIZE);
     memcpy(eth->smac, netif->mac, MAC_SIZE);
-    eth->eth_type = ETH_ARP;
+    eth->eth_type = ETH_P_ARP;
     eth2buf(eth);
 
     /* ARP header */

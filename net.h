@@ -76,7 +76,10 @@ void print_mac(uint8_t mac[6]);
 eth_hdr_t *buf2eth(void *buf);
 void *eth2buf(eth_hdr_t *eth);
 
-#define ETH_ARP 0x0806
+#define ETH_P_ARP 0x0806
+#define ETH_P_IP 0x0800
+
+int is_bige;
 
 #endif
 

@@ -4,6 +4,7 @@
 #include "console.h"
 #include "task.h"
 #include "arp.h"
+#include "ip.h"
 #include "net.h"
 
 #define NB_MIN_SIZE 64
@@ -110,11 +111,14 @@ static int net_process(struct net_buf *buf)
         return -1;
 
     switch(eth_type) {
-        case ETH_ARP:
+        case ETH_P_ARP:
             arp_process(buf);
             break;
+        case ETH_P_IP:
+            ip_process(buf);
+            break;
         default:
-            kprintf("Unknown ether type: %02x\n", eth_type);
+            kprintf("Unsupported ether type: %02x\n", eth_type);
             break;
     }
     return 0;
@@ -162,8 +166,16 @@ int iface_add_ip(struct netif *iface, uint32_t ip)
     return 0;
 }
 
+void set_endianess()
+{
+    int test = 0x1;
+    char c = *(char *)&test;
+    is_bige = (c == 0);
+}
+
 int net_init()
 {
+    set_endianess();
     nics = 0;
     /* Hardcode 2 IP addresses for eth0 for now: 10.0.0.3,4 XXX
      * TODO: add a configuration file

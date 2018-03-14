@@ -30,4 +30,6 @@
       use gcc __umoddi3/__udivdi3 or rewrite them
     - printf should be buffered - use fprintf
     + write a sscanf function - vsscanf, no floating point support yet.
+    - ntoh* hton* should check host endianness and do nothing on big endian 
+       platforms.
 
