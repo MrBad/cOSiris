@@ -6,6 +6,8 @@
 #include "arp.h"
 #include "ip.h"
 #include "net.h"
+#include "sock.h"
+#include "udp.h"
 
 #define NB_MIN_SIZE 64
 #define NB_MAX_SIZE 2000    /* Maximum size of a network buffer, in bytes */
@@ -135,7 +137,9 @@ static void net_task()
             sleep_on(&netq);
         buf = netq_shift();
         net_process(buf);
-        net_buf_free(buf);
+        /* If buffer was not captured, drop it */
+        if (!buf->captured)
+            net_buf_free(buf);
     }
 }
 
@@ -200,6 +204,8 @@ int net_init()
         net_task();
 
     arp_init();
+    sock_init();
+    udp_init();
 
     return 0;
 }

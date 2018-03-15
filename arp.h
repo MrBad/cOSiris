@@ -33,4 +33,11 @@ typedef struct arp_ipv4 arp_ipv4_t;
 int arp_init();
 int arp_process(struct net_buf *buf);
 
+/**
+ * Giving ip, find the mac address.
+ * Returns 0 on success and sets the mac, -1 on failure (timeout)
+ */
+int arp_resolve(uint32_t ip, uint8_t mac[6]);
+
 #endif
+
