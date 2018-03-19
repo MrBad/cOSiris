@@ -30,6 +30,10 @@ void *ipv42buf(ipv4_hdr_t *iph);
 
 int iphlen(void *buf);
 
-#define ICMPV4 1
+void *ip_data(ipv4_hdr_t *iph);
+
+#define IP_P_ICMP 1
+#define IP_P_TCP  6
+#define IP_P_UDP 17
 
 #endif

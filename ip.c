@@ -3,6 +3,7 @@
 #include "console.h"
 #include "net.h"
 #include "icmp.h"
+#include "udp.h"
 #include "ip.h"
 
 /**
@@ -111,6 +112,11 @@ void *ipv42buf(ipv4_hdr_t *iph)
     return iph;
 }
 
+void *ip_data(ipv4_hdr_t *iph)
+{
+    return ((uint8_t *)iph + (iph->ihl * 4));
+}
+
 /**
  * Process an IP packet.
  * Expects buf->data to be in network format.
@@ -120,6 +126,7 @@ int ip_process(struct net_buf *buf)
     int i;
     eth_hdr_t *eth = buf2eth(buf->data);
     uint16_t csum = ip_csum(eth->data, iphlen(eth->data));
+    //hexdump(eth->data, buf->size - sizeof(*eth));
     ipv4_hdr_t *iph = buf2ipv4(eth->data);
     struct netif *netif = &netifs[buf->nic];
 
@@ -142,9 +149,13 @@ int ip_process(struct net_buf *buf)
         return -1;
 
     switch (iph->proto) {
-        case ICMPV4:
+        case IP_P_ICMP:
             icmpv4_process(buf);
             break;
+        case IP_P_UDP:
+            udp_process(buf);
+            break;
+        case IP_P_TCP:
         default:
             kprintf("Unsupported IP header protocol: %d\n", iph->proto);
             break;

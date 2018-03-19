@@ -47,5 +47,7 @@ node_t *list_for_each(list_t *list, iterator_function_t iterator);
 // find a node in the list by calling compare function on each node
 node_t *list_find(list_t *list, compare_function_t compare, void * what);
 
+#define forEach(list, node, obj) \
+    for(node = list->head; node && (obj = node->data); node = node->next)
 
 #endif

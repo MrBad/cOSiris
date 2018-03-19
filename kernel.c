@@ -101,6 +101,7 @@ void kmain(uint32_t magic, multiboot_header *mboot)
     pci_init();
     driver_init();
     net_init();
+    //ntp_init();
 
     kprintf("\n\033[31mc\033[33;1mOS\033[34miris\033[0m. "
             "Switching to \033[31mring 3\033[0m.\n");

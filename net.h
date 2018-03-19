@@ -42,9 +42,14 @@ typedef struct eth_hdr eth_hdr_t;
 
 /* Network buffer */
 struct net_buf {
-    uint8_t nic;
-    uint16_t size;
-    void *data;
+    uint8_t nic;        /* Network interface id */
+    uint16_t size;      /* Size of the buffer */
+    int captured;       /* Is this buffer captured? */
+    struct {
+        void *data;     /* Points to final payload, after decapsulation */
+        uint32_t len;   /* Length of final data */
+    } u;
+    void *data;         /* Buffer start */
 };
 
 /* Network queue */
@@ -80,6 +85,8 @@ void *eth2buf(eth_hdr_t *eth);
 #define ETH_P_IP 0x0800
 
 int is_bige;
+
+#define net_dbg kprintf
 
 #endif
 

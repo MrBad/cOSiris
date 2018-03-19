@@ -19,7 +19,7 @@
 static struct file *file_alloc()
 {
     struct file *f;
-    f = (struct file *) calloc(1, sizeof(struct file));
+    f = calloc(1, sizeof(struct file));
     return f;
 }
 

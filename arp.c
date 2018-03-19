@@ -338,7 +338,8 @@ void arp_test()
 int arp_init()
 {
     memset(arp_cache, 0, sizeof(arp_cache));
-    arp_test();
+    //arp_test();
+
     return 0;
 }
 
