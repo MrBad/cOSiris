@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
@@ -8,6 +9,7 @@
 #include "net.h"
 #include "sock.h"
 #include "udp.h"
+#include "dhcp.h"
 
 #define NB_MIN_SIZE 64
 #define NB_MAX_SIZE 2000    /* Maximum size of a network buffer, in bytes */
@@ -21,6 +23,23 @@ netif_t netifs[MAX_NET_IFACES];
 
 /* Global number of network interfaces */
 int nics;
+
+/* Global list of DNS servers */
+uint32_t dns_servers[MAX_DNS_SERVERS];
+
+int dns_add(uint32_t dns_ip)
+{
+    int i;
+
+    for (i = 0; i < MAX_DNS_SERVERS; i++) {
+        if (dns_servers[i] == 0) {
+            dns_servers[i] = dns_ip;
+            break;
+        }
+    }
+
+    return i == MAX_DNS_SERVERS ? -1 : 0;
+}
 
 struct net_buf *net_buf_alloc(int size, int nic_id)
 {
@@ -143,6 +162,20 @@ static void net_task()
     }
 }
 
+uint32_t make_ip(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
+{
+    return (a << 24) | (b << 16) | (c << 8) | d;
+}
+
+char *ip2str(uint32_t ip, char *str, int size)
+{
+    uint8_t d[4];
+    *(uint32_t *)d = ip;
+    snprintf(str, size, "%d.%d.%d.%d", d[3], d[2], d[1], d[0]);
+
+    return str;
+}
+
 void print_ip(uint32_t ip)
 {
     uint8_t d[4];
@@ -185,10 +218,8 @@ int net_init()
      * TODO: add a configuration file
      */
     if (netifs[0].priv) {
-        uint32_t ip = (10 << 24) | (0 << 16) | (2 << 8) | (3 << 0);
-        iface_add_ip(&netifs[0], ip);
-        ip = (10 << 24) | (0 << 16) | (2 << 8) | (4 << 0);
-        iface_add_ip(&netifs[0], ip);
+        iface_add_ip(&netifs[0], make_ip(10, 0, 2, 3));
+        iface_add_ip(&netifs[0], make_ip(10, 0, 2, 4));
     }
     /* Init network queue */
     if (!(netq = calloc(1, sizeof(*netq)))) {
@@ -206,6 +237,9 @@ int net_init()
     arp_init();
     sock_init();
     udp_init();
+    if (netifs[0].priv) {
+        dhcp_init(&netifs[0]);
+    }
 
     return 0;
 }

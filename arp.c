@@ -247,6 +247,10 @@ int arp_resolve(uint32_t ip, uint8_t mac[6])
     arp_ipv4_t *arpd;
     struct netif *netif;
 
+    if (ip == 0xFFFFFFFF) {
+        memset(mac, 0, MAC_SIZE);
+        return 0;
+    }
     if (arp_cache_get_mac(ip, mac) > 0)
         return 0;
 

@@ -432,6 +432,7 @@ int ne2000_attach(struct pci_dev *dev)
 {
     unsigned int i;
     struct ne2000 *ne = NULL;
+    kprintf("attach ne2000\n");
 
     if (!(ne = calloc(1, sizeof(*ne))))
         return -1;

@@ -93,7 +93,8 @@ int udp_process(struct net_buf *buf)
             (s->loc_addr.port == udp->dport) &&
             ((s->loc_addr.ip == 0) || (s->loc_addr.ip == iph->daddr)) &&
             ((s->rem_addr.port == 0) || (s->rem_addr.port == udp->sport)) &&
-            ((s->rem_addr.ip == 0) || (s->rem_addr.ip == iph->saddr))
+            ((s->rem_addr.ip == 0 || s->rem_addr.ip == 0xFFFFFFFF)
+              || (s->rem_addr.ip == iph->saddr))
         ) {
             /* Add packet to socket recv list. Set where final data starts,
              *  it's size and mark it as captured. */

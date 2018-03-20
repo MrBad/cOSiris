@@ -129,8 +129,7 @@ int ip_process(struct net_buf *buf)
     //hexdump(eth->data, buf->size - sizeof(*eth));
     ipv4_hdr_t *iph = buf2ipv4(eth->data);
     struct netif *netif = &netifs[buf->nic];
-
-    //ipv4_hdr_dump(iph);
+    int ip_found = 0;
 
     if (iph->version != IPV4)
         return -1;
@@ -142,11 +141,19 @@ int ip_process(struct net_buf *buf)
         return -1;
 
     /* Is this packet for us? */
-    for (i = 0; i < IFACE_MAX_IPS; i++)
-        if (netif->ips[i] == iph->daddr)
-            break;
-    if (i == IFACE_MAX_IPS)
+    if (iph->daddr == 0xFFFFFFFF) {
+        ip_found = 1;
+    } else {
+        for (i = 0; i < IFACE_MAX_IPS; i++)
+            if (netif->ips[i] == iph->daddr) {
+                ip_found = 1;
+                break;
+            }
+    }
+    if (!ip_found) {
+        net_dbg("packet not maching local ip or bcast: %#x\n", iph->daddr);
         return -1;
+    }
 
     switch (iph->proto) {
         case IP_P_ICMP:

@@ -2,7 +2,7 @@ cOSiris is a small Unix like operating system written in C (and some ASM)
 for Intel X86, for fun. 
 It is build from scratch and right now it has: a monolitic, multitasking,
 protected mode kernel, few userland programs, a small shell (cosh), 
-an Unix like file system (cofs). 
+an Unix like file system (cofs), and a WIP network stack.
 There is also a Linux module that i've wrote to mount this type of custom 
 file system available here https://github.com/MrBad/cofs and also 
 as a git submodule.
