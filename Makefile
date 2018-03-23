@@ -29,7 +29,7 @@ OBJS = startup.o kernel.o i386.o port.o kinfo.o ring_buf.o \
 	   list.o bname.o canonize.o \
 	   hd.o hd_queue.o cofs.o vfs.o pipe.o sysfile.o \
 	   pci.o driver.o ne2000.o \
-	   net.o arp.o ip.o icmp.o sock.o udp.o bmap.o dhcp.o route.o
+	   net.o arp.o ip.o icmp.o sock.o udp.o bmap.o dhcp.o route.o dns.o
 
 ifdef CONFIG_KDBG
 OBJS += kdbg.o kdbg0.o

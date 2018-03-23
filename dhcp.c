@@ -5,6 +5,7 @@
 #include "net.h"
 #include "route.h"
 #include "udp.h"
+#include "dns.h"
 
 #define DHCP_CLI_PORT 68
 #define DHCP_SRV_PORT 67

@@ -7,7 +7,6 @@
 #define MAC_SIZE 6
 #define MAX_NET_IFACES 8
 #define IFACE_MAX_IPS 4
-#define MAX_DNS_SERVERS 4
 
 typedef struct netif netif_t;
 typedef int (*netif_send_t) (netif_t *netif, void *buf, int size);
@@ -62,13 +61,6 @@ struct net_queue {
 typedef uint32_t ip_t;
 /* The network receive queue */
 extern struct net_queue *netq;
-
-extern uint32_t dns_servers[MAX_DNS_SERVERS];
-
-/* Adds a DNS IP to dns table. TODO: move it to dns module */
-int dns_add(uint32_t dns_ip);
-
-void dns_dump();
 
 /* Allocates a buffer */
 struct net_buf *net_buf_alloc(int len, int nic_id);

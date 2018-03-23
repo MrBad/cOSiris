@@ -347,6 +347,7 @@ int wakeup(void *addr)
         if (t->state == TASK_SLEEPING && t->sleep_addr == addr) {
             cnt++; t->state = TASK_RUNNING;
             t->sleep_addr = 0;
+            t->sleep_end_tick = 0; /* Also reset eventual counter */
         }
     }
     switch_locked = false;

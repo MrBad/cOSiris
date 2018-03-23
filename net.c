@@ -11,6 +11,7 @@
 #include "udp.h"
 #include "dhcp.h"
 #include "route.h"
+#include "dns.h"
 
 #define NB_MIN_SIZE 64
 #define NB_MAX_SIZE 2000    /* Maximum size of a network buffer, in bytes */
@@ -24,38 +25,6 @@ netif_t netifs[MAX_NET_IFACES];
 
 /* Global number of network interfaces */
 int nics;
-
-/* Global list of DNS servers */
-uint32_t dns_servers[MAX_DNS_SERVERS];
-
-int dns_add(uint32_t dns_ip)
-{
-    int i;
-
-    for (i = 0; i < MAX_DNS_SERVERS; i++) {
-        if (dns_servers[i] == 0) {
-            dns_servers[i] = dns_ip;
-            break;
-        }
-    }
-
-    return i == MAX_DNS_SERVERS ? -1 : 0;
-}
-
-void dns_dump()
-{
-    int i;
-    char ip[16];
-
-    kprintf("DNS: ");
-    for (i = 0; i < MAX_DNS_SERVERS; i++) {
-        if (dns_servers[i]) {
-            ip2str(dns_servers[i], ip, sizeof(ip));
-            kprintf("%s%s", i == 0 ? "": ", ", ip);
-        }
-    }
-    kprintf("\n");
-}
 
 struct net_buf *net_buf_alloc(int size, int nic_id)
 {
@@ -195,7 +164,7 @@ char *ip2str(uint32_t ip, char *str, int size)
 void print_ip(uint32_t ip)
 {
     uint8_t d[4];
-    memcpy(d, &ip, sizeof(d));
+    *(uint32_t *)d = ip;
     kprintf("%d.%d.%d.%d", d[3], d[2], d[1], d[0]);
 }
 
@@ -257,6 +226,7 @@ int net_init()
     if (netifs[0].priv) {
         dhcp_init(&netifs[0]);
     }
+    dns_init();
 
     return 0;
 }
