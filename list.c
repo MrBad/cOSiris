@@ -49,6 +49,28 @@ node_t *list_add(list_t *list, void *data)
     return node;
 }
 
+node_t *list_insert_before(list_t *list, node_t *node, void *data)
+{
+    node_t *n;
+
+    if (!(n = new_node(data)))
+        return NULL;
+    if (!node) {
+        list_add_node(list, n);
+        return n;
+    }
+    if (node->prev)
+        node->prev->next = n;
+    else
+        list->head = n;
+    n->prev = node->prev;
+    n->next = node;
+    node->prev = n;
+    list->num_items++;
+
+    return n;
+}
+
 void list_del(list_t *list, node_t *node)
 {
     node_t *prev, *next;

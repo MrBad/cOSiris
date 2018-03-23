@@ -59,6 +59,7 @@ struct net_queue {
     spin_lock_t lock;
 };
 
+typedef uint32_t ip_t;
 /* The network receive queue */
 extern struct net_queue *netq;
 
@@ -66,6 +67,8 @@ extern uint32_t dns_servers[MAX_DNS_SERVERS];
 
 /* Adds a DNS IP to dns table. TODO: move it to dns module */
 int dns_add(uint32_t dns_ip);
+
+void dns_dump();
 
 /* Allocates a buffer */
 struct net_buf *net_buf_alloc(int len, int nic_id);

@@ -26,6 +26,7 @@ typedef struct sock {
     sock_state_t state;     // state of the sock
     spin_lock_t lock;       // locking
     list_t *bufs;           // list of buffered packets or something
+    struct netif *netif;
 } sock_t;
 
 struct socks_table {
@@ -72,6 +73,8 @@ void port_free(int proto, int port);
 int sock_bind(sock_t *sock, sock_addr_t *addr);
 
 void sock_table_dump();
+
+void sock_set_netif(sock_t *sock, struct netif *netif);
 
 #endif
 

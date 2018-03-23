@@ -9,6 +9,7 @@
 #include "bmap.h"
 #include "net.h"
 #include "sock.h"
+#include "route.h"
 
 #define MAX_SOCKS 32
 #define MIN_PORT 32768
@@ -35,6 +36,7 @@ sock_t *sock_alloc(uint8_t proto)
     }
     sock->pid = getpid();
     sock->proto = proto;
+    sock->netif = NULL;
     /* When deleting a node from list, will also call it's free buf. */
     sock->bufs = list_open(net_buf_free);
 
@@ -94,13 +96,35 @@ int sock_set_loc_addr(sock_t *sock, sock_addr_t *addr)
 }
 
 /**
+ * Sets the interface to use.
+ */
+void sock_set_netif(sock_t *sock, struct netif *netif)
+{
+    spin_lock(&sock->lock);
+    sock->netif = netif;
+    spin_unlock(&sock->lock);
+}
+
+/**
  * Sets remote address. Use it in connect.
  */
 int sock_set_rem_addr(sock_t *sock, sock_addr_t *addr)
 {
+    struct route *r;
+    struct netif *netif = sock->netif;
+    char ip[16];
+
+    if (!netif) {
+        if (!(r = route_find(addr->ip))) {
+            net_dbg("No route to %s\n", ip2str(addr->ip, ip, sizeof(ip)));
+            return -1;
+        }
+        netif = r->netif;
+    }
     spin_lock(&sock->lock);
     sock->rem_addr.ip = addr->ip;
     sock->rem_addr.port = addr->port;
+    sock->netif = netif;
     spin_unlock(&sock->lock);
 
     return 0;

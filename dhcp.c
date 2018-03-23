@@ -3,6 +3,7 @@
 #include "rtc.h"
 #include "console.h"
 #include "net.h"
+#include "route.h"
 #include "udp.h"
 
 #define DHCP_CLI_PORT 68
@@ -235,26 +236,22 @@ int dhcp_set_netif(struct netif *netif, struct dhcp_hdr *dhcp,
         struct dhcp_opts *opts)
 {
     int i;
-    char ip[16], mask[16];
+    char ip[16];
     uint32_t netaddr;
 
     netif->ips[0] = ntohl(dhcp->your_ip);
-    net_dbg("Setting eth%d IP to %s\n",
-            netif->id, ip2str(netif->ips[0], ip, sizeof(ip)));
-    if (opts->num_routers > 0) {
-        net_dbg("TODO: add default route to %s for eth%d\n",
-                ip2str(opts->routers[0], ip, 16), netif->id);
-    }
+    ip2str(netif->ips[0], ip, sizeof(ip));
+    net_dbg("Setting eth%d IP to %s\n", netif->id, ip);
+
+    if (opts->num_routers > 0)
+        route_add(0, 0, opts->routers[0], netif);
     if (opts->subnet_mask) {
         netaddr = netif->ips[0] & opts->subnet_mask;
-        net_dbg("TODO: add route: net: %s mask: %s for eth%d\n",
-                ip2str(netaddr, ip, 16),
-                ip2str(opts->subnet_mask, mask, 16), netif->id);
+        route_add(netaddr, opts->subnet_mask, 0, netif);
     }
     if (opts->num_dns) {
         for (i = 0; i < opts->num_dns; i++)
-            if (dns_add(opts->dns[i]) == 0)
-                net_dbg("DNS: %s\n", ip2str(opts->dns[i], ip, sizeof(ip)));
+            dns_add(opts->dns[i]);
     }
 
     return 0;
@@ -317,6 +314,7 @@ int dhcp_init(struct netif *netif)
         return -1;
     netif->ips[0] = 0;
     sock = sock_alloc(S_UDP);
+    sock_set_netif(sock, netif); // force interface
 
     addr.ip = ADDR_ANY;
     addr.port = DHCP_CLI_PORT;
@@ -331,6 +329,8 @@ int dhcp_init(struct netif *netif)
     ret = dhcp_recv(sock, netif);
 
     udp_close(sock);
+    route_dump();
+    dns_dump();
 
     return ret;
 }

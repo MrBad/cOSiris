@@ -36,6 +36,9 @@ void list_close(list_t *list);
 // add a node to the list - generic data, which can be anything
 node_t *list_add(list_t *list, void *data);
 
+// Inserts a new node having data, before this node
+// If node is null, will just append the new node at tail
+node_t *list_insert_before(list_t *list, node_t *node, void *data);
 // deletes the node from the list
 void list_del(list_t *list, node_t *node);
 

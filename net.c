@@ -10,6 +10,7 @@
 #include "sock.h"
 #include "udp.h"
 #include "dhcp.h"
+#include "route.h"
 
 #define NB_MIN_SIZE 64
 #define NB_MAX_SIZE 2000    /* Maximum size of a network buffer, in bytes */
@@ -39,6 +40,21 @@ int dns_add(uint32_t dns_ip)
     }
 
     return i == MAX_DNS_SERVERS ? -1 : 0;
+}
+
+void dns_dump()
+{
+    int i;
+    char ip[16];
+
+    kprintf("DNS: ");
+    for (i = 0; i < MAX_DNS_SERVERS; i++) {
+        if (dns_servers[i]) {
+            ip2str(dns_servers[i], ip, sizeof(ip));
+            kprintf("%s%s", i == 0 ? "": ", ", ip);
+        }
+    }
+    kprintf("\n");
 }
 
 struct net_buf *net_buf_alloc(int size, int nic_id)
@@ -234,6 +250,7 @@ int net_init()
     if (fork() == 0)
         net_task();
 
+    route_init();
     arp_init();
     sock_init();
     udp_init();

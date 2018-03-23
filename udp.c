@@ -5,6 +5,7 @@
 #include "task.h"
 #include "net.h"
 #include "ip.h"
+#include "route.h"
 #include "sock.h"
 #include "arp.h"
 #include "udp.h"
@@ -87,6 +88,7 @@ int udp_process(struct net_buf *buf)
     }
 
     /* Check if any socket match this packet. */
+    /* XXX Should we also check the interface? */
     spin_lock(&stab->lock);
     forEach(stab->socks, node, s) {
         if ((s->proto == S_UDP) &&
@@ -172,6 +174,47 @@ int udp_read(sock_t *sock, void *buf, unsigned int size)
     return size;
 }
 
+/**
+ * Sets ethernet frame destination mac address
+ * This should be:
+ *   if ip is broadcast address, MAC is 0
+ *   if ip is is inside LAN, do an ARP for it
+ *   if ip is outside the LAN, sets the MAC of the gateway
+ * Returns 0 on succes, -1 on error
+ */
+int eth_set_dmac(uint8_t dmac[6], uint32_t dest_ip)
+{
+    struct route *r;
+    char ip[16];
+
+    /* Destination is broadcast addr? */
+    if (dest_ip == 0xFFFFFFFF) {
+        memset(dmac, 0, MAC_SIZE);
+        return 0;
+    }
+    if (!(r = route_find(dest_ip))) {
+        ip2str(dest_ip, ip, sizeof(ip));
+        net_dbg("Could not find route for %s\n", ip);
+        return -1;
+    }
+    /* Gateway matched for the route, IP is outside LAN */
+    if (r->base == 0) {
+        if (arp_resolve(r->gateway, dmac) < 0) {
+            ip2str(r->gateway, ip, sizeof(ip));
+            net_dbg("Could not solve gateway MAC at %s\n", ip);
+            return -1;
+        }
+        return 0;
+    }
+    if (arp_resolve(dest_ip, dmac) < 0) {
+        ip2str(dest_ip, ip, sizeof(ip));
+        net_dbg("Could not solve MAC for: %s\n", ip);
+        return -1;
+    }
+
+    return 0;
+}
+
 int udp_write(sock_t *sock, void *buf, int len)
 {
     struct net_buf *nbuf;
@@ -180,8 +223,8 @@ int udp_write(sock_t *sock, void *buf, int len)
     udp_hdr_t *udp;
     struct netif *netif;
 
-    // XXX Routing needed in order to select nic and mac.
-    netif = &netifs[0];
+    //netif = &netifs[0];
+    netif = sock->netif;
 
     int hdrs_len = sizeof(*eth) + sizeof(*iph) + sizeof(*udp);
     if (len > 1500 - hdrs_len)
@@ -193,8 +236,8 @@ int udp_write(sock_t *sock, void *buf, int len)
     }
 
     eth = nbuf->data;
-    if (arp_resolve(sock->rem_addr.ip, eth->dmac) < 0) {
-        net_dbg("cannot resolve mac for: %#x\n", sock->rem_addr.ip);
+    if (eth_set_dmac(eth->dmac, sock->rem_addr.ip) < 0) {
+        net_dbg("Could not set destination MAC\n");
         return -1;
     }
     memcpy(eth->smac, netif->mac, MAC_SIZE);
