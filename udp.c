@@ -69,7 +69,7 @@ uint16_t udp_csum(udp_hdr_t *udp, ipv4_hdr_t *iph)
 }
 
 /**
- * Process incoming udp packets
+ * Process incoming UDP packet
  */
 int udp_process(struct net_buf *buf)
 {
@@ -101,12 +101,12 @@ int udp_process(struct net_buf *buf)
             /* Add packet to socket recv list. Set where final data starts,
              *  it's size and mark it as captured. */
             spin_lock(&s->lock);
-            if (s->bufs->num_items < SOCK_MAX_BUFS) {
+            if (s->buf_in->num_items < SOCK_MAX_BUFS) {
                 buf->captured = 1;
                 buf->u.data = udp->data;
                 buf->u.len = udp->len - sizeof(*udp);
-                list_add(s->bufs, buf);
-                wakeup(&s->bufs);
+                list_add(s->buf_in, buf);
+                wakeup(&s->buf_in);
                 net_dbg("Socket [loc: %08x:%d, rem: %08x:%d]\n"
                         " match [dst: %08x:%d, src: %08x:%d], %d bytes\n",
                         s->loc_addr.ip, s->loc_addr.port,
@@ -156,19 +156,19 @@ int udp_read(sock_t *sock, void *buf, unsigned int size)
 {
     struct net_buf *nbuf;
 
-    if (sock->bufs->num_items == 0) {
+    if (sock->buf_in->num_items == 0) {
         if (current_task->state == TASK_EXITING)
             return -1;
         if (current_task->state == TASK_RUNNING)
-            sleep_on(&sock->bufs);
+            sleep_on(&sock->buf_in);
     }
     /* Read as much as we can from datagram */
     spin_lock(&sock->lock);
-    nbuf = ((node_t *) sock->bufs->head)->data;
+    nbuf = ((node_t *) sock->buf_in->head)->data;
     if (nbuf->u.len < size)
         size = nbuf->u.len;
     memcpy(buf, nbuf->u.data, size);
-    list_del(sock->bufs, sock->bufs->head);
+    list_del(sock->buf_in, sock->buf_in->head);
     spin_unlock(&sock->lock);
 
     return size;
@@ -215,7 +215,7 @@ int eth_set_dmac(uint8_t dmac[6], uint32_t dest_ip)
     return 0;
 }
 
-int udp_write(sock_t *sock, void *buf, int len)
+int udp_write(sock_t *sock, void *buf, unsigned int len)
 {
     struct net_buf *nbuf;
     eth_hdr_t *eth;
@@ -226,7 +226,7 @@ int udp_write(sock_t *sock, void *buf, int len)
     //netif = &netifs[0];
     netif = sock->netif;
 
-    int hdrs_len = sizeof(*eth) + sizeof(*iph) + sizeof(*udp);
+    unsigned int hdrs_len = sizeof(*eth) + sizeof(*iph) + sizeof(*udp);
     if (len > 1500 - hdrs_len)
         len = 1500 - hdrs_len;
 

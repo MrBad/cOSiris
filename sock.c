@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include "console.h"
 #include "assert.h"
-#include "i386.h"
-#include "list.h"
 #include "task.h"
 #include "sysfile.h"
 #include "bmap.h"
@@ -38,7 +36,8 @@ sock_t *sock_alloc(uint8_t proto)
     sock->proto = proto;
     sock->netif = NULL;
     /* When deleting a node from list, will also call it's free buf. */
-    sock->bufs = list_open(net_buf_free);
+    sock->buf_in = list_open(net_buf_free);
+    sock->buf_out = list_open(net_buf_free);
 
     /* Append it to list */
     spin_lock(&stab->lock);
@@ -60,7 +59,8 @@ void sock_free(sock_t *sock)
     spin_unlock(&stab->lock);
 
     spin_lock(&sock->lock);
-    list_close(sock->bufs); // this will also free the net_bufs
+    list_close(sock->buf_in); // this will also free the net_bufs
+    list_close(sock->buf_out);
     spin_unlock(&sock->lock);
 
     free(sock);
@@ -217,6 +217,31 @@ void sock_table_dump()
             sock->state);
     }
     spin_unlock(&stab->lock);
+}
+
+sock_t *sock_find(
+        uint8_t proto, 
+        uint32_t loc_ip, uint16_t loc_port, 
+        uint32_t rem_ip, uint16_t rem_port)
+{
+    node_t *node;
+    sock_t *s;
+
+    spin_lock(&stab->lock);
+    forEach(stab->socks, node, s) {
+        if ((s->proto == proto) &&
+            (s->loc_addr.port == loc_port) &&
+            ((s->loc_addr.ip == ADDR_ANY) || (s->loc_addr.ip == loc_ip)) &&
+            (s->rem_addr.port == rem_port) &&
+            (s->rem_addr.ip == rem_ip)
+        ) {
+            spin_unlock(&stab->lock);
+            return s;
+        }
+    }
+    spin_unlock(&stab->lock);
+
+    return NULL;
 }
 
 /**

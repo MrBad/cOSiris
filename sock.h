@@ -1,6 +1,9 @@
 #ifndef _SOCK_H
 #define _SOCK_H
 
+#include "i386.h"
+#include "list.h"
+
 #define ADDR_ANY 0
 
 #define S_UDP 0
@@ -25,8 +28,10 @@ typedef struct sock {
     node_t *node;           // ptr to stab entry
     sock_state_t state;     // state of the sock
     spin_lock_t lock;       // locking
-    list_t *bufs;           // list of buffered packets or something
-    struct netif *netif;
+    list_t *buf_in;         // list of received net_buf buffers
+    list_t *buf_out;        // list of sent net_buf buffers. Used in TCP.
+    struct netif *netif;    // network interface to use on sending packages
+    void *priv;
 } sock_t;
 
 struct socks_table {
@@ -75,6 +80,14 @@ int sock_bind(sock_t *sock, sock_addr_t *addr);
 void sock_table_dump();
 
 void sock_set_netif(sock_t *sock, struct netif *netif);
+
+/**
+ * Finds socket having protocol, local ip/port, remote ip/port
+ */
+sock_t *sock_find(
+        uint8_t proto, 
+        uint32_t loc_ip, uint16_t loc_port, 
+        uint32_t rem_ip, uint16_t rem_port);
 
 #endif
 

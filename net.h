@@ -48,6 +48,7 @@ struct net_buf {
     struct {
         void *data;     /* Points to final payload, after decapsulation */
         uint32_t len;   /* Length of final data */
+        void *ptr;     /* Variable read pointer */
     } u;
     void *data;         /* Buffer start */
 };

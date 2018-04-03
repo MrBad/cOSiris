@@ -2,6 +2,7 @@
 #define _IP_H
 
 #include <sys/types.h>
+#include "net.h"
 
 struct ipv4_hdr {
     uint8_t version : 4;

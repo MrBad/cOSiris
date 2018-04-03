@@ -4,6 +4,7 @@
 #include "net.h"
 #include "icmp.h"
 #include "udp.h"
+#include "tcp.h"
 #include "ip.h"
 
 /**
@@ -163,6 +164,8 @@ int ip_process(struct net_buf *buf)
             udp_process(buf);
             break;
         case IP_P_TCP:
+            tcp_process(buf);
+            break;
         default:
             kprintf("Unsupported IP header protocol: %d\n", iph->proto);
             break;

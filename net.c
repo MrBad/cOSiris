@@ -9,6 +9,7 @@
 #include "net.h"
 #include "sock.h"
 #include "udp.h"
+#include "tcp.h"
 #include "dhcp.h"
 #include "route.h"
 #include "dns.h"
@@ -223,6 +224,7 @@ int net_init()
     arp_init();
     sock_init();
     udp_init();
+    tcp_init();
     if (netifs[0].priv) {
         dhcp_init(&netifs[0]);
     }

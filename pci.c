@@ -230,7 +230,7 @@ int pci_init()
         kprintf("Errors in scanning pci\n");
         return -1;
     }
-    //pci_dump("pci.txt", 1);
+    pci_dump("pci.txt", 1);
     return 0;
 }
 

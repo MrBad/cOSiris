@@ -27,7 +27,7 @@ int udp_init();
 int udp_process(struct net_buf *buf);
 
 int udp_connect(sock_t *sock, sock_addr_t *addr);
-int udp_write(sock_t *sock, void *buf, int len);
+int udp_write(sock_t *sock, void *buf, unsigned int len);
 int udp_read(sock_t *sock, void *buf, unsigned int len);
 int udp_close(sock_t *sock);
 
